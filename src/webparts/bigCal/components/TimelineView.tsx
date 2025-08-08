@@ -196,13 +196,11 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
       timeline.on('redraw', hideLoadingSpinner);
     } catch {
       // Redraw event might not be available in all vis.js versions
-      console.log('Redraw event not available');
     }
 
     // Fallback timeout in case events don't fire properly
     setTimeout(() => {
       if (this.state.isLoading) {
-        console.log('Timeline loading timeout - forcing hide spinner');
         this.setState({ isLoading: false });
       }
     }, 3000);

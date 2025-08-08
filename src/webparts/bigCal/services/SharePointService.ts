@@ -21,23 +21,14 @@ export class SharePointService {
   constructor(context: WebPartContext) {
     // Initialize PnP.js with the SPFx context
     this.sp = spfi().using(SPFx(context));
-
-    console.log('SharePointService initialized for site:', context.pageContext.web.title);
-    console.log('Target site URL:', this.siteUrl);
-    console.log('Target list name:', this.listName);
   }
 
   public async getEvents(): Promise<ISharePointEvent[]> {
     try {
-      console.log(`Fetching events from SharePoint list: ${this.listName}`);
-      console.log(`Site URL: ${this.siteUrl}`);
-
       // Use PnP.js to get items from the Events list
       const items = await this.sp.web.lists.getByTitle(this.listName).items
         .select('Id', 'Title', 'Start', 'End', 'Swimlane', 'Status')
         .orderBy('Start', true)();
-
-      console.log(`Retrieved ${items.length} events from SharePoint:`, items);
 
       return items.map((item: {Id: number; Title: string; Start: string; End: string; Swimlane: string; Status: string}) => ({
         Id: item.Id,
@@ -63,8 +54,6 @@ export class SharePointService {
 
   public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green'): Promise<ISharePointEvent> {
     try {
-      console.log(`Creating new event: ${title}`);
-
       // Use PnP.js to create a new item in the Events list
       const result = await this.sp.web.lists.getByTitle(this.listName).items.add({
         Title: title,
@@ -73,8 +62,6 @@ export class SharePointService {
         Swimlane: swimlane,
         Status: status
       });
-
-      console.log('Event created successfully:', result);
 
       return {
         Id: result.Id,
@@ -94,8 +81,6 @@ export class SharePointService {
 
   public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string): Promise<void> {
     try {
-      console.log(`Updating event ${id}: ${title}`);
-
       const updateData: Record<string, unknown> = {
         Title: title,
         Start: start.toISOString(),
@@ -107,8 +92,6 @@ export class SharePointService {
 
       await this.sp.web.lists.getByTitle(this.listName).items.getById(id).update(updateData);
 
-      console.log('Event updated successfully');
-
     } catch (error: unknown) {
       console.error('Error updating event in SharePoint:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -118,11 +101,7 @@ export class SharePointService {
 
   public async deleteEvent(id: number): Promise<void> {
     try {
-      console.log(`Deleting event ${id}`);
-
       await this.sp.web.lists.getByTitle(this.listName).items.getById(id).delete();
-
-      console.log('Event deleted successfully');
 
     } catch (error: unknown) {
       console.error('Error deleting event in SharePoint:', error);
