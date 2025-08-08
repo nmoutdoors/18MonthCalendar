@@ -1,0 +1,151 @@
+@import '~@fluentui/react/dist/sass/References.scss';
+
+.exportDialog {
+  padding: 20px 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden !important;
+
+  // Ensure Stack components don't overflow
+  :global(.ms-Stack) {
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  :global(.ms-Stack--horizontal) {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  :global(.ms-StackItem) {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .datePickerContainer {
+    display: flex;
+    gap: 20px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+    max-width: 100%;
+
+    .datePickerItem {
+      flex: 1;
+      min-width: 200px;
+      max-width: 100%;
+
+      .datePickerLabel {
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: block;
+      }
+    }
+  }
+
+  .helpText {
+    color: #666;
+    font-size: 14px;
+    margin-top: 15px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    max-width: 100%;
+  }
+
+  .messageBar {
+    margin-bottom: 20px;
+    max-width: 100%;
+  }
+
+  .dropZone {
+    border: 3px dashed #c8c6c4;
+    border-radius: 12px;
+    padding: 60px 40px;
+    text-align: center;
+    background-color: #faf9f8;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin: 20px 0;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      border-color: #0078d4;
+      background-color: #f3f9ff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 120, 212, 0.15);
+    }
+
+    &.dragActive {
+      border-color: #005a9e;
+      background-color: #deecf9;
+      border-style: solid;
+      transform: scale(1.02);
+      box-shadow: 0 6px 20px rgba(0, 120, 212, 0.25);
+    }
+
+    &.importing {
+      border-color: #0078d4;
+      background-color: #f3f9ff;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// Ensure dialog has proper spacing and no horizontal scroll
+:global {
+  .ms-Dialog-main {
+    min-width: 600px;
+    max-width: 700px;
+    width: 90vw;
+    max-height: 90vh;
+    overflow: hidden !important;
+    box-sizing: border-box;
+  }
+
+  .ms-Dialog-content {
+    padding: 24px;
+    overflow-x: hidden !important;
+    overflow-y: auto;
+    max-height: calc(90vh - 120px); // Account for header and footer
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+// Spinning animation for import loading
+:global {
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+  .ms-Dialog-actions {
+    padding: 16px 24px 24px;
+    border-top: 1px solid #edebe9;
+    flex-shrink: 0;
+    overflow-x: hidden !important;
+    box-sizing: border-box;
+  }
+
+  .ms-Dialog-header {
+    flex-shrink: 0;
+    overflow-x: hidden !important;
+    box-sizing: border-box;
+  }
+
+  // Force all child elements to respect container width
+  .ms-Dialog-content * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}

@@ -1,13 +1,15 @@
 import * as React from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import * as moment from 'moment';
-import { IconButton, IIconProps, Spinner, SpinnerSize, MessageBar, MessageBarType, Icon, SearchBox, Dropdown, IDropdownOption } from '@fluentui/react';
+import { IconButton, IIconProps, Spinner, SpinnerSize, MessageBar, MessageBarType, Icon, SearchBox, Dropdown, IDropdownOption, Pivot, PivotItem } from '@fluentui/react';
 import styles from './BigCal.module.scss';
 import type { IBigCalProps } from './IBigCalProps';
 import type { ICalendarEvent } from './ICalendarEvent';
 import { convertSharePointEventToCalendarEvent } from './ICalendarEvent';
 import { SharePointService } from '../services/SharePointService';
 import { EventModal } from './EventModal';
+import { TimelineView } from './TimelineView';
+import { ExcelExport } from './ExcelExport';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Setup the localizer for react-big-calendar
@@ -29,7 +31,8 @@ interface IBigCalState {
   selectedSwimlanes: Set<string>;
   selectedStatuses: Set<string>;
   monthNavigatorExpanded: boolean;
-  viewMode: 'calendar' | 'grid';
+  viewMode: 'calendar' | 'grid' | 'timeline';
+  isExportDialogOpen: boolean;
 }
 
 export default class BigCal extends React.Component<IBigCalProps, IBigCalState> {
@@ -54,7 +57,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       selectedSwimlanes: new Set(['Category 1', 'Category 2', 'Category 3']), // All selected by default
       selectedStatuses: new Set(['On Track', 'At Risk', 'Off Track']), // All selected by default
       monthNavigatorExpanded: true,
-      viewMode: 'calendar'
+      viewMode: 'calendar',
+      isExportDialogOpen: false
     };
 
     this.sharePointService = new SharePointService(props.context);
@@ -148,8 +152,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     this.setState({ currentDate: month, viewMode: 'calendar' });
   };
 
-  private toggleViewMode = (): void => {
-    this.setState({ viewMode: this.state.viewMode === 'calendar' ? 'grid' : 'calendar' });
+  private handleViewModeChange = (item?: PivotItem): void => {
+    if (item?.props.itemKey) {
+      this.setState({ viewMode: item.props.itemKey as 'calendar' | 'grid' | 'timeline' });
+    }
   };
 
 
@@ -521,6 +527,41 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     });
   };
 
+  private openExportDialog = (): void => {
+    this.setState({ isExportDialogOpen: true });
+  };
+
+  private closeExportDialog = (): void => {
+    this.setState({ isExportDialogOpen: false });
+  };
+
+  private handleImportEvents = async (importedEvents: ICalendarEvent[]): Promise<void> => {
+    try {
+      // Add imported events to SharePoint list
+      const addPromises = importedEvents.map(event =>
+        this.sharePointService.createEvent(
+          event.title,
+          event.start,
+          event.end,
+          event.swimlane,
+          event.status
+        )
+      );
+
+      await Promise.all(addPromises);
+
+      // Refresh the events list
+      await this.loadEvents();
+
+      // Show success message (you could add a state for this)
+      console.log(`Successfully imported ${importedEvents.length} events`);
+
+    } catch (error) {
+      console.error('Error importing events:', error);
+      // Handle error (you could add error state/message)
+    }
+  };
+
   private handleSaveEvent = async (eventData: Partial<ICalendarEvent>): Promise<void> => {
     try {
       if (eventData.id) {
@@ -569,7 +610,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   public render(): React.ReactElement<IBigCalProps> {
     const { hasTeamsContext, isUserAdmin } = this.props;
-    const { isFullscreen, filteredEvents, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedSwimlanes, selectedStatuses, viewMode } = this.state;
+    const { isFullscreen, filteredEvents, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedSwimlanes, selectedStatuses, viewMode, isExportDialogOpen } = this.state;
 
     const fullscreenIcon: IIconProps = {
       iconName: isFullscreen ? 'BackToWindow' : 'FullScreen'
@@ -631,10 +672,54 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           </div>
 
           <div className={styles.navbarRight}>
+            {/* Option 1: Pivot Component (Currently Active) */}
+            <Pivot
+              selectedKey={viewMode}
+              onLinkClick={this.handleViewModeChange}
+              className={styles.viewPivot}
+              headersOnly={true}
+            >
+              <PivotItem
+                headerText="Calendar"
+                itemKey="calendar"
+                itemIcon="Calendar"
+              />
+              <PivotItem
+                headerText="18-Month"
+                itemKey="grid"
+                itemIcon="GridViewMedium"
+              />
+              <PivotItem
+                headerText="Timeline"
+                itemKey="timeline"
+                itemIcon="Timeline"
+              />
+            </Pivot>
+
+            {/* Option 2: Individual Buttons (Alternative - Commented Out)
             <IconButton
-              iconProps={{ iconName: viewMode === 'calendar' ? 'GridViewMedium' : 'Calendar' }}
-              title={viewMode === 'calendar' ? 'Switch to Grid View' : 'Switch to Calendar View'}
-              onClick={this.toggleViewMode}
+              iconProps={{ iconName: 'Calendar' }}
+              title="Calendar View"
+              onClick={this.switchToCalendarView}
+              className={`${styles.navbarButton} ${viewMode === 'calendar' ? styles.activeButton : ''}`}
+            />
+            <IconButton
+              iconProps={{ iconName: 'GridViewMedium' }}
+              title="18-Month View"
+              onClick={this.switchToGridView}
+              className={`${styles.navbarButton} ${viewMode === 'grid' ? styles.activeButton : ''}`}
+            />
+            <IconButton
+              iconProps={{ iconName: 'Timeline' }}
+              title="Timeline View"
+              onClick={this.switchToTimelineView}
+              className={`${styles.navbarButton} ${viewMode === 'timeline' ? styles.activeButton : ''}`}
+            />
+            */}
+            <IconButton
+              iconProps={{ iconName: 'ExcelDocument' }}
+              title="Export to Excel"
+              onClick={this.openExportDialog}
               className={styles.navbarButton}
             />
             {isUserAdmin && (
@@ -756,8 +841,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
             </div>
           </div>
             </>
-          ) : (
+          ) : viewMode === 'grid' ? (
             this.renderGridView()
+          ) : (
+            <TimelineView
+              events={filteredEvents}
+              onEventClick={this.openEditModal}
+              onEventDoubleClick={this.openEditModal}
+            />
           )}
         </div>
 
@@ -769,6 +860,15 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           onSave={this.handleSaveEvent}
           onDelete={selectedEvent ? this.handleDeleteEvent : undefined}
           onClose={this.closeModal}
+        />
+
+        {/* Excel Export Dialog */}
+        <ExcelExport
+          isOpen={isExportDialogOpen}
+          events={filteredEvents}
+          currentDate={currentDate}
+          onDismiss={this.closeExportDialog}
+          onImportEvents={this.handleImportEvents}
         />
       </div>
     );

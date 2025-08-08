@@ -57,6 +57,70 @@
   }
 }
 
+.activeButton {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+  }
+}
+
+.viewPivot {
+  :global {
+    .ms-Pivot {
+      display: flex;
+      align-items: center;
+    }
+
+    .ms-Pivot-link {
+      color: white !important;
+      font-size: 14px;
+      font-weight: 400;
+      padding: 8px 12px;
+      margin: 0 2px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 32px;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        color: white !important;
+      }
+
+      &:focus {
+        outline: 1px solid rgba(255, 255, 255, 0.6);
+        outline-offset: 2px;
+      }
+
+      .ms-Icon {
+        font-size: 16px;
+        color: white;
+      }
+    }
+
+    .ms-Pivot-link.is-selected {
+      background-color: rgba(255, 255, 255, 0.2) !important;
+      color: white !important;
+      font-weight: 600;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.3) !important;
+      }
+
+      &::before {
+        display: none; // Remove the default underline
+      }
+    }
+
+    .ms-Pivot-text {
+      color: inherit;
+    }
+  }
+}
+
 .mainContent {
   display: flex;
   flex: 1;
