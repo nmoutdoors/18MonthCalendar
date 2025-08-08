@@ -16,13 +16,13 @@ BigCal revolutionizes SharePoint calendar management by providing **dual-view pl
 
 ## 🎯 **Core Features**
 
-### 🔄 **Dual View System**
-Switch seamlessly between detailed calendar management and strategic overview:
+### 🔄 **Triple View System**
+Switch seamlessly between detailed calendar management, strategic overview, and timeline visualization:
 
-| **📅 Calendar View** | **📊 Grid View** |
-|---------------------|------------------|
-| ![Calendar View](docs/month.png) | ![Grid View](docs/18month.png) |
-| *Detailed event management with 18-month sidebar navigation* | *Strategic 18-month overview with large, readable calendars* |
+| **📅 Calendar View** | **📊 Grid View** | **⏱️ Timeline View** |
+|---------------------|------------------|---------------------|
+| ![Calendar View](docs/month.png) | ![Grid View](docs/18month.png) | ![Timeline View](docs/timelineView.png) |
+| *Detailed event management with 18-month sidebar navigation* | *Strategic 18-month overview with large, readable calendars* | *Interactive timeline with swimlane organization* |
 
 ### 🗓️ **Multiple Calendar Views**
 Choose the perfect view for your workflow:
@@ -32,6 +32,19 @@ Choose the perfect view for your workflow:
 | ![Week View](docs/week.png) | ![Day View](docs/day.png) | ![Agenda View](docs/agenda.png) |
 | *Weekly planning with time slots* | *Detailed daily scheduling* | *Clean event list overview* |
 
+### 📊 **Excel Import/Export System**
+Complete data management for enterprise migration and backup:
+
+| **📤 Export Interface** | **📥 Import Interface** |
+|------------------------|------------------------|
+| ![Export Dialog](docs/exportToExcel.png) | ![Import Dialog](docs/importFromExcel.png) |
+| *Dual-tab exports with custom date ranges and filenames* | *Drag & drop import with professional feedback* |
+
+| **📋 Agenda Tab** | **📊 Data Tab** |
+|------------------|-----------------|
+| ![Agenda Tab](docs/excelAgendaTab.png) | ![Data Tab](docs/excelDataTab.png) |
+| *Human-readable format for reports and sharing* | *Machine-readable format for data migration* |
+
 ### 🎯 **Advanced Features**
 
 #### 🔍 **Smart Filtering System**
@@ -39,6 +52,21 @@ Choose the perfect view for your workflow:
 - **🏊 Swimlane Categories** - Organize by project, team, or department with visual icons
 - **📊 Status Tracking** - Color-coded progress indicators (On Track, At Risk, Off Track)
 - **📈 Real-time Counts** - See filtered results and event density immediately
+
+#### ⏱️ **Interactive Timeline View**
+- **🎯 Swimlane Organization** - Events grouped by categories with visual separation
+- **🎨 Status-based Color Coding** - Instant visual status recognition
+- **🖱️ Advanced Interactions** - Smooth scrolling, zooming, and navigation
+- **📅 Smart Loading** - Professional loading states with vis.js event detection
+- **⚡ Responsive Design** - Optimized for all screen sizes and touch devices
+
+#### 📊 **Excel Import/Export System**
+- **📤 Dual-tab Exports** - Agenda (human-readable) + Data (machine-readable) tabs
+- **📅 Smart Date Formatting** - MM/DD/YYYY HH:MM AM/PM for reliable data migration
+- **🎯 Month-based Defaults** - Export defaults to current calendar month view
+- **📝 Custom Filenames** - Full control over export file naming
+- **📥 Drag & Drop Import** - Professional import interface with visual feedback
+- **🔄 Round-trip Accuracy** - Perfect data preservation for migration scenarios
 
 #### 🗓️ **18-Month Navigation**
 - **📅 Mini Calendar Sidebar** - Navigate any month with one click
@@ -90,6 +118,8 @@ gulp package-solution --ship
 - **📘 TypeScript 4.7** - Type-safe development with strict linting
 - **🎨 Fluent UI 8.x** - Native SharePoint design system
 - **📅 React Big Calendar** - Powerful, flexible calendar engine
+- **⏱️ vis.js Timeline** - Interactive timeline visualization with advanced controls
+- **📊 xlsx Library** - Professional Excel import/export capabilities
 - **🔧 SPFx 1.20** - Latest SharePoint Framework capabilities
 
 ### 🎯 **Performance Optimized**
@@ -97,6 +127,8 @@ gulp package-solution --ship
 - **📱 CSS Grid Layout** - Responsive design with auto-fit columns
 - **🔄 Optimized State** - Minimal re-renders with React best practices
 - **💾 Memory Efficient** - Handles 1000+ events smoothly across 18 months
+- **⏱️ Smart Loading States** - Event-driven loading with vis.js integration
+- **📊 Optimized Excel Processing** - Efficient large dataset import/export
 
 ### 🔒 **Enterprise Ready**
 - **🛡️ SharePoint Security** - Inherits all SharePoint permissions and authentication
@@ -147,16 +179,19 @@ private getStatusColor = (status: string): string => {
 ## 🎯 **Use Cases & Benefits**
 
 ### 👥 **Perfect for Teams**
-- **📋 Project Management** - Track milestones across multiple projects
+- **📋 Project Management** - Track milestones across multiple projects with timeline view
 - **🎯 Sprint Planning** - Visualize development cycles and releases
 - **📅 Event Coordination** - Manage company events, meetings, and deadlines
 - **📊 Resource Planning** - See team availability and workload distribution
+- **🔄 Data Migration** - Seamlessly move calendar data between environments
 
 ### 🏢 **Enterprise Benefits**
 - **📈 Strategic Planning** - 18-month visibility for long-term initiatives
 - **🔍 Quick Discovery** - Find any event across 1.5 years instantly
 - **📱 Mobile Productivity** - Full functionality on phones and tablets
 - **🎨 Brand Consistency** - Matches your SharePoint theme automatically
+- **📊 Data Portability** - Complete import/export system for enterprise migration
+- **⏱️ Timeline Visualization** - Professional project timeline views
 
 ### 🚀 **Developer Benefits**
 - **⚡ Modern Stack** - React 17, TypeScript 4.7, latest SPFx
@@ -166,9 +201,20 @@ private getStatusColor = (status: string): string => {
 
 ## 📚 **Documentation**
 
+### 📋 **Core Documentation**
 - [📋 SharePoint Fields Integration](docs/SharePoint-Fields-Integration.md)
 - [⚙️ ESLint Configuration](docs/ESLint-Configuration.md)
 - [📘 TypeScript Best Practices](docs/TypeScript-Best-Practices.md)
+
+### ⏱️ **Timeline View Documentation**
+- [🎯 vis.js Timeline Implementation Guide](docs/vis-timeline-implementation-guide.md)
+- [🖱️ Timeline Zoom & Scroll Interactions](docs/vis-timeline-zoom-scroll-interactions-guide.md)
+
+### 📊 **Import/Export Features**
+- **Excel Export**: Dual-tab system with Agenda (human-readable) and Data (machine-readable) formats
+- **Excel Import**: Drag & drop interface with comprehensive data validation
+- **Data Migration**: Complete round-trip accuracy for enterprise scenarios
+- **Date Formatting**: Standardized MM/DD/YYYY HH:MM AM/PM format for reliability
 
 ## 🤝 **Contributing**
 
@@ -226,6 +272,8 @@ BigCal is actively developed with exciting features planned:
 - **🤖 AI-Powered Scheduling** - Smart conflict detection and suggestions
 - **📱 Teams Integration** - Native Microsoft Teams calendar sync
 - **🎨 Custom Themes** - Brand-specific color schemes and layouts
+- **⏱️ Enhanced Timeline Features** - Gantt chart capabilities and dependency tracking
+- **📊 Advanced Import/Export** - Support for additional formats and bulk operations
 
 ---
 
