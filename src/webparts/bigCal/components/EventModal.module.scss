@@ -1,0 +1,262 @@
+@import '~@fluentui/react/dist/sass/References.scss';
+
+.modalContainer {
+  // Force consistent modal width with multiple selectors
+  :global(.ms-Modal-main),
+  :global(.ms-Modal-main *),
+  :global(.ms-Modal-scrollableContent) {
+    width: 690px !important;
+    max-width: 690px !important;
+    min-width: 690px !important;
+  }
+
+  :global(.ms-Modal-main) {
+    border-radius: 0; // Remove rounded corners to avoid white tips
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    background: white;
+    border: 1px solid "[theme:neutralLight, default: #edebe9]";
+    border: 1px solid var(--neutralLight, #edebe9);
+    overflow: hidden;
+
+    // Force positioning
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+  }
+
+  :global(.ms-Modal-scrollableContent) {
+    border-radius: 0;
+    overflow: hidden;
+    width: 690px !important;
+    max-width: 690px !important;
+    min-width: 690px !important;
+  }
+}
+
+// Additional overrides to ensure consistent modal width
+.modalContent {
+  width: 690px !important;
+  max-width: 690px !important;
+  min-width: 690px !important;
+  box-sizing: border-box;
+}
+
+// Global overrides for all modal elements
+:global {
+  .ms-Modal-main {
+    width: 690px !important;
+    max-width: 690px !important;
+    min-width: 690px !important;
+  }
+
+  .ms-Modal-scrollableContent {
+    width: 690px !important;
+    max-width: 690px !important;
+    min-width: 690px !important;
+  }
+
+  // Override any responsive behavior
+  @media (max-width: 1400px) {
+    .ms-Modal-main {
+      width: 690px !important;
+      max-width: 690px !important;
+      min-width: 690px !important;
+    }
+  }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32px 40px 24px 40px;
+  background: linear-gradient(90deg, "[theme:themePrimary, default: #0078d4]" 0%, "[theme:themeDark, default: #106ebe]" 100%);
+  background: linear-gradient(90deg, var(--themePrimary, #0078d4) 0%, var(--themeDark, #106ebe) 100%);
+  color: white;
+  margin-bottom: 0;
+  position: relative;
+  border-radius: 0; // Remove rounded corners for clean square design
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, "[theme:themeSecondary, default: #2b88d8]" 0%, "[theme:themePrimary, default: #0078d4]" 100%);
+    background: linear-gradient(90deg, var(--themeSecondary, #2b88d8) 0%, var(--themePrimary, #0078d4) 100%);
+  }
+
+  h2 {
+    margin: 0;
+    color: white;
+    font-weight: 600;
+    font-size: 24px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.closeButton {
+  color: rgba(255, 255, 255, 0.9) !important;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    transform: scale(1.05);
+  }
+
+  &:active {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    transform: scale(0.95);
+  }
+
+  i {
+    font-size: 16px;
+  }
+}
+
+.modalBody {
+  padding: 40px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: white;
+
+  // Enhanced form field styling
+  :global(.ms-TextField-wrapper) {
+    margin-bottom: 8px;
+  }
+
+  :global(.ms-TextField-fieldGroup) {
+    border-radius: 6px;
+    border: 2px solid "[theme:neutralLight, default: #edebe9]";
+    border: 2px solid var(--neutralLight, #edebe9);
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: "[theme:themePrimary, default: #0078d4]";
+      border-color: var(--themePrimary, #0078d4);
+      box-shadow: 0 2px 8px rgba(0, 120, 212, 0.1);
+    }
+
+    &.is-focused {
+      border-color: "[theme:themePrimary, default: #0078d4]";
+      border-color: var(--themePrimary, #0078d4);
+      box-shadow: 0 0 0 1px "[theme:themePrimary, default: #0078d4]";
+      box-shadow: 0 0 0 1px var(--themePrimary, #0078d4);
+    }
+  }
+
+  :global(.ms-Dropdown-container) {
+    margin-bottom: 8px;
+
+    .ms-Dropdown {
+      border-radius: 6px;
+      border: 2px solid "[theme:neutralLight, default: #edebe9]";
+      border: 2px solid var(--neutralLight, #edebe9);
+      transition: all 0.2s ease;
+
+      &:hover {
+        border-color: "[theme:themePrimary, default: #0078d4]";
+        border-color: var(--themePrimary, #0078d4);
+        box-shadow: 0 2px 8px rgba(0, 120, 212, 0.1);
+      }
+
+      &.is-open {
+        border-color: "[theme:themePrimary, default: #0078d4]";
+        border-color: var(--themePrimary, #0078d4);
+      }
+    }
+  }
+
+  :global(.ms-DatePicker) {
+    margin-bottom: 8px;
+
+    .ms-TextField-fieldGroup {
+      border-radius: 6px;
+      border: 2px solid "[theme:neutralLight, default: #edebe9]";
+      border: 2px solid var(--neutralLight, #edebe9);
+      transition: all 0.2s ease;
+
+      &:hover {
+        border-color: "[theme:themePrimary, default: #0078d4]";
+        border-color: var(--themePrimary, #0078d4);
+        box-shadow: 0 2px 8px rgba(0, 120, 212, 0.1);
+      }
+    }
+  }
+}
+
+.modalFooter {
+  padding: 32px 40px;
+  border-top: 2px solid "[theme:neutralLight, default: #edebe9]";
+  border-top: 2px solid var(--neutralLight, #edebe9);
+  margin-top: 0;
+  background: linear-gradient(135deg, "[theme:neutralLighterAlt, default: #faf9f8]" 0%, "[theme:neutralLighter, default: #f3f2f1]" 100%);
+  background: linear-gradient(135deg, var(--neutralLighterAlt, #faf9f8) 0%, var(--neutralLighter, #f3f2f1) 100%);
+
+  // Ensure consistent footer layout
+  .ms-Stack {
+    width: 100%;
+  }
+
+  // Reserve space for delete button area to maintain consistent layout
+  .ms-Stack-inner > div:first-child {
+    min-width: 120px; // Reserve space for Delete button
+  }
+
+  // Enhanced button styling
+  :global(.ms-Button) {
+    border-radius: 6px;
+    font-weight: 600;
+    padding: 12px 24px;
+    height: auto;
+    min-height: 44px;
+    transition: all 0.2s ease;
+
+    &.ms-Button--primary {
+      background: linear-gradient(135deg, "[theme:themePrimary, default: #0078d4]" 0%, "[theme:themeDark, default: #106ebe]" 100%);
+      background: linear-gradient(135deg, var(--themePrimary, #0078d4) 0%, var(--themeDark, #106ebe) 100%);
+      border: none;
+      box-shadow: 0 4px 12px rgba(0, 120, 212, 0.3);
+
+      &:hover {
+        background: linear-gradient(135deg, "[theme:themeDark, default: #106ebe]" 0%, "[theme:themeDarker, default: #005a9e]" 100%);
+        background: linear-gradient(135deg, var(--themeDark, #106ebe) 0%, var(--themeDarker, #005a9e) 100%);
+        box-shadow: 0 6px 16px rgba(0, 120, 212, 0.4);
+        transform: translateY(-1px);
+      }
+
+      &:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(0, 120, 212, 0.3);
+      }
+    }
+
+    &.ms-Button--default {
+      border: 2px solid "[theme:neutralLight, default: #edebe9]";
+      border: 2px solid var(--neutralLight, #edebe9);
+      background: white;
+
+      &:hover {
+        border-color: "[theme:themePrimary, default: #0078d4]";
+        border-color: var(--themePrimary, #0078d4);
+        background: "[theme:themeLight, default: #c7e0f4]";
+        background: var(--themeLight, #c7e0f4);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      &:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      }
+    }
+  }
+}

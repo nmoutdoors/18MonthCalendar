@@ -1,0 +1,292 @@
+@import '~@fluentui/react/dist/sass/References.scss';
+
+.bigCal {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: "[theme:bodyText, default: #323130]";
+  color: var(--bodyText);
+
+  &.teams {
+    font-family: $ms-font-family-fallbacks;
+  }
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px; // Reduced from 8px to 4px
+  background-color: "[theme:themePrimary, default: #0078d4]";
+  background-color: var(--themePrimary, #0078d4);
+  color: white;
+  height: 36px; // Reduced from 44px to 36px
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 1001;
+}
+
+.navbarLeft {
+  display: flex;
+  align-items: center;
+}
+
+.navbarRight {
+  display: flex;
+  align-items: center;
+  gap: 4px; // Small gap between buttons
+}
+
+.navbarButton {
+  color: white !important;
+  min-width: 32px;
+  height: 32px;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+  }
+
+  &:active {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+  }
+
+  &:focus {
+    outline: 1px solid rgba(255, 255, 255, 0.6);
+    outline-offset: 2px;
+  }
+}
+
+.mainContent {
+  display: flex;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+.leftColumn {
+  width: 20%;
+  background-color: "[theme:neutralLighter, default: #f3f2f1]";
+  background-color: var(--neutralLighter, #f3f2f1);
+  border-right: 1px solid "[theme:neutralLight, default: #edebe9]";
+  border-right: 1px solid var(--neutralLight, #edebe9);
+  overflow-y: auto;
+  min-width: 250px;
+}
+
+.leftColumnContent {
+  padding: 20px 16px;
+
+  h3 {
+    margin: 0 0 12px 0;
+    color: "[theme:neutralPrimary, default: #323130]";
+    color: var(--neutralPrimary, #323130);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0;
+    color: "[theme:neutralSecondary, default: #605e5c]";
+    color: var(--neutralSecondary, #605e5c);
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  // Filter section styling
+  .ms-Checkbox {
+    margin-bottom: 4px;
+
+    .ms-Checkbox-label {
+      font-size: 13px;
+      color: "[theme:neutralPrimary, default: #323130]";
+      color: var(--neutralPrimary, #323130);
+    }
+  }
+
+  // Separator styling
+  .ms-Separator {
+    margin: 8px 0;
+  }
+}
+
+.rightColumn {
+  width: 80%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.calendarContainer {
+  flex: 1;
+  background: white;
+  padding: 24px; // Equal padding on all sides
+  overflow: hidden;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+  flex-direction: column;
+}
+
+// Override some react-big-calendar styles to match Fluent UI theme
+:global {
+  .rbc-calendar {
+    font-family: $ms-font-family-fallbacks;
+  }
+
+  .rbc-header {
+    background-color: "[theme:themePrimary, default: #0078d4]";
+    background-color: var(--themePrimary, #0078d4);
+    color: white;
+    font-weight: 600;
+    padding: 8px;
+  }
+
+  .rbc-today {
+    background-color: "[theme:themeLight, default: #c7e0f4]";
+    background-color: var(--themeLight, #c7e0f4);
+  }
+
+  .rbc-event {
+    background-color: "[theme:themePrimary, default: #0078d4]";
+    background-color: var(--themePrimary, #0078d4);
+    border: none;
+    border-radius: 2px;
+  }
+
+  .rbc-event:focus,
+  .rbc-event.rbc-selected {
+    background-color: "[theme:themeDark, default: #106ebe]";
+    background-color: var(--themeDark, #106ebe);
+  }
+
+  .rbc-slot-selection {
+    background-color: "[theme:themeLight, default: #c7e0f4]";
+    background-color: var(--themeLight, #c7e0f4);
+  }
+
+  // Status-based event styling
+  .rbc-event.status-red {
+    background-color: #D32F2F !important;
+    border-color: #B71C1C !important;
+  }
+
+  .rbc-event.status-green {
+    // Use default blue theme color for green status
+    background-color: "[theme:themePrimary, default: #0078d4]" !important;
+    background-color: var(--themePrimary, #0078d4) !important;
+    border-color: "[theme:themeDark, default: #106ebe]" !important;
+    border-color: var(--themeDark, #106ebe) !important;
+  }
+
+  .rbc-event.status-amber {
+    background-color: #FBC02D !important;
+    border-color: #F57F17 !important;
+    color: #323130 !important; // Dark text for better contrast on yellow
+  }
+
+
+}
+
+// Custom event component styling
+.customEvent {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.eventIcon {
+  font-size: 12px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.eventTitle {
+  font-size: 11px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+// Month date header with +New button
+.monthDateHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 2px 4px;
+  position: relative;
+}
+
+.dateLabel {
+  font-weight: 600;
+  color: "[theme:neutralPrimary, default: #323130]";
+  color: var(--neutralPrimary, #323130);
+  font-size: 14px;
+}
+
+.newEventButton {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  background: none;
+  border: none;
+  color: "[theme:themePrimary, default: #0078d4]";
+  color: var(--themePrimary, #0078d4);
+  font-size: 11px;
+  font-weight: 400;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 2px;
+  text-decoration: none;
+  z-index: 10;
+
+  &:hover {
+    background-color: "[theme:themeLight, default: #c7e0f4]";
+    background-color: var(--themeLight, #c7e0f4);
+    text-decoration: underline;
+  }
+
+  &:active {
+    background-color: "[theme:themeLighter, default: #deecf9]";
+    background-color: var(--themeLighter, #deecf9);
+  }
+
+  &:focus {
+    outline: 1px solid "[theme:themePrimary, default: #0078d4]";
+    outline: 1px solid var(--themePrimary, #0078d4);
+    outline-offset: 1px;
+  }
+}
+
+.monthEventItem {
+  z-index: 5;
+  position: relative;
+}
+
+// Simplified hover behavior - show +New on date header hover
+.monthDateHeader:hover .newEventButton {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+// Global styles for month view hover behavior
+:global {
+  // Show +New button when hovering over the month date cell
+  .rbc-date-cell:hover .monthDateHeader .newEventButton {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "big-cal-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/bigCal/BigCalWebPart.js",
+          "manifest": "./src/webparts/bigCal/BigCalWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "BigCalWebPartStrings": "lib/webparts/bigCal/loc/{locale}.js"
+  }
+}
