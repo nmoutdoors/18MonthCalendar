@@ -88,7 +88,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
 
       // Critical interaction settings
       zoomable: true,
-      zoomKey: 'ctrlKey' as any, // Require Ctrl key for zoom (prevents accidental zoom)
+      zoomKey: 'ctrlKey' as const, // Require Ctrl key for zoom (prevents accidental zoom)
       moveable: true,
 
       // Scrolling behavior

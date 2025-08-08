@@ -118,7 +118,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      this.handleFileImport(files[0]);
+      this.handleFileImport(files[0]).catch(console.error);
     }
   };
 
@@ -179,7 +179,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
 
       // Call the import callback if provided
       if (this.props.onImportEvents) {
-        void this.props.onImportEvents(events);
+        this.props.onImportEvents(events);
       }
 
       this.setState({
@@ -663,7 +663,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
                           input.onchange = (e: Event) => {
                             const target = e.target as HTMLInputElement;
                             if (target.files && target.files.length > 0) {
-                              void this.handleFileImport(target.files[0]);
+                              this.handleFileImport(target.files[0]).catch(console.error);
                             }
                           };
                           input.click();
