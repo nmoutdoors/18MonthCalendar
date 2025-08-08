@@ -44,9 +44,9 @@ const swimlaneOptions: IDropdownOption[] = [
 ];
 
 const statusOptions: IDropdownOption[] = [
-  { key: 'Green', text: 'Green', data: { color: '#0078d4' } }, // SharePoint blue
-  { key: 'Amber', text: 'Amber', data: { color: '#FBC02D' } }, // Yellow
-  { key: 'Red', text: 'Red', data: { color: '#D32F2F' } } // Red
+  { key: 'On Track', text: 'On Track', data: { color: '#0078d4' } }, // SharePoint blue
+  { key: 'At Risk', text: 'At Risk', data: { color: '#FBC02D' } }, // Yellow
+  { key: 'Off Track', text: 'Off Track', data: { color: '#D32F2F' } } // Red
 ];
 
 export class EventModal extends React.Component<IEventModalProps, IEventModalState> {
@@ -64,7 +64,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       startTime: this.formatTime(props.event?.start || defaultStart),
       endTime: this.formatTime(props.event?.end || defaultEnd),
       swimlane: props.event?.swimlane || 'Category 1',
-      status: props.event?.status || 'Green',
+      status: props.event?.status || 'On Track',
       isSaving: false,
       isDeleting: false
     };
@@ -87,7 +87,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           startTime: this.formatTime(defaultStart),
           endTime: this.formatTime(defaultEnd),
           swimlane: 'Category 1',
-          status: 'Green',
+          status: 'On Track',
           isSaving: false,
           isDeleting: false
         });

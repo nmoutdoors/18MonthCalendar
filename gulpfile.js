@@ -15,6 +15,14 @@ build.addSuppression(`Warning - [sass] The local CSS class 'ms-Stack-inner' is n
 build.addSuppression(`Warning - [sass] The local CSS class 'ms-Checkbox' is not camelCase and will not be type-safe.`);
 build.addSuppression(`Warning - [sass] The local CSS class 'ms-Checkbox-label' is not camelCase and will not be type-safe.`);
 build.addSuppression(`Warning - [sass] The local CSS class 'ms-Separator' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-calendar' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-month-view' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-header' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-date-cell' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-off-range-bg' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-today' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-event' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-event-content' is not camelCase and will not be type-safe.`);
 
 var getTasks = build.rig.getTasks;
 build.rig.getTasks = function () {

@@ -70,12 +70,15 @@
   background-color: var(--neutralLighter, #f3f2f1);
   border-right: 1px solid "[theme:neutralLight, default: #edebe9]";
   border-right: 1px solid var(--neutralLight, #edebe9);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
   min-width: 250px;
+  position: relative;
+  z-index: 1;
 }
 
 .leftColumnContent {
-  padding: 20px 16px;
+  padding: 20px 24px;
 
   h3 {
     margin: 0 0 12px 0;
@@ -95,7 +98,8 @@
 
   // Filter section styling
   .ms-Checkbox {
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    margin-left: 12px; // Indent checkboxes under headings
 
     .ms-Checkbox-label {
       font-size: 13px;
@@ -106,7 +110,204 @@
 
   // Separator styling
   .ms-Separator {
-    margin: 8px 0;
+    margin: 12px 0;
+  }
+
+  // Section headers styling
+  .filterSectionHeader {
+    font-size: 13px;
+    font-weight: 700;
+    color: "[theme:neutralPrimary, default: #323130]";
+    color: var(--neutralPrimary, #323130);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 12px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid "[theme:themePrimary, default: #0078d4]";
+    border-bottom: 2px solid var(--themePrimary, #0078d4);
+    display: block;
+    position: relative;
+
+    // Add a subtle gradient background
+    background: linear-gradient(90deg,
+      rgba(0, 120, 212, 0.05) 0%,
+      transparent 100%);
+    padding-left: 8px;
+    margin-left: -8px;
+    border-radius: 2px;
+  }
+
+  // Custom checkbox container for better spacing
+  .checkboxContainer {
+    margin-left: 12px;
+    margin-bottom: 6px;
+  }
+
+  // Mini Calendar Styles
+  .miniCalendarContainer {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+
+
+  .miniCalendarScrollArea {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+    padding-top: 8px;
+
+    // Custom scrollbar
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: "[theme:neutralLighter, default: #f3f2f1]";
+      background: var(--neutralLighter, #f3f2f1);
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: "[theme:neutralTertiary, default: #a19f9d]";
+      background: var(--neutralTertiary, #a19f9d);
+      border-radius: 3px;
+
+      &:hover {
+        background: "[theme:neutralSecondary, default: #605e5c]";
+        background: var(--neutralSecondary, #605e5c);
+      }
+    }
+  }
+
+  .miniCalendarWrapper {
+    margin-bottom: 8px;
+  }
+
+  .miniCalendarCard {
+    background: white;
+    border: 1px solid "[theme:neutralLight, default: #edebe9]";
+    border: 1px solid var(--neutralLight, #edebe9);
+    border-radius: 6px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+    &:hover {
+      border-color: "[theme:themePrimary, default: #0078d4]";
+      border-color: var(--themePrimary, #0078d4);
+      box-shadow: 0 2px 8px rgba(0, 120, 212, 0.2);
+      transform: translateY(-1px);
+    }
+
+    &.currentMonth {
+      border-color: "[theme:themePrimary, default: #0078d4]";
+      border-color: var(--themePrimary, #0078d4);
+      border-width: 2px;
+      background: "[theme:themeLighterAlt, default: #eff6fc]";
+      background: var(--themeLighterAlt, #eff6fc);
+    }
+  }
+
+  .miniCalendarTitle {
+    text-align: center;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: "[theme:neutralPrimary, default: #323130]";
+    color: var(--neutralPrimary, #323130);
+    padding: 2px 0;
+  }
+
+  .miniCalendarContent {
+    // Override react-big-calendar styles for mini view
+    .rbc-calendar {
+      font-size: 10px;
+    }
+
+    .rbc-month-view {
+      border: none;
+    }
+
+    .rbc-header {
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 1px;
+      border-bottom: 1px solid "[theme:neutralLight, default: #edebe9]";
+      border-bottom: 1px solid var(--neutralLight, #edebe9);
+      background: "[theme:themePrimary, default: #0078d4]";
+      background: var(--themePrimary, #0078d4);
+      color: white;
+      text-align: center;
+      min-height: 16px;
+    }
+
+    .rbc-date-cell {
+      padding: 2px;
+      font-size: 10px;
+      min-height: 32px; // Increased for better event visibility
+      border: 1px solid "[theme:neutralLighter, default: #f3f2f1]";
+      border: 1px solid var(--neutralLighter, #f3f2f1);
+    }
+
+    .rbc-off-range-bg {
+      background: "[theme:neutralLighter, default: #f3f2f1]";
+      background: var(--neutralLighter, #f3f2f1);
+    }
+
+    .rbc-today {
+      background: "[theme:themeLighterAlt, default: #eff6fc]";
+      background: var(--themeLighterAlt, #eff6fc);
+      font-weight: 600;
+    }
+
+    // Mini calendar event styling
+    .rbc-event {
+      font-size: 9px !important;
+      padding: 1px 3px !important;
+      margin: 1px 0px !important;
+      border-radius: 3px !important;
+      line-height: 1.3 !important;
+      min-height: 14px !important;
+      overflow: hidden !important;
+      white-space: nowrap !important;
+      text-overflow: ellipsis !important;
+    }
+
+    .rbc-event-content {
+      font-size: 9px !important;
+      line-height: 1.3 !important;
+    }
+  }
+
+  .miniEvent {
+    width: 100%;
+    height: 14px;
+    font-size: 9px;
+    line-height: 1.3;
+    padding: 1px 3px;
+    border-radius: 3px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+  }
+
+  .miniEventText {
+    font-size: 9px;
+    line-height: 1.3;
+    color: white;
+    font-weight: 500;
+  }
+
+  .miniEventDot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
   }
 }
 
@@ -170,20 +371,20 @@
   }
 
   // Status-based event styling
-  .rbc-event.status-red {
+  .rbc-event.status-offtrack {
     background-color: #D32F2F !important;
     border-color: #B71C1C !important;
   }
 
-  .rbc-event.status-green {
-    // Use default blue theme color for green status
+  .rbc-event.status-ontrack {
+    // Use default blue theme color for On Track status
     background-color: "[theme:themePrimary, default: #0078d4]" !important;
     background-color: var(--themePrimary, #0078d4) !important;
     border-color: "[theme:themeDark, default: #106ebe]" !important;
     border-color: var(--themeDark, #106ebe) !important;
   }
 
-  .rbc-event.status-amber {
+  .rbc-event.status-atrisk {
     background-color: #FBC02D !important;
     border-color: #F57F17 !important;
     color: #323130 !important; // Dark text for better contrast on yellow
@@ -289,4 +490,86 @@
     opacity: 1 !important;
     visibility: visible !important;
   }
+}
+
+// Grid View Styles
+.gridViewContainer {
+  padding: 24px;
+  height: 100%;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.gridViewHeader {
+  margin-bottom: 20px;
+
+  h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: "[theme:neutralPrimary, default: #323130]";
+    color: var(--neutralPrimary, #323130);
+  }
+}
+
+.gridViewContent {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.gridCard {
+  background: white;
+  border: 1px solid "[theme:neutralLight, default: #edebe9]";
+  border: 1px solid var(--neutralLight, #edebe9);
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+  }
+}
+
+.currentGridCard {
+  border-color: "[theme:themePrimary, default: #0078d4]";
+  border-color: var(--themePrimary, #0078d4);
+  border-width: 2px;
+  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.2);
+}
+
+.gridCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid "[theme:neutralLighter, default: #f3f2f1]";
+  border-bottom: 1px solid var(--neutralLighter, #f3f2f1);
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: "[theme:neutralPrimary, default: #323130]";
+    color: var(--neutralPrimary, #323130);
+  }
+}
+
+.gridCardCount {
+  font-size: 12px;
+  color: "[theme:neutralSecondary, default: #605e5c]";
+  color: var(--neutralSecondary, #605e5c);
+  background: "[theme:neutralLighter, default: #f3f2f1]";
+  background: var(--neutralLighter, #f3f2f1);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.gridCardContent {
+  // Mini calendar styles will be inherited
 }

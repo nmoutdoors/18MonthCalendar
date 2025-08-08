@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import * as moment from 'moment';
-import { IconButton, IIconProps, Spinner, SpinnerSize, MessageBar, MessageBarType, Icon, SearchBox, Checkbox, Text, Stack, Separator } from '@fluentui/react';
+import { IconButton, IIconProps, Spinner, SpinnerSize, MessageBar, MessageBarType, Icon, SearchBox, Dropdown, IDropdownOption } from '@fluentui/react';
 import styles from './BigCal.module.scss';
 import type { IBigCalProps } from './IBigCalProps';
 import type { ICalendarEvent } from './ICalendarEvent';
@@ -28,6 +28,8 @@ interface IBigCalState {
   searchText: string;
   selectedSwimlanes: Set<string>;
   selectedStatuses: Set<string>;
+  monthNavigatorExpanded: boolean;
+  viewMode: 'calendar' | 'grid';
 }
 
 export default class BigCal extends React.Component<IBigCalProps, IBigCalState> {
@@ -50,7 +52,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       selectedDate: undefined,
       searchText: '',
       selectedSwimlanes: new Set(['Category 1', 'Category 2', 'Category 3']), // All selected by default
-      selectedStatuses: new Set(['Red', 'Green', 'Amber']) // All selected by default
+      selectedStatuses: new Set(['On Track', 'At Risk', 'Off Track']), // All selected by default
+      monthNavigatorExpanded: true,
+      viewMode: 'calendar'
     };
 
     this.sharePointService = new SharePointService(props.context);
@@ -119,54 +123,235 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     });
   };
 
-  private handleSwimlaneToggle = (swimlane: string): void => {
-    const { selectedSwimlanes } = this.state;
-    const newSelected = new Set<string>();
-    selectedSwimlanes.forEach(item => newSelected.add(item));
 
-    if (newSelected.has(swimlane)) {
-      newSelected.delete(swimlane);
-    } else {
-      newSelected.add(swimlane);
+
+  private get18MonthRange = (): Date[] => {
+    const months: Date[] = [];
+    const current = new Date();
+
+    for (let i = 0; i < 18; i++) {
+      const month = new Date(current.getFullYear(), current.getMonth() + i, 1);
+      months.push(month);
     }
+    return months;
+  };
 
-    this.setState({ selectedSwimlanes: newSelected }, () => {
-      this.applyFilters();
+  private getEventsForMonth = (month: Date): number => {
+    const { events } = this.state;
+    return events.filter(event => {
+      return event.start.getFullYear() === month.getFullYear() &&
+             event.start.getMonth() === month.getMonth();
+    }).length;
+  };
+
+  private handleMonthNavigate = (month: Date): void => {
+    this.setState({ currentDate: month, viewMode: 'calendar' });
+  };
+
+  private toggleViewMode = (): void => {
+    this.setState({ viewMode: this.state.viewMode === 'calendar' ? 'grid' : 'calendar' });
+  };
+
+
+
+  private formatMonthYear = (date: Date): string => {
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
+
+  private getSwimlaneDropdownOptions = (): IDropdownOption[] => {
+    const { filteredEvents } = this.state;
+    return ['Category 1', 'Category 2', 'Category 3'].map(swimlane => {
+      const count = filteredEvents.filter(e => e.swimlane === swimlane).length;
+      return {
+        key: swimlane,
+        text: `${swimlane} (${count})`,
+        data: { icon: this.getSwimlaneIcon(swimlane), count }
+      };
     });
   };
 
-  private handleStatusToggle = (status: string): void => {
-    const { selectedStatuses } = this.state;
-    const newSelected = new Set<string>();
-    selectedStatuses.forEach(item => newSelected.add(item));
+  private getStatusDropdownOptions = (): IDropdownOption[] => {
+    const { filteredEvents } = this.state;
+    return ['On Track', 'At Risk', 'Off Track'].map(status => {
+      const count = filteredEvents.filter(e => e.status === status).length;
+      return {
+        key: status,
+        text: `${status} (${count})`,
+        data: {
+          icon: this.getStatusIcon(status),
+          color: this.getStatusColor(status),
+          count
+        }
+      };
+    });
+  };
 
-    if (newSelected.has(status)) {
-      newSelected.delete(status);
-    } else {
-      newSelected.add(status);
+  private getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'On Track':
+        return '#0078d4'; // Blue
+      case 'At Risk':
+        return '#FBC02D'; // Yellow/Amber
+      case 'Off Track':
+        return '#D32F2F'; // Red
+      default:
+        return '#605e5c'; // Neutral gray
     }
-
-    this.setState({ selectedStatuses: newSelected }, () => {
-      this.applyFilters();
-    });
   };
 
-  private handleUnselectAll = (): void => {
-    this.setState({
-      selectedSwimlanes: new Set(),
-      selectedStatuses: new Set()
-    }, () => {
-      this.applyFilters();
-    });
+  private getStatusIcon = (status: string): string => {
+    switch (status) {
+      case 'On Track':
+        return 'CheckMark';
+      case 'At Risk':
+        return 'Warning';
+      case 'Off Track':
+        return 'ErrorBadge';
+      default:
+        return 'Info';
+    }
   };
 
-  private handleSelectAll = (): void => {
-    this.setState({
-      selectedSwimlanes: new Set(['Category 1', 'Category 2', 'Category 3']),
-      selectedStatuses: new Set(['Red', 'Green', 'Amber'])
-    }, () => {
-      this.applyFilters();
-    });
+  private handleSwimlaneDropdownChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
+    if (option) {
+      const { selectedSwimlanes } = this.state;
+      const newSelected = new Set<string>();
+      selectedSwimlanes.forEach(item => newSelected.add(item));
+
+      if (option.selected) {
+        newSelected.add(option.key as string);
+      } else {
+        newSelected.delete(option.key as string);
+      }
+
+      this.setState({ selectedSwimlanes: newSelected }, () => {
+        this.applyFilters();
+      });
+    }
+  };
+
+  private handleStatusDropdownChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
+    if (option) {
+      const { selectedStatuses } = this.state;
+      const newSelected = new Set<string>();
+      selectedStatuses.forEach(item => newSelected.add(item));
+
+      if (option.selected) {
+        newSelected.add(option.key as string);
+      } else {
+        newSelected.delete(option.key as string);
+      }
+
+      this.setState({ selectedStatuses: newSelected }, () => {
+        this.applyFilters();
+      });
+    }
+  };
+
+  private renderSwimlaneOption = (option?: IDropdownOption): React.ReactElement => {
+    if (!option) return <div />;
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+        <Icon
+          iconName={option.data?.icon}
+          style={{
+            color: 'var(--themePrimary, #0078d4)',
+            fontSize: '14px'
+          }}
+        />
+        <span style={{ fontSize: '13px' }}>
+          {option.text}
+        </span>
+      </div>
+    );
+  };
+
+  private renderSwimlaneTitle = (options?: IDropdownOption[]): React.ReactElement => {
+    return (
+      <span style={{ fontSize: '13px' }}>
+        Swimlanes
+      </span>
+    );
+  };
+
+  private renderStatusOption = (option?: IDropdownOption): React.ReactElement => {
+    if (!option) return <div />;
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+        <Icon
+          iconName={option.data?.icon}
+          style={{
+            color: option.data?.color,
+            fontSize: '14px'
+          }}
+        />
+        <span style={{ fontSize: '13px' }}>
+          {option.text}
+        </span>
+      </div>
+    );
+  };
+
+  private renderStatusTitle = (options?: IDropdownOption[]): React.ReactElement => {
+    return (
+      <span style={{ fontSize: '13px' }}>
+        Status
+      </span>
+    );
+  };
+
+  private renderGridView = (): React.ReactElement => {
+    const { filteredEvents, currentDate } = this.state;
+
+    return (
+      <div className={styles.gridViewContainer}>
+        <div className={styles.gridViewHeader}>
+          <h2>18-Month Overview</h2>
+        </div>
+        <div className={styles.gridViewContent}>
+          {this.get18MonthRange().map((month, index) => {
+            const monthEvents = filteredEvents.filter(event =>
+              event.start.getFullYear() === month.getFullYear() &&
+              event.start.getMonth() === month.getMonth()
+            );
+            const isCurrentMonth = month.getFullYear() === currentDate.getFullYear() &&
+                                 month.getMonth() === currentDate.getMonth();
+
+            return (
+              <div
+                key={index}
+                className={`${styles.gridCard} ${isCurrentMonth ? styles.currentGridCard : ''}`}
+                onClick={() => this.handleMonthNavigate(month)}
+              >
+                <div className={styles.gridCardHeader}>
+                  <h3>{this.formatMonthYear(month)}</h3>
+                  <span className={styles.gridCardCount}>({monthEvents.length})</span>
+                </div>
+                <div style={{ marginTop: '8px' }}>
+                  <Calendar
+                    localizer={localizer}
+                    events={monthEvents}
+                    startAccessor="start"
+                    endAccessor="end"
+                    style={{ height: '400px' }}
+                    views={['month']}
+                    view="month"
+                    date={month}
+                    toolbar={false}
+                    eventPropGetter={this.eventStyleGetter}
+                    components={{
+                      event: this.MiniCalendarEvent
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   private enterFullscreen = (): void => {
@@ -228,7 +413,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   private eventStyleGetter = (event: ICalendarEvent): { className: string } => {
-    const statusClass = `status-${event.status.toLowerCase()}`;
+    const statusClass = `status-${event.status.toLowerCase().replace(/\s+/g, '')}`;
     const swimlaneClass = `swimlane-${event.swimlane.toLowerCase().replace(' ', '')}`;
 
     return {
@@ -248,6 +433,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         return 'Info';
     }
   };
+
+
 
   private EventComponent = ({ event }: { event: ICalendarEvent }): React.ReactElement => {
     const iconName = this.getSwimlaneIcon(event.swimlane);
@@ -300,7 +487,15 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     );
   };
 
-
+  private MiniCalendarEvent = ({ event }: { event: ICalendarEvent }): React.ReactElement => {
+    return (
+      <div className={styles.miniEvent} title={event.title}>
+        <span className={styles.miniEventText}>
+          {event.title.length > 8 ? `${event.title.substring(0, 8)}...` : event.title}
+        </span>
+      </div>
+    );
+  };
 
   private openCreateModal = (date: Date): void => {
     this.setState({
@@ -374,7 +569,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   public render(): React.ReactElement<IBigCalProps> {
     const { hasTeamsContext, isUserAdmin } = this.props;
-    const { isFullscreen, filteredEvents, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedSwimlanes, selectedStatuses } = this.state;
+    const { isFullscreen, filteredEvents, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedSwimlanes, selectedStatuses, viewMode } = this.state;
 
     const fullscreenIcon: IIconProps = {
       iconName: isFullscreen ? 'BackToWindow' : 'FullScreen'
@@ -394,12 +589,54 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
               value={searchText}
               onChange={(_, newValue) => this.handleSearchChange(newValue || '')}
               styles={{
-                root: { width: '300px' }
+                root: { width: '250px', marginRight: '16px' }
+              }}
+            />
+
+            <Dropdown
+              placeholder="Swimlanes"
+              multiSelect
+              options={this.getSwimlaneDropdownOptions()}
+              selectedKeys={(() => {
+                const keys: string[] = [];
+                selectedSwimlanes.forEach(key => keys.push(key));
+                return keys;
+              })()}
+              onChange={this.handleSwimlaneDropdownChange}
+              onRenderOption={this.renderSwimlaneOption}
+              onRenderTitle={this.renderSwimlaneTitle}
+              styles={{
+                root: { width: '250px', marginRight: '16px' },
+                title: { fontSize: '13px' }
+              }}
+            />
+
+            <Dropdown
+              placeholder="Status"
+              multiSelect
+              options={this.getStatusDropdownOptions()}
+              selectedKeys={(() => {
+                const keys: string[] = [];
+                selectedStatuses.forEach(key => keys.push(key));
+                return keys;
+              })()}
+              onChange={this.handleStatusDropdownChange}
+              onRenderOption={this.renderStatusOption}
+              onRenderTitle={this.renderStatusTitle}
+              styles={{
+                root: { width: '250px', marginRight: '16px' },
+                title: { fontSize: '13px' }
               }}
             />
           </div>
 
           <div className={styles.navbarRight}>
+            <IconButton
+              iconProps={{ iconName: viewMode === 'calendar' ? 'GridViewMedium' : 'Calendar' }}
+              title={viewMode === 'calendar' ? 'Switch to Grid View' : 'Switch to Calendar View'}
+              onClick={this.toggleViewMode}
+              className={styles.navbarButton}
+            />
             {isUserAdmin && (
               <>
                 <IconButton
@@ -421,69 +658,53 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
         {/* Main Content Area */}
         <div className={styles.mainContent}>
-          {/* Left Column */}
-          <div className={styles.leftColumn}>
+          {viewMode === 'calendar' ? (
+            <>
+              {/* Left Column */}
+              <div className={styles.leftColumn}>
             <div className={styles.leftColumnContent}>
-              <Stack tokens={{ childrenGap: 16 }}>
-                {/* Swimlanes Filter */}
-                <div>
-                  <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, marginBottom: '8px', display: 'block' } }}>
-                    SWIMLANES
-                  </Text>
-                  <Stack tokens={{ childrenGap: 8 }}>
-                    {['Category 1', 'Category 2', 'Category 3'].map(swimlane => {
-                      const count = filteredEvents.filter(e => e.swimlane === swimlane).length;
-                      return (
-                        <Checkbox
-                          key={swimlane}
-                          label={`${swimlane} (${count})`}
-                          checked={selectedSwimlanes.has(swimlane)}
-                          onChange={() => this.handleSwimlaneToggle(swimlane)}
-                        />
-                      );
-                    })}
-                  </Stack>
-                </div>
-
-                <Separator />
-
-                {/* Status Filter */}
-                <div>
-                  <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, marginBottom: '8px', display: 'block' } }}>
-                    STATUS
-                  </Text>
-                  <Stack tokens={{ childrenGap: 8 }}>
-                    {['Red', 'Green', 'Amber'].map(status => {
-                      const count = filteredEvents.filter(e => e.status === status).length;
-                      return (
-                        <div key={status} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <Checkbox
-                            label={`${status} (${count})`}
-                            checked={selectedStatuses.has(status)}
-                            onChange={() => this.handleStatusToggle(status)}
-                          />
+              <div className={styles.miniCalendarContainer}>
+                <div className={styles.miniCalendarScrollArea}>
+                  {this.get18MonthRange().map((month, index) => {
+                    const monthEvents = this.getEventsForMonth(month);
+                    const isCurrentMonth = month.getFullYear() === currentDate.getFullYear() &&
+                                         month.getMonth() === currentDate.getMonth();
+                    return (
+                      <div key={index} className={styles.miniCalendarWrapper}>
+                        <div
+                          className={`${styles.miniCalendarCard} ${isCurrentMonth ? styles.currentMonth : ''}`}
+                          onClick={() => this.handleMonthNavigate(month)}
+                        >
+                          <div className={styles.miniCalendarTitle}>
+                            {this.formatMonthYear(month)} ({monthEvents})
+                          </div>
+                          <div className={styles.miniCalendarContent}>
+                            {/* Mini calendar will be rendered here */}
+                            <Calendar
+                              localizer={localizer}
+                              events={filteredEvents.filter(event =>
+                                event.start.getFullYear() === month.getFullYear() &&
+                                event.start.getMonth() === month.getMonth()
+                              )}
+                              startAccessor="start"
+                              endAccessor="end"
+                              style={{ height: '240px' }}
+                              views={['month']}
+                              view="month"
+                              date={month}
+                              toolbar={false}
+                              eventPropGetter={this.eventStyleGetter}
+                              components={{
+                                event: this.MiniCalendarEvent
+                              }}
+                            />
+                          </div>
                         </div>
-                      );
-                    })}
-                  </Stack>
+                      </div>
+                    );
+                  })}
                 </div>
-
-                <Separator />
-
-                {/* Control Buttons */}
-                <Stack horizontal tokens={{ childrenGap: 8 }}>
-                  <IconButton
-                    text="Select All"
-                    onClick={this.handleSelectAll}
-                    styles={{ root: { fontSize: '12px' } }}
-                  />
-                  <IconButton
-                    text="Unselect All"
-                    onClick={this.handleUnselectAll}
-                    styles={{ root: { fontSize: '12px' } }}
-                  />
-                </Stack>
-              </Stack>
+              </div>
             </div>
           </div>
 
@@ -534,6 +755,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
               )}
             </div>
           </div>
+            </>
+          ) : (
+            this.renderGridView()
+          )}
         </div>
 
         {/* Event Modal */}

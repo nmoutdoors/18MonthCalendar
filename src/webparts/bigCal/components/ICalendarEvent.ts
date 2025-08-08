@@ -1,6 +1,6 @@
 // Type definitions for SharePoint choice fields
 export type SwimlaneType = 'Category 1' | 'Category 2' | 'Category 3';
-export type StatusType = 'Red' | 'Green' | 'Amber';
+export type StatusType = 'On Track' | 'At Risk' | 'Off Track';
 
 export interface ICalendarEvent {
   id: number;
