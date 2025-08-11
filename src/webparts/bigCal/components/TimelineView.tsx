@@ -18,8 +18,10 @@ export interface ITimelineViewState {
 
 export class TimelineView extends React.Component<ITimelineViewProps, ITimelineViewState> {
   private timelineRef = React.createRef<HTMLDivElement>();
-  private items: DataSet<unknown>;
-  private groups: DataSet<unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private items: DataSet<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private groups: DataSet<any>;
 
   constructor(props: ITimelineViewProps) {
     super(props);
