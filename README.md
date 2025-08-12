@@ -50,7 +50,7 @@ Complete data management for enterprise migration and backup:
 #### 🔍 **Smart Filtering System**
 - **🔎 Global Search** - Find events across all 18 months instantly
 - **🏊 Swimlane Categories** - Organize by project, team, or department with visual icons
-- **📊 Status Tracking** - Color-coded progress indicators (On Track, At Risk, Off Track)
+- **📊 Status Tracking** - Color-coded progress indicators (Confirmed, Tentative, Canceled)
 - **📈 Real-time Counts** - See filtered results and event density immediately
 
 #### ⏱️ **Interactive Timeline View**
@@ -145,11 +145,14 @@ Easily customize categories with icons and colors:
 // Customize in BigCal.tsx
 private getSwimlaneIcon = (swimlane: string): string => {
   switch (swimlane) {
-    case 'Development': return 'Code';
-    case 'Marketing': return 'Megaphone';
-    case 'Sales': return 'Money';
-    case 'Operations': return 'Settings';
-    default: return 'Calendar';
+    case 'Away w/RON': return 'Airplane';
+    case 'Day Trip - NCR': return 'MapPin';
+    case 'Exercise': return 'Running';
+    case 'FYSA': return 'Info';
+    case 'Out of Office': return 'Leave';
+    case 'Training Holiday': return 'Education';
+    case 'VIP/High Priority': return 'Important';
+    default: return 'Info';
   }
 };
 ```
@@ -161,10 +164,9 @@ Configure status colors and icons:
 // Modify status system in BigCal.tsx
 private getStatusColor = (status: string): string => {
   switch (status) {
-    case 'On Track': return '#0078d4';    // SharePoint Blue
-    case 'At Risk': return '#FBC02D';     // Warning Amber
-    case 'Off Track': return '#D32F2F';   // Error Red
-    case 'Completed': return '#107C10';   // Success Green
+    case 'Confirmed': return '#107C10';   // Success Green
+    case 'Tentative': return '#FBC02D';   // Warning Amber
+    case 'Canceled': return '#D32F2F';    // Error Red
     default: return '#605e5c';            // Neutral Gray
   }
 };

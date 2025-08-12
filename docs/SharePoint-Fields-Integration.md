@@ -10,29 +10,37 @@
 
 ### **New Fields Added**
 - `Swimlane` - Choice field with options:
-  - Category 1
-  - Category 2  
-  - Category 3
+  - Away w/RON
+  - Day Trip - NCR
+  - Exercise
+  - FYSA
+  - Out of Office
+  - Training Holiday
+  - VIP/High Priority
 - `Status` - Choice field with options:
-  - Red
-  - Green
-  - Amber
+  - Confirmed
+  - Tentative
+  - Canceled
 
 ## 🎨 **Visual Indicators**
 
 ### **Status-Based Event Colors**
 Events are automatically colored based on their Status field:
 
-- **Red Status**: Muted red background (`#c50e29`)
-- **Green Status**: Default SharePoint blue (uses theme primary color)
-- **Amber Status**: Muted orange background (`#ca5010`)
+- **Confirmed Status**: Green background (`#107C10`)
+- **Tentative Status**: Yellow background (`#FBC02D`)
+- **Canceled Status**: Red background (`#D32F2F`)
 
 ### **Swimlane Indicators**
-Small colored dots appear in the top-right corner of events:
+Events are organized by swimlane categories with appropriate icons:
 
-- **Category 1**: Blue dot (`#0078d4`)
-- **Category 2**: Purple dot (`#8764b8`)
-- **Category 3**: Light blue dot (`#00bcf2`)
+- **Away w/RON**: Airplane icon
+- **Day Trip - NCR**: Map pin icon
+- **Exercise**: Running icon
+- **FYSA**: Info icon
+- **Out of Office**: Leave icon
+- **Training Holiday**: Education icon
+- **VIP/High Priority**: Important icon
 
 ## 🔧 **Technical Implementation**
 
@@ -44,8 +52,8 @@ Small colored dots appear in the top-right corner of events:
 
 ### **TypeScript Types**
 ```typescript
-export type SwimlaneType = 'Category 1' | 'Category 2' | 'Category 3';
-export type StatusType = 'Red' | 'Green' | 'Amber';
+export type SwimlaneType = 'Away w/RON' | 'Day Trip - NCR' | 'Exercise' | 'FYSA' | 'Out of Office' | 'Training Holiday' | 'VIP/High Priority';
+export type StatusType = 'Confirmed' | 'Tentative' | 'Canceled';
 
 export interface ICalendarEvent {
   id: number;
@@ -66,8 +74,8 @@ When clicking an event, users see:
 Event: [Title]
 Start: [Start Date/Time]
 End: [End Date/Time]
-Swimlane: [Category 1/2/3]
-Status: [Red/Green/Amber]
+Swimlane: [Away w/RON/Day Trip - NCR/Exercise/FYSA/Out of Office/Training Holiday/VIP/High Priority]
+Status: [Confirmed/Tentative/Canceled]
 ```
 
 ### **Visual Identification**
@@ -78,8 +86,8 @@ Status: [Red/Green/Amber]
 ## 🚀 **Future Enhancements**
 
 ### **Filtering Options** (Ready to implement)
-- Filter by Status (Red/Green/Amber)
-- Filter by Swimlane (Category 1/2/3)
+- Filter by Status (Confirmed/Tentative/Canceled)
+- Filter by Swimlane (Away w/RON/Day Trip - NCR/Exercise/FYSA/Out of Office/Training Holiday/VIP/High Priority)
 - Multiple filter combinations
 
 ### **Legend Component** (Ready to implement)

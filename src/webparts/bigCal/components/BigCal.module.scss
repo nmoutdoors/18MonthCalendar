@@ -65,6 +65,65 @@
   }
 }
 
+// Configuration navbar for non-fullscreen mode
+.configNavbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background-color: #f3f2f1; // Light gray background
+  border-bottom: 1px solid #edebe9;
+  height: 44px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.configMessage {
+  display: flex;
+  align-items: center;
+  color: #323130;
+  font-size: 14px;
+  font-weight: 500;
+
+  i {
+    color: #0078d4; // Theme primary color for the settings icon
+  }
+}
+
+.configButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .navbarButton {
+    color: #323130 !important;
+    background-color: transparent;
+    border: 1px solid #8a8886;
+    border-radius: 2px;
+    min-width: 32px;
+    height: 32px;
+
+    &:hover {
+      background-color: #f3f2f1 !important;
+      border-color: #323130;
+      color: #323130 !important;
+    }
+
+    &:active {
+      background-color: #edebe9 !important;
+      border-color: #323130;
+      color: #323130 !important;
+    }
+
+    &:focus {
+      background-color: #f3f2f1 !important;
+      border-color: #0078d4;
+      color: #323130 !important;
+      outline: 1px solid #0078d4;
+      outline-offset: 2px;
+    }
+  }
+}
+
 .viewPivot {
   :global {
     .ms-Pivot {
@@ -434,25 +493,8 @@
     background-color: var(--themeLight, #c7e0f4);
   }
 
-  // Status-based event styling
-  .rbc-event.status-offtrack {
-    background-color: #D32F2F !important;
-    border-color: #B71C1C !important;
-  }
-
-  .rbc-event.status-ontrack {
-    // Use default blue theme color for On Track status
-    background-color: "[theme:themePrimary, default: #0078d4]" !important;
-    background-color: var(--themePrimary, #0078d4) !important;
-    border-color: "[theme:themeDark, default: #106ebe]" !important;
-    border-color: var(--themeDark, #106ebe) !important;
-  }
-
-  .rbc-event.status-atrisk {
-    background-color: #FBC02D !important;
-    border-color: #F57F17 !important;
-    color: #323130 !important; // Dark text for better contrast on yellow
-  }
+  // Status-based event styling is now handled by dynamic styles
+  // Colors are applied via JavaScript based on the selected color palette
 
 
 }
@@ -636,4 +678,64 @@
 
 .gridCardContent {
   // Mini calendar styles will be inherited
+}
+
+// ProgramTracker-style Fullscreen Mode CSS
+.fullScreenMode {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;           // Lower than SharePoint's toolbar (z-index: 1000+)
+  margin: 0;
+  padding: 0;
+  background-color: #ffffff;
+
+  .leftColumn {
+    position: fixed;
+    z-index: 101;         // Ensure left column stays on top
+    top: 36px;            // Account for navbar height (reduced from 84px)
+    left: 0;
+    height: calc(100vh - 36px);
+    overflow-y: auto;
+    width: 20%;
+    min-width: 250px;
+  }
+
+  .rightColumn {
+    margin-left: 20%;     // Account for fixed left column
+    height: calc(100vh - 36px);
+    width: 80%;
+
+    @media (max-width: 768px) {
+      margin-left: 250px;
+      width: calc(100% - 250px);
+    }
+
+    @media (max-width: 480px) {
+      margin-left: 200px;
+      width: calc(100% - 200px);
+    }
+  }
+
+  .navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 102;         // Above everything else in our component
+    background-color: #0078d4;
+    height: 36px;
+  }
+
+  .mainContent {
+    margin-top: 36px;     // Account for fixed navbar
+    height: calc(100vh - 36px);
+  }
+
+  .calendarContainer {
+    height: calc(100vh - 36px);
+    overflow: auto;
+  }
 }

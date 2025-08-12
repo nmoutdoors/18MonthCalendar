@@ -8,5 +8,6 @@ export interface IBigCalProps {
   startInFullscreen: boolean;
   isUserAdmin: boolean;
   context: WebPartContext;
+  colorPalette: string;
   onConfigureProperties?: () => void;
 }

@@ -26,9 +26,13 @@ export class SharePointService {
   public async getEvents(): Promise<ISharePointEvent[]> {
     try {
       // Use PnP.js to get items from the Events list
+      // Increase limit to handle large datasets (default is 100)
       const items = await this.sp.web.lists.getByTitle(this.listName).items
         .select('Id', 'Title', 'Start', 'End', 'Swimlane', 'Status')
-        .orderBy('Start', true)();
+        .orderBy('Start', true)
+        .top(5000)(); // Increase limit to 5000 events
+
+      console.log(`SharePoint query returned ${items.length} events`);
 
       return items.map((item: {Id: number; Title: string; Start: string; End: string; Swimlane: string; Status: string}) => ({
         Id: item.Id,
@@ -57,8 +61,8 @@ export class SharePointService {
       // Use PnP.js to create a new item in the Events list
       const result = await this.sp.web.lists.getByTitle(this.listName).items.add({
         Title: title,
-        Start: start.toISOString(),
-        End: end.toISOString(),
+        Start: start,
+        End: end,
         Swimlane: swimlane,
         Status: status
       });
@@ -83,8 +87,8 @@ export class SharePointService {
     try {
       const updateData: Record<string, unknown> = {
         Title: title,
-        Start: start.toISOString(),
-        End: end.toISOString()
+        Start: start,
+        End: end
       };
 
       if (swimlane) updateData.Swimlane = swimlane;
@@ -109,4 +113,6 @@ export class SharePointService {
       throw new Error(`Failed to delete event: ${errorMessage}`);
     }
   }
+
+
 }

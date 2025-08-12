@@ -218,7 +218,19 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       if (header && header.toLowerCase().indexOf('status') !== -1) statusIndex = i;
     }
 
+    // Debug logging for header detection
+    console.log('Excel Import Debug:', {
+      headers,
+      titleIndex,
+      startIndex,
+      endIndex,
+      swimlaneIndex,
+      statusIndex,
+      totalRows: rawData.length
+    });
+
     if (titleIndex === -1 || startIndex === -1) {
+      console.warn('Missing required columns. Title index:', titleIndex, 'Start index:', startIndex);
       return events; // Need at least title and start date
     }
 
@@ -232,8 +244,21 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         if (!title) continue;
 
         // Parse start date
-        const startDate = this.parseExcelDate(row[startIndex]?.toString());
-        if (!startDate) continue;
+        const startRaw = row[startIndex]?.toString();
+        const startDate = this.parseExcelDate(startRaw);
+
+        // Debug logging for date parsing
+        console.log(`Row ${i} date parsing:`, {
+          title,
+          startRaw,
+          startDate: startDate?.toString(),
+          startValid: startDate && !isNaN(startDate.getTime())
+        });
+
+        if (!startDate) {
+          console.warn(`Row ${i}: Failed to parse start date "${startRaw}"`);
+          continue;
+        }
 
         // Parse end date (use start date if not provided)
         const endDate = endIndex !== -1 && row[endIndex] ?
@@ -246,9 +271,9 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
           start: startDate,
           end: endDate || startDate,
           swimlane: (swimlaneIndex !== -1 && row[swimlaneIndex] ?
-            row[swimlaneIndex].toString().trim() : 'Category 1') as SwimlaneType,
+            row[swimlaneIndex].toString().trim() : 'FYSA') as SwimlaneType,
           status: (statusIndex !== -1 && row[statusIndex] ?
-            row[statusIndex].toString().trim() : 'On Track') as StatusType
+            row[statusIndex].toString().trim() : 'Confirmed') as StatusType
         };
 
         events.push(event);
@@ -267,6 +292,27 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     try {
       const cleanStr = dateStr.trim();
 
+      // Handle Excel serial date numbers (e.g., 45911.395833333336)
+      if (cleanStr.match(/^\d+(\.\d+)?$/) && !cleanStr.match(/^\d{4}$/)) {
+        const serialNumber = parseFloat(cleanStr);
+        if (!isNaN(serialNumber) && serialNumber > 1) {
+          // Excel serial date: January 1, 1900 = 1
+          // JavaScript Date: January 1, 1970 = 0
+          // Excel has a leap year bug for 1900, so we need to account for that
+          const excelEpoch = new Date(1899, 11, 30); // December 30, 1899 (Excel's day 0)
+          const millisecondsPerDay = 24 * 60 * 60 * 1000;
+          const jsDate = new Date(excelEpoch.getTime() + (serialNumber * millisecondsPerDay));
+
+          if (!isNaN(jsDate.getTime())) {
+            // If it's a whole number (no decimal), it's date-only, set to midnight
+            if (serialNumber % 1 === 0) {
+              jsDate.setHours(0, 0, 0, 0);
+            }
+            return jsDate;
+          }
+        }
+      }
+
       // First try to parse as ISO 8601 (legacy format support)
       if (cleanStr.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
         const isoDate = new Date(cleanStr);
@@ -275,19 +321,57 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         }
       }
 
-      // Handle MM/DD/YYYY HH:MM AM/PM format (our current export format)
-      if (cleanStr.match(/^\d{2}\/\d{2}\/\d{4}(\s+\d{1,2}:\d{2}\s+(AM|PM))?$/i)) {
+      // Handle MM/DD/YYYY HH:MM:SS AM/PM format (with seconds)
+      if (cleanStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}:\d{2}\s+(AM|PM)$/i)) {
         const parsedDate = new Date(cleanStr);
         if (!isNaN(parsedDate.getTime())) {
           return parsedDate;
         }
       }
 
-      // Handle MM/DD/YYYY format (date only)
-      if (cleanStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+      // Handle MM/DD/YYYY HH:MM AM/PM format (without seconds)
+      if (cleanStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}\s+(AM|PM)$/i)) {
         const parsedDate = new Date(cleanStr);
         if (!isNaN(parsedDate.getTime())) {
           return parsedDate;
+        }
+      }
+
+      // Handle MM/DD/YYYY format (date only) - set to midnight like SharePoint
+      if (cleanStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+        const parsedDate = new Date(cleanStr);
+        if (!isNaN(parsedDate.getTime())) {
+          // Ensure date-only entries are set to midnight (like SharePoint default)
+          parsedDate.setHours(0, 0, 0, 0);
+          return parsedDate;
+        }
+      }
+
+      // Handle YYYY-MM-DD format (ISO date only) - set to midnight
+      if (cleanStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+        const parsedDate = new Date(cleanStr);
+        if (!isNaN(parsedDate.getTime())) {
+          parsedDate.setHours(0, 0, 0, 0);
+          return parsedDate;
+        }
+      }
+
+      // Handle DD/MM/YYYY format (European date only) - set to midnight
+      if (cleanStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/) && !cleanStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}\s/)) {
+        // Try European format DD/MM/YYYY if US format MM/DD/YYYY failed above
+        const parts = cleanStr.split('/');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0]);
+          const month = parseInt(parts[1]);
+          const year = parseInt(parts[2]);
+
+          // If day > 12, it's likely DD/MM/YYYY format
+          if (day > 12 && month <= 12) {
+            const europeanDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+            if (!isNaN(europeanDate.getTime())) {
+              return europeanDate;
+            }
+          }
         }
       }
 
@@ -327,9 +411,95 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         }
       }
 
+      // Handle additional common formats
+      // YYYY-MM-DD HH:MM:SS format
+      if (cleanStr.match(/^\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{2}:\d{2}$/)) {
+        const parsedDate = new Date(cleanStr);
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate;
+        }
+      }
+
+      // Handle DD/MM/YYYY formats (European style)
+      if (cleanStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}/)) {
+        // Try parsing as-is first (US format MM/DD/YYYY)
+        let parsedDate = new Date(cleanStr);
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate;
+        }
+
+        // If that fails, try European format DD/MM/YYYY
+        const parts = cleanStr.split(/[\s/]/);
+        if (parts.length >= 3) {
+          const day = parts[0];
+          const month = parts[1];
+          const year = parts[2];
+          const timePart = parts.slice(3).join(' ');
+          const reformatted = `${month}/${day}/${year}${timePart ? ' ' + timePart : ''}`;
+          parsedDate = new Date(reformatted);
+          if (!isNaN(parsedDate.getTime())) {
+            return parsedDate;
+          }
+        }
+      }
+
+      // Handle common text-based date formats
+      // "January 15, 2025" or "Jan 15, 2025"
+      if (cleanStr.match(/^[A-Za-z]{3,9}\s+\d{1,2},\s+\d{4}$/)) {
+        const parsedDate = new Date(cleanStr);
+        if (!isNaN(parsedDate.getTime())) {
+          parsedDate.setHours(0, 0, 0, 0); // Date only, set to midnight
+          return parsedDate;
+        }
+      }
+
+      // Handle "15-Jan-2025" or "15-January-2025" format
+      if (cleanStr.match(/^\d{1,2}-[A-Za-z]{3,9}-\d{4}$/)) {
+        const parsedDate = new Date(cleanStr);
+        if (!isNaN(parsedDate.getTime())) {
+          parsedDate.setHours(0, 0, 0, 0);
+          return parsedDate;
+        }
+      }
+
+      // Handle timestamps with different separators: "2025-01-15 14:30:00"
+      if (cleanStr.match(/^\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{2}(:\d{2})?$/)) {
+        const parsedDate = new Date(cleanStr);
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate;
+        }
+      }
+
+      // Handle 24-hour time format: "15/01/2025 14:30"
+      if (cleanStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}$/)) {
+        const parsedDate = new Date(cleanStr);
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate;
+        }
+      }
+
+      // Handle Unix timestamps (seconds since epoch)
+      if (cleanStr.match(/^\d{10}$/) || cleanStr.match(/^\d{13}$/)) {
+        const timestamp = parseInt(cleanStr);
+        // If it's 10 digits, it's seconds; if 13 digits, it's milliseconds
+        const jsTimestamp = cleanStr.length === 10 ? timestamp * 1000 : timestamp;
+        const parsedDate = new Date(jsTimestamp);
+        if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1990 && parsedDate.getFullYear() < 2100) {
+          return parsedDate;
+        }
+      }
+
       // Fallback: try standard Date parsing
       const parsedDate = new Date(cleanStr);
-      return isNaN(parsedDate.getTime()) ? null : parsedDate;
+      if (!isNaN(parsedDate.getTime())) {
+        // If the original string had no time component, set to midnight
+        if (!cleanStr.match(/\d{1,2}:\d{2}/) && !cleanStr.match(/AM|PM/i)) {
+          parsedDate.setHours(0, 0, 0, 0);
+        }
+        return parsedDate;
+      }
+
+      return null;
 
     } catch (error) {
       console.warn('Error parsing date:', dateStr, error);

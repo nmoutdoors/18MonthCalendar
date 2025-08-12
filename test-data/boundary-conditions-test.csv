@@ -1,0 +1,14 @@
+Title,Start,End,Swimlane,Status
+Christmas Event,12/25/2025 12:00 AM,12/25/2025 1:00 AM,Category 1,On Track
+Leap Year Test,02/29/2024,02/29/2024,Category 2,At Risk
+Year End Event,12/31/2025 11:00 PM,01/01/2026 12:00 AM,Category 3,Off Track
+Single Minute Event,12/15/2025 2:30 PM,12/15/2025 2:31 PM,Category 1,On Track
+All Day Event,12/16/2025,12/16/2025,Category 2,At Risk
+Multi Day Event,12/17/2025,12/20/2025,Category 3,Off Track
+Weekend Event,12/21/2025 10:00 AM,12/22/2025 2:00 PM,Category 1,On Track
+Month Boundary,12/31/2025 11:59 PM,01/01/2026 12:01 AM,Category 2,At Risk
+Very Early Morning,01/02/2026 12:01 AM,01/02/2026 12:30 AM,Category 3,Off Track
+Very Late Night,01/03/2026 11:59 PM,01/03/2026 11:59 PM,Category 1,On Track
+New Year 2027,01/01/2027 2:00 AM,01/01/2027 3:00 AM,Category 2,At Risk
+Far Future Test,01/01/2027,01/01/2027,Category 3,Off Track
+Holiday Season,12/24/2025,01/02/2026,Category 1,On Track

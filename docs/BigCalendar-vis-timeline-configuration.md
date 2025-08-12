@@ -210,9 +210,9 @@ private handleMouseWheel = (event: WheelEvent): void => {
   }
 
   // Status-based coloring
-  .vis-item.status-ontrack .vis-dot { background-color: #0078d4 !important; }
-  .vis-item.status-atrisk .vis-dot { background-color: #ff8c00 !important; }
-  .vis-item.status-offtrack .vis-dot { background-color: #d13438 !important; }
+  .vis-item.status-confirmed .vis-dot { background-color: #107C10 !important; }
+  .vis-item.status-tentative .vis-dot { background-color: #FBC02D !important; }
+  .vis-item.status-canceled .vis-dot { background-color: #D32F2F !important; }
 }
 ```
 

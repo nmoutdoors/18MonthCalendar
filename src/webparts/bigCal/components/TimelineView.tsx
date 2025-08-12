@@ -7,6 +7,7 @@ import styles from './TimelineView.module.scss';
 
 export interface ITimelineViewProps {
   events: ICalendarEvent[];
+  colorPalette: string;
   onEventClick?: (event: ICalendarEvent) => void;
   onEventDoubleClick?: (event: ICalendarEvent) => void;
 }
@@ -77,6 +78,13 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     this.groups.clear();
     this.groups.add(groups);
 
+    // Set initial date range (ProgramTracker approach)
+    const today = new Date();
+    const startDate = new Date();
+    startDate.setDate(today.getDate() - 5);  // 5 days before today
+    const endDate = new Date();
+    endDate.setDate(today.getDate() + 20);   // 20 days after today
+
     // Timeline options
     const options = {
       height: '770px',
@@ -87,6 +95,9 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
       stack: true,
       stackSubgroups: true,
       showCurrentTime: true,
+
+      // CRITICAL: Clustering disabled by omitting cluster property
+      // This prevents vis-timeline from clustering nearby events into groups
 
       // Critical interaction settings
       zoomable: true,
@@ -101,6 +112,10 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
       showMajorLabels: true,
       showMinorLabels: true,
 
+      // Default view range (ProgramTracker approach)
+      start: startDate,    // Initial start date
+      end: endDate,        // Initial end date
+
       zoomMin: 1000 * 60 * 60 * 24, // 1 day
       zoomMax: 1000 * 60 * 60 * 24 * 365 * 2, // 2 years
       orientation: {
@@ -110,12 +125,12 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
       margin: {
         item: {
           horizontal: 10,
-          vertical: 15
+          vertical: 15               // Space between items vertically (key for stacking)
         },
         axis: 5
       },
       order: function(a: { start: number }, b: { start: number }) {
-        return a.start - b.start;
+        return a.start - b.start;    // Earlier dates stack higher
       },
       format: {
         minorLabels: {
@@ -229,23 +244,10 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     this.items.clear();
     this.items.add(timelineItems);
 
-    // Fit the timeline to show all items
-    if (timelineItems.length > 0) {
-      // Set a reasonable window range
-      const startDates = timelineItems.map(item => item.start);
-      const minDate = new Date(Math.min(...startDates.map(d => d.getTime())));
-      const maxDate = new Date(Math.max(...startDates.map(d => d.getTime())));
-
-      // Add some padding
-      const padding = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-      const windowStart = new Date(minDate.getTime() - padding);
-      const windowEnd = new Date(maxDate.getTime() + padding);
-
-      // Use setWindow with animation disabled and callback
-      this.state.timeline.setWindow(windowStart, windowEnd, {
-        animation: false
-      });
-    }
+    // Use default range from options (ProgramTracker approach)
+    // The timeline will use the start/end dates set in options above
+    // This provides a focused view (today -5 to +20 days) instead of showing all data
+    // Users can scroll/zoom to see events outside this range
 
     // Force a redraw to ensure everything is positioned correctly
     this.state.timeline.redraw();

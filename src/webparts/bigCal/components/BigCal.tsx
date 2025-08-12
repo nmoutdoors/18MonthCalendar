@@ -7,6 +7,7 @@ import type { IBigCalProps } from './IBigCalProps';
 import type { ICalendarEvent } from './ICalendarEvent';
 import { convertSharePointEventToCalendarEvent } from './ICalendarEvent';
 import { SharePointService } from '../services/SharePointService';
+import { ColorPaletteService } from '../services/ColorPaletteService';
 import { EventModal } from './EventModal';
 import { TimelineView } from './TimelineView';
 import { ExcelExport } from './ExcelExport';
@@ -54,8 +55,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       selectedEvent: undefined,
       selectedDate: undefined,
       searchText: '',
-      selectedSwimlanes: new Set(['Category 1', 'Category 2', 'Category 3']), // All selected by default
-      selectedStatuses: new Set(['On Track', 'At Risk', 'Off Track']), // All selected by default
+      selectedSwimlanes: new Set(['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority']), // All selected by default
+      selectedStatuses: new Set(['Confirmed', 'Tentative', 'Canceled']), // All selected by default
       monthNavigatorExpanded: true,
       viewMode: 'calendar',
       isExportDialogOpen: false
@@ -74,8 +75,43 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       this.enterFullscreen();
     }
 
+    // Inject dynamic color styles
+    this.injectDynamicStyles();
+
     // Load events from SharePoint
     await this.loadEvents();
+  }
+
+  /**
+   * Handle property changes - ProgramTracker pattern
+   */
+  public componentDidUpdate(prevProps: IBigCalProps): void {
+    // Check if startInFullscreen prop has changed
+    if (prevProps.startInFullscreen !== this.props.startInFullscreen) {
+      // Update isFullscreen state and apply styles
+      this.setState({ isFullscreen: this.props.startInFullscreen }, () => {
+        if (this.props.startInFullscreen) {
+          this.enterFullscreen();
+        } else {
+          this.exitFullscreen();
+        }
+      });
+    }
+
+    // Check if color palette has changed
+    if (prevProps.colorPalette !== this.props.colorPalette) {
+      this.injectDynamicStyles();
+    }
+  }
+
+  /**
+   * Cleanup fullscreen styles on unmount - ProgramTracker pattern
+   */
+  public componentWillUnmount(): void {
+    // Remove full screen styles if needed
+    if (this.state.isFullscreen) {
+      this.exitFullscreen();
+    }
   }
 
   private async loadEvents(): Promise<void> {
@@ -166,7 +202,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private getSwimlaneDropdownOptions = (): IDropdownOption[] => {
     const { filteredEvents } = this.state;
-    return ['Category 1', 'Category 2', 'Category 3'].map(swimlane => {
+    return ['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority'].map(swimlane => {
       const count = filteredEvents.filter(e => e.swimlane === swimlane).length;
       return {
         key: swimlane,
@@ -178,7 +214,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private getStatusDropdownOptions = (): IDropdownOption[] => {
     const { filteredEvents } = this.state;
-    return ['On Track', 'At Risk', 'Off Track'].map(status => {
+    return ['Confirmed', 'Tentative', 'Canceled'].map(status => {
       const count = filteredEvents.filter(e => e.status === status).length;
       return {
         key: status,
@@ -193,26 +229,84 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   private getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'On Track':
-        return '#0078d4'; // Blue
-      case 'At Risk':
-        return '#FBC02D'; // Yellow/Amber
-      case 'Off Track':
-        return '#D32F2F'; // Red
-      default:
-        return '#605e5c'; // Neutral gray
+    return ColorPaletteService.getStatusColor(status, this.props.colorPalette);
+  };
+
+  private generateDynamicStyles = (): string => {
+    const palette = ColorPaletteService.getPalette(this.props.colorPalette);
+
+    return `
+      <style id="bigcal-dynamic-colors">
+        .rbc-event.status-confirmed {
+          background-color: ${palette.onTrack} !important;
+          border-color: ${ColorPaletteService.getBorderColor('Confirmed', this.props.colorPalette)} !important;
+        }
+
+        .rbc-event.status-tentative {
+          background-color: ${palette.atRisk} !important;
+          border-color: ${ColorPaletteService.getBorderColor('Tentative', this.props.colorPalette)} !important;
+          color: ${this.getContrastColor(palette.atRisk)} !important;
+        }
+
+        .rbc-event.status-canceled {
+          background-color: ${palette.offTrack} !important;
+          border-color: ${ColorPaletteService.getBorderColor('Canceled', this.props.colorPalette)} !important;
+        }
+
+        .vis-item.status-confirmed .vis-dot {
+          background: ${ColorPaletteService.generateGradient('Confirmed', 'classic')} !important;
+          border: 1px solid ${ColorPaletteService.getBorderColor('Confirmed', 'classic')} !important;
+        }
+
+        .vis-item.status-tentative .vis-dot {
+          background: ${ColorPaletteService.generateGradient('Tentative', 'classic')} !important;
+          border: 1px solid ${ColorPaletteService.getBorderColor('Tentative', 'classic')} !important;
+        }
+
+        .vis-item.status-canceled .vis-dot {
+          background: ${ColorPaletteService.generateGradient('Canceled', 'classic')} !important;
+          border: 1px solid ${ColorPaletteService.getBorderColor('Canceled', 'classic')} !important;
+        }
+      </style>
+    `;
+  };
+
+  private getContrastColor = (hexColor: string): string => {
+    // Convert hex to RGB
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    // Return black or white based on luminance
+    return luminance > 0.5 ? '#323130' : '#ffffff';
+  };
+
+  private injectDynamicStyles = (): void => {
+    // Remove existing dynamic styles
+    const existingStyle = document.getElementById('bigcal-dynamic-colors');
+    if (existingStyle) {
+      existingStyle.remove();
     }
+
+    // Create and inject new styles
+    const styleElement = document.createElement('style');
+    styleElement.id = 'bigcal-dynamic-colors';
+    styleElement.innerHTML = this.generateDynamicStyles().replace(/<\/?style[^>]*>/g, '');
+    document.head.appendChild(styleElement);
   };
 
   private getStatusIcon = (status: string): string => {
     switch (status) {
-      case 'On Track':
+      case 'Confirmed':
         return 'CheckMark';
-      case 'At Risk':
-        return 'Warning';
-      case 'Off Track':
-        return 'ErrorBadge';
+      case 'Tentative':
+        return 'Clock';
+      case 'Canceled':
+        return 'Cancel';
       default:
         return 'Info';
     }
@@ -360,27 +454,87 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     );
   };
 
+  /**
+   * Apply fullscreen styles using ProgramTracker's proven approach
+   * This is essential for SharePoint site page compatibility
+   */
   private enterFullscreen = (): void => {
-    if (this.webPartElement) {
-      this.webPartElement.style.position = 'fixed';
-      this.webPartElement.style.top = '0';
-      this.webPartElement.style.left = '0';
-      this.webPartElement.style.width = '100vw';
-      this.webPartElement.style.height = '100vh';
-      this.webPartElement.style.zIndex = '1000';
-      this.webPartElement.style.backgroundColor = '#ffffff';
+    try {
+      // Get our component element
+      const bigCalElement = document.querySelector(`.${styles.bigCal}`);
+      if (!bigCalElement) return;
+
+      // Find SharePoint container using ProgramTracker's proven selectors
+      const webpartContainer = document.querySelector('[data-sp-feature-tag="BigCalWebPart"]') ||
+                              document.querySelector('.ControlZone') ||
+                              bigCalElement.closest('.ControlZone') ||
+                              bigCalElement.closest('.CanvasComponent');
+
+      if (webpartContainer) {
+        console.log('BigCalendar: Applying fullscreen styles to SharePoint container');
+
+        // Apply ProgramTracker's proven DOM manipulation approach
+        const container = webpartContainer as HTMLElement;
+        container.style.position = 'fixed';
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.right = '0';
+        container.style.bottom = '0';
+        container.style.zIndex = '100';  // Lower than SharePoint's toolbar
+        container.style.height = '100vh';
+        container.style.width = '100vw';
+        container.style.maxWidth = '100vw';
+        container.style.padding = '0';
+        container.style.margin = '0';
+
+        // Force layout recalculation (critical for SharePoint)
+        window.dispatchEvent(new Event('resize'));
+      }
+    } catch (error) {
+      console.error('BigCalendar: Error applying fullscreen styles:', error);
     }
   };
 
+  /**
+   * Reset SharePoint container styles to normal mode
+   */
   private exitFullscreen = (): void => {
-    if (this.webPartElement) {
-      this.webPartElement.style.position = '';
-      this.webPartElement.style.top = '';
-      this.webPartElement.style.left = '';
-      this.webPartElement.style.width = '';
-      this.webPartElement.style.height = '';
-      this.webPartElement.style.zIndex = '';
-      this.webPartElement.style.backgroundColor = '';
+    try {
+      // Get our component element
+      const bigCalElement = document.querySelector(`.${styles.bigCal}`);
+      if (!bigCalElement) return;
+
+      // Find SharePoint container using ProgramTracker's proven selectors
+      const webpartContainer = document.querySelector('[data-sp-feature-tag="BigCalWebPart"]') ||
+                              document.querySelector('.ControlZone') ||
+                              bigCalElement.closest('.ControlZone') ||
+                              bigCalElement.closest('.CanvasComponent');
+
+      if (webpartContainer) {
+        console.log('BigCalendar: Resetting SharePoint container to normal mode');
+
+        // Reset to normal mode (ProgramTracker approach)
+        const container = webpartContainer as HTMLElement;
+        container.style.position = '';
+        container.style.top = '';
+        container.style.left = '';
+        container.style.right = '';
+        container.style.bottom = '';
+        container.style.zIndex = '';
+        container.style.height = '';
+        container.style.width = '';
+        container.style.maxWidth = '';
+        container.style.padding = '';
+        container.style.margin = '';
+
+        // Set minimum height for normal mode
+        container.style.minHeight = '600px';
+
+        // Force layout recalculation
+        window.dispatchEvent(new Event('resize'));
+      }
+    } catch (error) {
+      console.error('BigCalendar: Error resetting fullscreen styles:', error);
     }
   };
 
@@ -429,12 +583,20 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private getSwimlaneIcon = (swimlane: string): string => {
     switch (swimlane) {
-      case 'Category 1':
-        return 'People';
-      case 'Category 2':
-        return 'Settings';
-      case 'Category 3':
-        return 'Calendar';
+      case 'Away w/RON':
+        return 'Airplane';
+      case 'Day Trip - NCR':
+        return 'MapPin';
+      case 'Exercise':
+        return 'Running';
+      case 'FYSA':
+        return 'Info';
+      case 'Out of Office':
+        return 'Leave';
+      case 'Training Holiday':
+        return 'Education';
+      case 'VIP/High Priority':
+        return 'Important';
       default:
         return 'Info';
     }
@@ -609,7 +771,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   public render(): React.ReactElement<IBigCalProps> {
-    const { hasTeamsContext, isUserAdmin } = this.props;
+    const { hasTeamsContext } = this.props;
     const { isFullscreen, filteredEvents, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedSwimlanes, selectedStatuses, viewMode, isExportDialogOpen } = this.state;
 
     const fullscreenIcon: IIconProps = {
@@ -620,126 +782,152 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       iconName: 'Settings'
     };
 
+    // Apply fullscreen class conditionally (ProgramTracker pattern)
+    const containerClassName = isFullscreen
+      ? `${styles.bigCal} ${styles.fullScreenMode} ${hasTeamsContext ? styles.teams : ''}`
+      : `${styles.bigCal} ${hasTeamsContext ? styles.teams : ''}`;
+
     return (
-      <div className={`${styles.bigCal} ${hasTeamsContext ? styles.teams : ''}`}>
-        {/* Navigation Bar */}
-        <div className={styles.navbar}>
-          <div className={styles.navbarLeft}>
-            <SearchBox
-              placeholder="Search events..."
-              value={searchText}
-              onChange={(_, newValue) => this.handleSearchChange(newValue || '')}
-              styles={{
-                root: { width: '250px', marginRight: '16px' }
-              }}
-            />
-
-            <Dropdown
-              placeholder="Swimlanes"
-              multiSelect
-              options={this.getSwimlaneDropdownOptions()}
-              selectedKeys={(() => {
-                const keys: string[] = [];
-                selectedSwimlanes.forEach(key => keys.push(key));
-                return keys;
-              })()}
-              onChange={this.handleSwimlaneDropdownChange}
-              onRenderOption={this.renderSwimlaneOption}
-              onRenderTitle={this.renderSwimlaneTitle}
-              styles={{
-                root: { width: '250px', marginRight: '16px' },
-                title: { fontSize: '13px' }
-              }}
-            />
-
-            <Dropdown
-              placeholder="Status"
-              multiSelect
-              options={this.getStatusDropdownOptions()}
-              selectedKeys={(() => {
-                const keys: string[] = [];
-                selectedStatuses.forEach(key => keys.push(key));
-                return keys;
-              })()}
-              onChange={this.handleStatusDropdownChange}
-              onRenderOption={this.renderStatusOption}
-              onRenderTitle={this.renderStatusTitle}
-              styles={{
-                root: { width: '250px', marginRight: '16px' },
-                title: { fontSize: '13px' }
-              }}
-            />
+      <div className={containerClassName}>
+        {/* Navigation Bar - Conditional based on fullscreen mode */}
+        {!isFullscreen ? (
+          /* Configuration-focused navbar for non-fullscreen mode */
+          <div className={styles.configNavbar}>
+            <div className={styles.configMessage}>
+              <Icon iconName="Settings" style={{ marginRight: '8px' }} />
+              <span>Configuration Mode - Use fullscreen for normal operation</span>
+            </div>
+            <div className={styles.configButtons}>
+              <IconButton
+                iconProps={propertiesIcon}
+                title="Configure Web Part Properties"
+                onClick={this.toggleProperties}
+                className={styles.navbarButton}
+              />
+              <IconButton
+                iconProps={fullscreenIcon}
+                title="Enter Fullscreen"
+                onClick={this.toggleFullscreen}
+                className={styles.navbarButton}
+              />
+            </div>
           </div>
+        ) : (
+          /* Full navbar with all features for fullscreen mode */
+          <div className={styles.navbar}>
+            <div className={styles.navbarLeft}>
+              <SearchBox
+                placeholder="Search events..."
+                value={searchText}
+                onChange={(_, newValue) => this.handleSearchChange(newValue || '')}
+                styles={{
+                  root: { width: '250px', marginRight: '16px' }
+                }}
+              />
 
-          <div className={styles.navbarRight}>
-            {/* Option 1: Pivot Component (Currently Active) */}
-            <Pivot
-              selectedKey={viewMode}
-              onLinkClick={this.handleViewModeChange}
-              className={styles.viewPivot}
-              headersOnly={true}
-            >
-              <PivotItem
-                headerText="Calendar"
-                itemKey="calendar"
-                itemIcon="Calendar"
+              <Dropdown
+                placeholder="Swimlanes"
+                multiSelect
+                options={this.getSwimlaneDropdownOptions()}
+                selectedKeys={(() => {
+                  const keys: string[] = [];
+                  selectedSwimlanes.forEach(key => keys.push(key));
+                  return keys;
+                })()}
+                onChange={this.handleSwimlaneDropdownChange}
+                onRenderOption={this.renderSwimlaneOption}
+                onRenderTitle={this.renderSwimlaneTitle}
+                styles={{
+                  root: { width: '250px', marginRight: '16px' },
+                  title: { fontSize: '13px' }
+                }}
               />
-              <PivotItem
-                headerText="18-Month"
-                itemKey="grid"
-                itemIcon="GridViewMedium"
-              />
-              <PivotItem
-                headerText="Timeline"
-                itemKey="timeline"
-                itemIcon="Timeline"
-              />
-            </Pivot>
 
-            {/* Option 2: Individual Buttons (Alternative - Commented Out)
-            <IconButton
-              iconProps={{ iconName: 'Calendar' }}
-              title="Calendar View"
-              onClick={this.switchToCalendarView}
-              className={`${styles.navbarButton} ${viewMode === 'calendar' ? styles.activeButton : ''}`}
-            />
-            <IconButton
-              iconProps={{ iconName: 'GridViewMedium' }}
-              title="18-Month View"
-              onClick={this.switchToGridView}
-              className={`${styles.navbarButton} ${viewMode === 'grid' ? styles.activeButton : ''}`}
-            />
-            <IconButton
-              iconProps={{ iconName: 'Timeline' }}
-              title="Timeline View"
-              onClick={this.switchToTimelineView}
-              className={`${styles.navbarButton} ${viewMode === 'timeline' ? styles.activeButton : ''}`}
-            />
-            */}
-            <IconButton
-              iconProps={{ iconName: 'ExcelDocument' }}
-              title="Export to Excel"
-              onClick={this.openExportDialog}
-              className={styles.navbarButton}
-            />
-            {isUserAdmin && (
-              <>
-                <IconButton
-                  iconProps={propertiesIcon}
-                  title="Configure Web Part Properties"
-                  onClick={this.toggleProperties}
-                  className={styles.navbarButton}
+              <Dropdown
+                placeholder="Status"
+                multiSelect
+                options={this.getStatusDropdownOptions()}
+                selectedKeys={(() => {
+                  const keys: string[] = [];
+                  selectedStatuses.forEach(key => keys.push(key));
+                  return keys;
+                })()}
+                onChange={this.handleStatusDropdownChange}
+                onRenderOption={this.renderStatusOption}
+                onRenderTitle={this.renderStatusTitle}
+                styles={{
+                  root: { width: '250px', marginRight: '16px' },
+                  title: { fontSize: '13px' }
+                }}
+              />
+            </div>
+
+            <div className={styles.navbarRight}>
+              {/* Option 1: Pivot Component (Currently Active) */}
+              <Pivot
+                selectedKey={viewMode}
+                onLinkClick={this.handleViewModeChange}
+                className={styles.viewPivot}
+                headersOnly={true}
+              >
+                <PivotItem
+                  headerText="Calendar"
+                  itemKey="calendar"
+                  itemIcon="Calendar"
                 />
-                <IconButton
-                  iconProps={fullscreenIcon}
-                  title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-                  onClick={this.toggleFullscreen}
-                  className={styles.navbarButton}
+                <PivotItem
+                  headerText="18-Month"
+                  itemKey="grid"
+                  itemIcon="GridViewMedium"
                 />
-              </>
-            )}
+                <PivotItem
+                  headerText="Timeline"
+                  itemKey="timeline"
+                  itemIcon="Timeline"
+                />
+              </Pivot>
+
+              {/* Option 2: Individual Buttons (Alternative - Commented Out)
+              <IconButton
+                iconProps={{ iconName: 'Calendar' }}
+                title="Calendar View"
+                onClick={this.switchToCalendarView}
+                className={`${styles.navbarButton} ${viewMode === 'calendar' ? styles.activeButton : ''}`}
+              />
+              <IconButton
+                iconProps={{ iconName: 'GridViewMedium' }}
+                title="18-Month View"
+                onClick={this.switchToGridView}
+                className={`${styles.navbarButton} ${viewMode === 'grid' ? styles.activeButton : ''}`}
+              />
+              <IconButton
+                iconProps={{ iconName: 'Timeline' }}
+                title="Timeline View"
+                onClick={this.switchToTimelineView}
+                className={`${styles.navbarButton} ${viewMode === 'timeline' ? styles.activeButton : ''}`}
+              />
+              */}
+              <IconButton
+                iconProps={{ iconName: 'ExcelDocument' }}
+                title="Export to Excel"
+                onClick={this.openExportDialog}
+                className={styles.navbarButton}
+              />
+              <IconButton
+                iconProps={propertiesIcon}
+                title="Configure Web Part Properties"
+                onClick={this.toggleProperties}
+                className={styles.navbarButton}
+              />
+              <IconButton
+                iconProps={fullscreenIcon}
+                title="Exit Fullscreen"
+                onClick={this.toggleFullscreen}
+                className={styles.navbarButton}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Main Content Area */}
         <div className={styles.mainContent}>
@@ -846,6 +1034,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           ) : (
             <TimelineView
               events={filteredEvents}
+              colorPalette="classic"
               onEventClick={this.openEditModal}
               onEventDoubleClick={this.openEditModal}
             />
