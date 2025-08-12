@@ -3,6 +3,7 @@ import { Timeline, DataSet } from 'vis-timeline/standalone';
 import 'vis-timeline/styles/vis-timeline-graph2d.css';
 import { ICalendarEvent } from './ICalendarEvent';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
+import { EventPopover } from './EventPopover';
 import styles from './TimelineView.module.scss';
 
 export interface ITimelineViewProps {
@@ -19,6 +20,8 @@ export interface ITimelineViewState {
   timeline: Timeline | undefined;
   isLoading: boolean;
   currentHeight: number;
+  hoveredEvent: ICalendarEvent | undefined;
+  hoveredElement: HTMLElement | undefined;
 }
 
 export class TimelineView extends React.Component<ITimelineViewProps, ITimelineViewState> {
@@ -33,7 +36,9 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     this.state = {
       timeline: undefined,
       isLoading: true,
-      currentHeight: 770 // Default height
+      currentHeight: 770, // Default height
+      hoveredEvent: undefined,
+      hoveredElement: undefined
     };
 
     // Initialize DataSets
@@ -202,6 +207,16 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
           this.props.onEventDoubleClick(event);
         }
       }
+    });
+
+    // Add vis.js native event handlers for popovers
+    timeline.on('itemover', (properties: { item: number; event: Event }) => {
+      const element = properties.event.target as HTMLElement;
+      this.handleItemMouseOver(properties.item, element);
+    });
+
+    timeline.on('itemout', () => {
+      this.handleItemMouseOut();
     });
 
     // Listen for multiple timeline events to ensure we catch when rendering is complete
@@ -498,8 +513,27 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     }
   };
 
+  private handleItemMouseOver = (itemId: number, element: HTMLElement): void => {
+    // Find the event using the timeline item ID
+    const matchingEvents = this.props.events.filter((ev: ICalendarEvent) => ev.id === itemId);
+    if (matchingEvents.length > 0) {
+      const event = matchingEvents[0];
+      this.setState({
+        hoveredEvent: event,
+        hoveredElement: element
+      });
+    }
+  };
+
+  private handleItemMouseOut = (): void => {
+    this.setState({
+      hoveredEvent: undefined,
+      hoveredElement: undefined
+    });
+  };
+
   public render(): React.ReactElement<ITimelineViewProps> {
-    const { isLoading } = this.state;
+    const { isLoading, hoveredEvent, hoveredElement } = this.state;
 
     return (
       <div className={styles.timelineContainer}>
@@ -523,6 +557,17 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
           ref={this.timelineRef}
           className={`${styles.timeline} ${isLoading ? styles.timelineHidden : ''}`}
         />
+
+        {/* Event Popover - Render only when we have both event and element */}
+        {hoveredEvent && hoveredElement && (
+          <EventPopover
+            event={hoveredEvent}
+            target={hoveredElement}
+            isVisible={true}
+            onDismiss={this.handleItemMouseOut}
+            colorPalette={this.props.colorPalette}
+          />
+        )}
       </div>
     );
   }

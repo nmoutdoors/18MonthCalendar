@@ -5,6 +5,7 @@
 ### **Core Fields**
 - `Id` - Unique identifier
 - `Title` - Event title
+- `Description` - Event description (multiple lines of text)
 - `Start` - Start date/time
 - `End` - End date/time
 

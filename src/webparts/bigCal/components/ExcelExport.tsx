@@ -225,6 +225,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
 
     // Find column indices
     let titleIndex = -1;
+    let descriptionIndex = -1;
     let startIndex = -1;
     let endIndex = -1;
     let swimlaneIndex = -1;
@@ -233,6 +234,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     for (let i = 0; i < headers.length; i++) {
       const header = headers[i];
       if (header && header.toLowerCase().indexOf('title') !== -1) titleIndex = i;
+      if (header && header.toLowerCase().indexOf('description') !== -1) descriptionIndex = i;
       if (header && header.toLowerCase().indexOf('start') !== -1) startIndex = i;
       if (header && header.toLowerCase().indexOf('end') !== -1) endIndex = i;
       if (header && header.toLowerCase().indexOf('swimlane') !== -1) swimlaneIndex = i;
@@ -243,6 +245,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     console.log('Excel Import Debug:', {
       headers,
       titleIndex,
+      descriptionIndex,
       startIndex,
       endIndex,
       swimlaneIndex,
@@ -289,6 +292,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         const event: ICalendarEvent = {
           id: Date.now() + i, // Generate a numeric ID
           title: title,
+          description: (descriptionIndex !== -1 && row[descriptionIndex] ?
+            row[descriptionIndex].toString().trim() : ''),
           start: startDate,
           end: endDate || startDate,
           swimlane: (swimlaneIndex !== -1 && row[swimlaneIndex] ?
@@ -584,6 +589,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       const dataWorksheet = XLSX.utils.aoa_to_sheet(rawData);
       dataWorksheet['!cols'] = [
         { width: 30 }, // Title column
+        { width: 40 }, // Description column
         { width: 20 }, // Start column
         { width: 20 }, // End column
         { width: 15 }, // Swimlane column
@@ -683,7 +689,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     const data: string[][] = [];
 
     // Add header row matching SharePoint list structure
-    data.push(['Title', 'Start', 'End', 'Swimlane', 'Status']);
+    data.push(['Title', 'Description', 'Start', 'End', 'Swimlane', 'Status']);
 
     events.forEach(event => {
       // Use MM/DD/YYYY HH:MM AM/PM format for better readability while maintaining precision
@@ -716,6 +722,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
 
       data.push([
         event.title,
+        event.description || '',
         startFormatted,
         endFormatted,
         event.swimlane || '',

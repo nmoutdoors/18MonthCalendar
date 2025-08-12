@@ -10,6 +10,7 @@ import { SharePointService } from '../services/SharePointService';
 import { ColorPaletteService } from '../services/ColorPaletteService';
 import { HolidayService } from '../services/HolidayService';
 import { EventModal } from './EventModal';
+import { EventPopover } from './EventPopover';
 import { TimelineView } from './TimelineView';
 import { ExcelExport } from './ExcelExport';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -35,11 +36,16 @@ interface IBigCalState {
   monthNavigatorExpanded: boolean;
   viewMode: 'calendar' | 'grid' | 'timeline';
   isExportDialogOpen: boolean;
+  // Popover state
+  popoverEvent?: ICalendarEvent;
+  popoverTarget?: HTMLElement;
+  isPopoverVisible: boolean;
 }
 
 export default class BigCal extends React.Component<IBigCalProps, IBigCalState> {
   private webPartElement: HTMLElement | null = null;
   private sharePointService: SharePointService;
+  private popoverTimeout: number | null = null;
 
   constructor(props: IBigCalProps) {
     super(props);
@@ -60,7 +66,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       selectedStatuses: new Set(['Confirmed', 'Tentative', 'Canceled']), // All selected by default
       monthNavigatorExpanded: true,
       viewMode: 'calendar',
-      isExportDialogOpen: false
+      isExportDialogOpen: false,
+      // Popover state
+      popoverEvent: undefined,
+      popoverTarget: undefined,
+      isPopoverVisible: false
     };
 
     this.sharePointService = new SharePointService(props.context);
@@ -355,8 +365,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       }
 
       // Regular event filters
-      const matchesCategory = selectedEventCategories.size === 0 || selectedEventCategories.has(event.swimlane!);
-      const matchesStatus = selectedStatuses.size === 0 || selectedStatuses.has(event.status!);
+      // Fix: When no categories are selected, show no events (not all events)
+      // Fix: When no statuses are selected, show no events (not all events)
+      // This matches user expectation that "Unselect All" hides everything
+      const matchesCategory = selectedEventCategories.size > 0 && selectedEventCategories.has(event.swimlane!);
+      const matchesStatus = selectedStatuses.size > 0 && selectedStatuses.has(event.status!);
       const matchesSearch = !searchText || event.title.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
 
       return matchesCategory && matchesStatus && matchesSearch;
@@ -765,7 +778,20 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     const iconEmoji = this.getEventCategoryIcon(event.swimlane!);
 
     return (
-      <div className={styles.customEvent}>
+      <div
+        className={styles.customEvent}
+        onMouseEnter={(e) => {
+          // Clear any existing timeout and show immediately for better responsiveness
+          if (this.popoverTimeout) {
+            window.clearTimeout(this.popoverTimeout);
+            this.popoverTimeout = null;
+          }
+          this.showPopover(event, e.currentTarget as HTMLElement);
+        }}
+        onMouseLeave={() => {
+          this.hidePopover();
+        }}
+      >
         <span
           className={styles.eventIcon}
           style={{ fontSize: '14px', marginRight: '6px' }}
@@ -823,7 +849,20 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     const iconEmoji = this.getEventCategoryIcon(event.swimlane!);
 
     return (
-      <div className={`${styles.customEvent} ${styles.monthEventItem}`}>
+      <div
+        className={`${styles.customEvent} ${styles.monthEventItem}`}
+        onMouseEnter={(e) => {
+          // Clear any existing timeout and show immediately for better responsiveness
+          if (this.popoverTimeout) {
+            window.clearTimeout(this.popoverTimeout);
+            this.popoverTimeout = null;
+          }
+          this.showPopover(event, e.currentTarget as HTMLElement);
+        }}
+        onMouseLeave={() => {
+          this.hidePopover();
+        }}
+      >
         <span
           className={styles.eventIcon}
           style={{ fontSize: '12px', marginRight: '4px' }}
@@ -881,6 +920,60 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     this.setState({ isExportDialogOpen: false });
   };
 
+  // Popover event handlers
+  private showPopover = (event: ICalendarEvent, target: HTMLElement): void => {
+    // Don't show popover for holiday events
+    if (event.isHoliday) {
+      return;
+    }
+
+    // Clear any existing timeout
+    if (this.popoverTimeout) {
+      window.clearTimeout(this.popoverTimeout);
+      this.popoverTimeout = null;
+    }
+
+    console.log('Showing popover for event:', event.title); // Debug log
+
+    this.setState({
+      popoverEvent: event,
+      popoverTarget: target,
+      isPopoverVisible: true
+    });
+  };
+
+  private hidePopover = (): void => {
+    // Clear any existing timeout
+    if (this.popoverTimeout) {
+      window.clearTimeout(this.popoverTimeout);
+    }
+
+    // Set a small delay before hiding
+    this.popoverTimeout = window.setTimeout(() => {
+      console.log('Hiding popover'); // Debug log
+      this.setState({
+        popoverEvent: undefined,
+        popoverTarget: undefined,
+        isPopoverVisible: false
+      });
+      this.popoverTimeout = null;
+    }, 100);
+  };
+
+  private handlePopoverEdit = (): void => {
+    if (this.state.popoverEvent) {
+      // Hide popover and open edit modal
+      this.setState({
+        isPopoverVisible: false,
+        isModalOpen: true,
+        selectedEvent: this.state.popoverEvent,
+        selectedDate: undefined,
+        popoverEvent: undefined,
+        popoverTarget: undefined
+      });
+    }
+  };
+
   private handleImportEvents = async (importedEvents: ICalendarEvent[]): Promise<void> => {
     try {
       // Add imported events to SharePoint list
@@ -890,7 +983,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           event.start,
           event.end,
           event.swimlane,
-          event.status
+          event.status,
+          event.description || ''
         )
       );
 
@@ -918,7 +1012,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           eventData.start!,
           eventData.end!,
           eventData.swimlane!,
-          eventData.status!
+          eventData.status!,
+          eventData.description
         );
         console.log('Event updated successfully');
       } else {
@@ -928,7 +1023,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           eventData.start!,
           eventData.end!,
           eventData.swimlane!,
-          eventData.status!
+          eventData.status!,
+          eventData.description || ''
         );
         console.log('Event created successfully');
       }
@@ -1276,6 +1372,18 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           onDismiss={this.closeExportDialog}
           onImportEvents={this.handleImportEvents}
         />
+
+        {/* Event Popover */}
+        {this.state.popoverEvent && (
+          <EventPopover
+            event={this.state.popoverEvent}
+            target={this.state.popoverTarget}
+            isVisible={this.state.isPopoverVisible}
+            onDismiss={this.hidePopover}
+            onEdit={this.handlePopoverEdit}
+            colorPalette={this.props.colorPalette}
+          />
+        )}
       </div>
     );
   }

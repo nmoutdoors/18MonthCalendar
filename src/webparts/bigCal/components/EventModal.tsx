@@ -28,10 +28,13 @@ export interface IEventModalProps {
 
 interface IEventModalState {
   title: string;
+  description: string;
   startDate: Date;
   endDate: Date;
   startTime: string;
   endTime: string;
+  startAmPm: 'AM' | 'PM';
+  endAmPm: 'AM' | 'PM';
   swimlane: SwimlaneType;
   status: StatusType;
   isSaving: boolean;
@@ -48,6 +51,11 @@ const swimlaneOptions: IDropdownOption[] = [
   { key: 'VIP/High Priority', text: 'VIP/High Priority', data: { icon: '⚠️' } }
 ];
 
+const amPmOptions: IDropdownOption[] = [
+  { key: 'AM', text: 'AM' },
+  { key: 'PM', text: 'PM' }
+];
+
 // Remove static statusOptions - will be created dynamically in component
 
 export class EventModal extends React.Component<IEventModalProps, IEventModalState> {
@@ -58,12 +66,18 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     const defaultStart = props.selectedDate || now;
     const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000); // 1 hour later
 
+    const startTimeData = this.formatTimeWithAmPm(props.event?.start || defaultStart);
+    const endTimeData = this.formatTimeWithAmPm(props.event?.end || defaultEnd);
+
     this.state = {
       title: props.event?.title || '',
+      description: props.event?.description || '',
       startDate: props.event?.start || defaultStart,
       endDate: props.event?.end || defaultEnd,
-      startTime: this.formatTime(props.event?.start || defaultStart),
-      endTime: this.formatTime(props.event?.end || defaultEnd),
+      startTime: startTimeData.time,
+      endTime: endTimeData.time,
+      startAmPm: startTimeData.amPm,
+      endAmPm: endTimeData.amPm,
       swimlane: props.event?.swimlane || 'FYSA',
       status: props.event?.status || 'Confirmed',
       isSaving: false,
@@ -81,12 +95,18 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         const defaultStart = this.props.selectedDate || now;
         const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000); // 1 hour later
 
+        const startTimeData = this.formatTimeWithAmPm(defaultStart);
+        const endTimeData = this.formatTimeWithAmPm(defaultEnd);
+
         this.setState({
           title: '',
+          description: '',
           startDate: defaultStart,
           endDate: defaultEnd,
-          startTime: this.formatTime(defaultStart),
-          endTime: this.formatTime(defaultEnd),
+          startTime: startTimeData.time,
+          endTime: endTimeData.time,
+          startAmPm: startTimeData.amPm,
+          endAmPm: endTimeData.amPm,
           swimlane: 'FYSA',
           status: 'Confirmed',
           isSaving: false,
@@ -94,12 +114,18 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         });
       } else {
         // This is edit mode, initialize with event data
+        const startTimeData = this.formatTimeWithAmPm(this.props.event.start);
+        const endTimeData = this.formatTimeWithAmPm(this.props.event.end);
+
         this.setState({
           title: this.props.event.title,
+          description: this.props.event.description || '',
           startDate: this.props.event.start,
           endDate: this.props.event.end,
-          startTime: this.formatTime(this.props.event.start),
-          endTime: this.formatTime(this.props.event.end),
+          startTime: startTimeData.time,
+          endTime: endTimeData.time,
+          startAmPm: startTimeData.amPm,
+          endAmPm: endTimeData.amPm,
           swimlane: this.props.event.swimlane || 'FYSA',
           status: this.props.event.status || 'Confirmed',
           isSaving: false,
@@ -183,21 +209,50 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     );
   };
 
-  private formatTime = (date: Date): string => {
-    return date.toTimeString().slice(0, 5); // HH:MM format
+  private formatTimeWithAmPm = (date: Date): { time: string; amPm: 'AM' | 'PM' } => {
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const amPm: 'AM' | 'PM' = hours >= 12 ? 'PM' : 'AM';
+
+    // Convert to 12-hour format
+    if (hours === 0) {
+      hours = 12; // Midnight becomes 12 AM
+    } else if (hours > 12) {
+      hours = hours - 12; // PM hours
+    }
+
+    // Use manual padding instead of padStart for compatibility
+    const minutesStr = minutes < 10 ? `0${minutes}` : minutes.toString();
+    const timeString = `${hours}:${minutesStr}`;
+    return { time: timeString, amPm };
   };
 
-  private parseTime = (timeString: string, date: Date): Date => {
+  private parseTime = (timeString: string, date: Date, amPm?: 'AM' | 'PM'): Date => {
+    // Handle both 24-hour format (HH:MM) and 12-hour format with AM/PM
     const [hours, minutes] = timeString.split(':').map(Number);
     const newDate = new Date(date.getTime());
-    newDate.setHours(hours, minutes, 0, 0);
+
+    if (amPm) {
+      // 12-hour format with AM/PM
+      let adjustedHours = hours;
+      if (amPm === 'AM' && hours === 12) {
+        adjustedHours = 0; // 12 AM becomes 0 hours
+      } else if (amPm === 'PM' && hours !== 12) {
+        adjustedHours = hours + 12; // PM hours (except 12 PM)
+      }
+      newDate.setHours(adjustedHours, minutes, 0, 0);
+    } else {
+      // 24-hour format (backward compatibility)
+      newDate.setHours(hours, minutes, 0, 0);
+    }
+
     return newDate;
   };
 
 
 
   private handleSave = async (): Promise<void> => {
-    const { title, startDate, endDate, startTime, endTime, swimlane, status } = this.state;
+    const { title, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status } = this.state;
 
     if (!title.trim()) {
       alert('Please enter a title for the event.');
@@ -207,12 +262,13 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     this.setState({ isSaving: true });
 
     try {
-      const start = this.parseTime(startTime, startDate);
-      const end = this.parseTime(endTime, endDate);
+      const start = this.parseTime(startTime, startDate, startAmPm);
+      const end = this.parseTime(endTime, endDate, endAmPm);
 
       const eventData: Partial<ICalendarEvent> = {
         id: this.props.event?.id,
         title: title.trim(),
+        description: this.state.description.trim(),
         start,
         end,
         swimlane,
@@ -253,7 +309,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
   public render(): React.ReactElement<IEventModalProps> {
     const { isOpen, event, onClose } = this.props;
-    const { title, startDate, endDate, startTime, endTime, swimlane, status, isSaving, isDeleting } = this.state;
+    const { title, description, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, isSaving, isDeleting } = this.state;
     
     const closeIcon: IIconProps = { iconName: 'Cancel' };
     const isEditMode = !!event;
@@ -295,6 +351,15 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
               placeholder="Enter event title"
             />
 
+            <TextField
+              label="Description"
+              value={description}
+              onChange={(_, newValue) => this.setState({ description: newValue || '' })}
+              multiline
+              rows={3}
+              placeholder="Enter event description (optional)"
+            />
+
             <Stack horizontal tokens={{ childrenGap: 16 }}>
               <Stack.Item grow>
                 <DatePicker
@@ -309,8 +374,17 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                   label="Start Time"
                   value={startTime}
                   onChange={(_, newValue) => this.setState({ startTime: newValue || '' })}
-                  placeholder="HH:MM"
-                  styles={{ root: { width: 80 } }}
+                  placeholder="H:MM"
+                  styles={{ root: { width: 70 } }}
+                />
+              </Stack.Item>
+              <Stack.Item>
+                <Dropdown
+                  label="AM/PM"
+                  selectedKey={startAmPm}
+                  options={amPmOptions}
+                  onChange={(_, option) => this.setState({ startAmPm: option?.key as 'AM' | 'PM' })}
+                  styles={{ root: { width: 70 } }}
                 />
               </Stack.Item>
             </Stack>
@@ -329,8 +403,17 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                   label="End Time"
                   value={endTime}
                   onChange={(_, newValue) => this.setState({ endTime: newValue || '' })}
-                  placeholder="HH:MM"
-                  styles={{ root: { width: 80 } }}
+                  placeholder="H:MM"
+                  styles={{ root: { width: 70 } }}
+                />
+              </Stack.Item>
+              <Stack.Item>
+                <Dropdown
+                  label="AM/PM"
+                  selectedKey={endAmPm}
+                  options={amPmOptions}
+                  onChange={(_, option) => this.setState({ endAmPm: option?.key as 'AM' | 'PM' })}
+                  styles={{ root: { width: 70 } }}
                 />
               </Stack.Item>
             </Stack>

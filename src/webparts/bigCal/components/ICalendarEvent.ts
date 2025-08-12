@@ -11,12 +11,13 @@ export interface ICalendarEvent {
   resource?: unknown;
   swimlane?: SwimlaneType;
   status?: StatusType;
+  description?: string;
   isHoliday?: boolean;
   isObserved?: boolean;
 }
 
 // Helper function to convert SharePoint event to calendar event
-export const convertSharePointEventToCalendarEvent = (spEvent: {Id: number; Title: string; Start: string; End: string; Swimlane: string; Status: string}): ICalendarEvent => {
+export const convertSharePointEventToCalendarEvent = (spEvent: {Id: number; Title: string; Start: string; End: string; Swimlane: string; Status: string; Description: string}): ICalendarEvent => {
   return {
     id: spEvent.Id,
     title: spEvent.Title,
@@ -25,6 +26,7 @@ export const convertSharePointEventToCalendarEvent = (spEvent: {Id: number; Titl
     allDay: false,
     swimlane: spEvent.Swimlane as SwimlaneType,
     status: spEvent.Status as StatusType,
+    description: spEvent.Description || '',
     isHoliday: false
   };
 };

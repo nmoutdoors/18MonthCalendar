@@ -11,6 +11,7 @@ export interface ISharePointEvent {
   End: string;
   Swimlane: string;
   Status: string;
+  Description: string;
 }
 
 export class SharePointService {
@@ -28,19 +29,20 @@ export class SharePointService {
       // Use PnP.js to get items from the Events list
       // Increase limit to handle large datasets (default is 100)
       const items = await this.sp.web.lists.getByTitle(this.listName).items
-        .select('Id', 'Title', 'Start', 'End', 'Swimlane', 'Status')
+        .select('Id', 'Title', 'Start', 'End', 'Swimlane', 'Status', 'Description')
         .orderBy('Start', true)
         .top(5000)(); // Increase limit to 5000 events
 
       console.log(`SharePoint query returned ${items.length} events`);
 
-      return items.map((item: {Id: number; Title: string; Start: string; End: string; Swimlane: string; Status: string}) => ({
+      return items.map((item: {Id: number; Title: string; Start: string; End: string; Swimlane: string; Status: string; Description: string}) => ({
         Id: item.Id,
         Title: item.Title,
         Start: item.Start,
         End: item.End,
         Swimlane: item.Swimlane,
-        Status: item.Status
+        Status: item.Status,
+        Description: item.Description || ''
       }));
 
     } catch (error: unknown) {
@@ -56,7 +58,7 @@ export class SharePointService {
     }
   }
 
-  public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green'): Promise<ISharePointEvent> {
+  public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', description: string = ''): Promise<ISharePointEvent> {
     try {
       // Use PnP.js to create a new item in the Events list
       const result = await this.sp.web.lists.getByTitle(this.listName).items.add({
@@ -64,7 +66,8 @@ export class SharePointService {
         Start: start,
         End: end,
         Swimlane: swimlane,
-        Status: status
+        Status: status,
+        Description: description
       });
 
       return {
@@ -73,7 +76,8 @@ export class SharePointService {
         Start: result.Start,
         End: result.End,
         Swimlane: result.Swimlane,
-        Status: result.Status
+        Status: result.Status,
+        Description: result.Description || ''
       };
 
     } catch (error: unknown) {
@@ -83,7 +87,7 @@ export class SharePointService {
     }
   }
 
-  public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string): Promise<void> {
+  public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string, description?: string): Promise<void> {
     try {
       const updateData: Record<string, unknown> = {
         Title: title,
@@ -93,6 +97,7 @@ export class SharePointService {
 
       if (swimlane) updateData.Swimlane = swimlane;
       if (status) updateData.Status = status;
+      if (description !== undefined) updateData.Description = description;
 
       await this.sp.web.lists.getByTitle(this.listName).items.getById(id).update(updateData);
 
