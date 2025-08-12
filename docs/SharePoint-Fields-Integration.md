@@ -9,7 +9,7 @@
 - `End` - End date/time
 
 ### **New Fields Added**
-- `Swimlane` - Choice field with options:
+- `Swimlane` - Choice field (Event Category) with options:
   - Away w/RON
   - Day Trip - NCR
   - Exercise
@@ -31,8 +31,8 @@ Events are automatically colored based on their Status field:
 - **Tentative Status**: Yellow background (`#FBC02D`)
 - **Canceled Status**: Red background (`#D32F2F`)
 
-### **Swimlane Indicators**
-Events are organized by swimlane categories with appropriate icons:
+### **Event Category Indicators**
+Events are organized by event categories with appropriate icons:
 
 - **Away w/RON**: Airplane icon
 - **Day Trip - NCR**: Map pin icon
@@ -74,7 +74,7 @@ When clicking an event, users see:
 Event: [Title]
 Start: [Start Date/Time]
 End: [End Date/Time]
-Swimlane: [Away w/RON/Day Trip - NCR/Exercise/FYSA/Out of Office/Training Holiday/VIP/High Priority]
+Event Category: [Away w/RON/Day Trip - NCR/Exercise/FYSA/Out of Office/Training Holiday/VIP/High Priority]
 Status: [Confirmed/Tentative/Canceled]
 ```
 
@@ -87,15 +87,15 @@ Status: [Confirmed/Tentative/Canceled]
 
 ### **Filtering Options** (Ready to implement)
 - Filter by Status (Confirmed/Tentative/Canceled)
-- Filter by Swimlane (Away w/RON/Day Trip - NCR/Exercise/FYSA/Out of Office/Training Holiday/VIP/High Priority)
+- Filter by Event Category (Away w/RON/Day Trip - NCR/Exercise/FYSA/Out of Office/Training Holiday/VIP/High Priority)
 - Multiple filter combinations
 
 ### **Legend Component** (Ready to implement)
 - Status color legend
-- Swimlane indicator legend
+- Event category indicator legend
 - Toggle visibility options
 
 ### **Advanced Features** (Ready to implement)
 - Bulk status updates
-- Swimlane-based views
+- Event category-based views
 - Status-based notifications

@@ -739,3 +739,37 @@
     overflow: auto;
   }
 }
+
+// Holiday event styling
+:global {
+  // Holiday events styling
+  .rbc-event.holiday-event {
+    background-color: #d4e6f1 !important;
+    color: #1f4e79 !important;
+    border: 2px solid #5b9bd5 !important;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .rbc-event.holiday-event.holiday-observed {
+    font-style: italic;
+    font-weight: normal;
+  }
+
+  // Holiday events should not show hover effects like regular events
+  .rbc-event.holiday-event:hover {
+    cursor: default;
+    opacity: 1;
+  }
+
+
+}
+
+// Mini calendar holiday event styling
+.miniHolidayEvent {
+  background-color: #d4e6f1 !important;
+  color: #1f4e79 !important;
+  border: 1px solid #5b9bd5 !important;
+  font-weight: 600;
+  font-size: 10px;
+}

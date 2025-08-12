@@ -38,8 +38,29 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
   constructor(props: IExcelExportProps) {
     super(props);
 
+    const defaultState = this.getDefaultStateForDate(props.currentDate);
+    this.state = defaultState;
+  }
+
+  public componentDidUpdate(prevProps: IExcelExportProps): void {
+    // If the modal was closed and is now opening, or if currentDate changed, update default dates
+    if (this.props.isOpen && !prevProps.isOpen) {
+      // Modal just opened - reset to default dates for current month
+      const defaultState = this.getDefaultStateForDate(this.props.currentDate);
+      this.setState({
+        startDate: defaultState.startDate,
+        endDate: defaultState.endDate,
+        fileName: defaultState.fileName,
+        exportMessage: '',
+        importMessage: '',
+        selectedTab: 'export'
+      });
+    }
+  }
+
+  private getDefaultStateForDate = (currentDate?: Date): IExcelExportState => {
     // Use current calendar date or today as reference
-    const referenceDate = props.currentDate || new Date();
+    const referenceDate = currentDate || new Date();
 
     // Get first day of the month
     const firstDayOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
@@ -51,7 +72,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     const monthYear = referenceDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     const defaultFileName = `Calendar_Agenda_${monthYear.replace(' ', '_')}`;
 
-    this.state = {
+    return {
       startDate: firstDayOfMonth,
       endDate: lastDayOfMonth,
       isExporting: false,
@@ -64,7 +85,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       importMessageType: MessageBarType.info,
       dragActive: false
     };
-  }
+  };
 
   private onStartDateChange = (date: Date | null | undefined): void => {
     if (date) {
@@ -650,7 +671,9 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         currentDate = eventDate;
       }
       
-      data.push([dateToShow, timeStr, event.title]);
+      // Add special indicator for holiday events
+      const eventTitle = (event as ICalendarEvent & { isHoliday?: boolean }).isHoliday ? `🏛️ ${event.title}` : event.title;
+      data.push([dateToShow, timeStr, eventTitle]);
     });
     
     return data;
@@ -695,8 +718,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         event.title,
         startFormatted,
         endFormatted,
-        event.swimlane,
-        event.status
+        event.swimlane || '',
+        event.status || ''
       ]);
     });
 

@@ -49,15 +49,21 @@ Complete data management for enterprise migration and backup:
 
 #### 🔍 **Smart Filtering System**
 - **🔎 Global Search** - Find events across all 18 months instantly
-- **🏊 Swimlane Categories** - Organize by project, team, or department with visual icons
+- **🏷️ Event Categories** - Organize by project, team, or department with visual icons
 - **📊 Status Tracking** - Color-coded progress indicators (Confirmed, Tentative, Canceled)
 - **📈 Real-time Counts** - See filtered results and event density immediately
 
 #### ⏱️ **Interactive Timeline View**
-- **🎯 Swimlane Organization** - Events grouped by categories with visual separation
+- **🎯 Event Category Organization** - Events grouped by categories with visual separation
 - **🎨 Status-based Color Coding** - Instant visual status recognition
 - **🖱️ Advanced Interactions** - Smooth scrolling, zooming, and navigation
 - **📅 Smart Loading** - Professional loading states with vis.js event detection
+
+#### 🏛️ **National Holiday Integration**
+- **📅 US Federal Holidays** - Built-in 18-month holiday calendar (2025-2026)
+- **🎨 Visual Indicators** - Darker gray background with holiday names
+- **📋 Complete Coverage** - All major holidays including observed dates
+- **🔄 Consistent Display** - Holiday indicators across all calendar views
 - **⚡ Responsive Design** - Optimized for all screen sizes and touch devices
 
 #### 📊 **Excel Import/Export System**
@@ -138,38 +144,40 @@ gulp package-solution --ship
 
 ## 🎨 **Customization & Configuration**
 
-### 🏊 **Swimlane Categories**
+### 🏷️ **Event Categories**
 Easily customize categories with icons and colors:
 
 ```typescript
 // Customize in BigCal.tsx
-private getSwimlaneIcon = (swimlane: string): string => {
-  switch (swimlane) {
-    case 'Away w/RON': return 'Airplane';
-    case 'Day Trip - NCR': return 'MapPin';
-    case 'Exercise': return 'Running';
-    case 'FYSA': return 'Info';
-    case 'Out of Office': return 'Leave';
-    case 'Training Holiday': return 'Education';
-    case 'VIP/High Priority': return 'Important';
-    default: return 'Info';
+private getEventCategoryIcon = (eventCategory: string): string => {
+  // Return Unicode emoji symbols for consistent display across all views
+  switch (eventCategory) {
+    case 'Away w/RON': return '✈️'; // Airplane
+    case 'Day Trip - NCR': return '📍'; // Map pin
+    case 'Exercise': return '🏃'; // Running person
+    case 'FYSA': return 'ℹ️'; // Information
+    case 'Out of Office': return '🚪'; // Door (leave)
+    case 'Training Holiday': return '🎓'; // Graduation cap (education)
+    case 'VIP/High Priority': return '⚠️'; // Warning (important)
+    default: return 'ℹ️'; // Information
   }
 };
 ```
 
 ### 📊 **Status Indicators**
-Configure status colors and icons:
+Status indicators use colored circles that automatically adapt to the selected color palette:
 
 ```typescript
-// Modify status system in BigCal.tsx
+// Status colors are managed by ColorPaletteService
 private getStatusColor = (status: string): string => {
-  switch (status) {
-    case 'Confirmed': return '#107C10';   // Success Green
-    case 'Tentative': return '#FBC02D';   // Warning Amber
-    case 'Canceled': return '#D32F2F';    // Error Red
-    default: return '#605e5c';            // Neutral Gray
-  }
+  return ColorPaletteService.getStatusColor(status, this.props.colorPalette);
 };
+
+// Status indicators display as colored circles in:
+// - Dropdown filters
+// - Event Modal
+// - Timeline dots
+// - Calendar event styling
 ```
 
 ### 🎯 **Event Management**

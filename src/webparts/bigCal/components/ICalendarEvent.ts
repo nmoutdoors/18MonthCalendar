@@ -3,14 +3,16 @@ export type SwimlaneType = 'Away w/RON' | 'Day Trip - NCR' | 'Exercise' | 'FYSA'
 export type StatusType = 'Confirmed' | 'Tentative' | 'Canceled';
 
 export interface ICalendarEvent {
-  id: number;
+  id: number | string;
   title: string;
   start: Date;
   end: Date;
   allDay?: boolean;
   resource?: unknown;
-  swimlane: SwimlaneType;
-  status: StatusType;
+  swimlane?: SwimlaneType;
+  status?: StatusType;
+  isHoliday?: boolean;
+  isObserved?: boolean;
 }
 
 // Helper function to convert SharePoint event to calendar event
@@ -22,6 +24,7 @@ export const convertSharePointEventToCalendarEvent = (spEvent: {Id: number; Titl
     end: new Date(spEvent.End),
     allDay: false,
     swimlane: spEvent.Swimlane as SwimlaneType,
-    status: spEvent.Status as StatusType
+    status: spEvent.Status as StatusType,
+    isHoliday: false
   };
 };

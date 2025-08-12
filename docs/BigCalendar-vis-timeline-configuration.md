@@ -235,7 +235,7 @@ private updateTimelineData = (): void => {
     content: event.title,
     start: event.start,
     end: event.end,
-    group: event.swimlane,
+    group: event.swimlane, // Event Category
     className: `status-${event.status.toLowerCase().replace(/\s+/g, '')}`
   }));
 
@@ -303,3 +303,102 @@ When analyzing other working projects, compare:
 5. **Event handling** - Different event listener patterns?
 6. **SharePoint integration** - Special site page considerations?
 7. **Build configuration** - Different webpack/build settings?
+
+## Timeline Features
+
+### Event Display
+- Events appear as points on the timeline with status-based colors and event category icons
+- Event titles display to the right of the status indicator with FluentUI icons and category abbreviations
+- Hover tooltips show full event details
+- Click events to open the event modal
+
+### Dynamic Group Management
+- Timeline groups (rows) are dynamically shown/hidden based on Event Category filter selections
+- When an event category is unchecked, the entire row disappears from the timeline
+- **Dynamic Height Adjustment**: Timeline automatically resizes to fit visible groups, eliminating white space
+- **Smart Height Recalculation**: Height adjusts when zooming/panning to optimize space usage
+- This provides a cleaner view compared to showing empty rows
+- Groups are managed using vis-timeline's built-in DataSet functionality
+- Smooth transitions when groups are added/removed (0.3s ease-in-out)
+- Prevents wasted white space at bottom when content changes due to zoom/pan operations
+
+### Event Content Structure
+Events now display with Unicode emoji icons as the primary visual indicator (no abbreviation tags):
+
+```html
+<span class="timeline-event-content" style="display: inline-flex; align-items: center; font-family: 'Segoe UI', system-ui, sans-serif;">
+  <span style="margin-right: 8px; font-size: 16px; flex-shrink: 0; display: inline-block; width: 18px; text-align: center;">✈️</span>
+  <span style="font-size: 13px; line-height: 1.2; font-weight: 500;">Event Title</span>
+</span>
+```
+
+**Icon Mapping:**
+- Away w/RON → ✈️ Airplane
+- Day Trip - NCR → 📍 Map Pin
+- Exercise → 🏃 Running Person
+- FYSA → ℹ️ Information
+- Out of Office → 🚪 Door (Leave)
+- Training Holiday → 🎓 Graduation Cap (Education)
+- VIP/High Priority → ⚠️ Warning (Important)
+
+**Enhanced Tooltips:**
+Event tooltips now prominently display the Event Category name along with status and dates, providing clear context without visual clutter.
+
+**Why Unicode Symbols:**
+Unicode emoji symbols are used consistently across all views (Timeline, Calendar, Dropdowns, and Event Modal) to ensure reliable cross-browser display and a cohesive visual experience. These symbols display consistently without requiring additional font loading and are universally recognizable.
+
+### Group Visibility Implementation
+```typescript
+private updateGroupsVisibility = (): void => {
+  if (!this.state.timeline) return;
+
+  // Create groups array with only selected categories
+  const visibleGroups = allEventCategories
+    .filter(category => this.props.selectedEventCategories.has(category))
+    .map(category => ({
+      id: category,
+      content: category,
+      className: `eventcategory-${category.toLowerCase().replace(/[^a-z0-9]/g, '')}`
+    }));
+
+  // Update the groups dataset
+  this.groups.clear();
+  this.groups.add(visibleGroups);
+
+  // Calculate dynamic height based on number of visible groups
+  this.updateTimelineHeight(visibleGroups.length);
+
+  // Force timeline redraw to reflect group changes
+  this.state.timeline.redraw();
+};
+
+private updateTimelineHeight = (visibleGroupCount: number): void => {
+  if (!this.state.timeline) return;
+
+  // Calculate height: Base (120px) + Per group (80px)
+  // Min: 200px, Max: 770px
+  const baseHeight = 120;
+  const heightPerGroup = 80;
+  const calculatedHeight = Math.max(200,
+    Math.min(770, baseHeight + (visibleGroupCount * heightPerGroup)));
+
+  this.state.timeline.setOptions({ height: `${calculatedHeight}px` });
+};
+
+// Smart height recalculation for zoom/pan operations
+private recalculateTimelineHeight = (): void => {
+  setTimeout(() => {
+    const visItemsContainer = this.timelineRef.current?.querySelector('.vis-itemset');
+    if (visItemsContainer) {
+      const contentHeight = (visItemsContainer as HTMLElement).scrollHeight;
+      const optimalHeight = Math.max(200,
+        Math.min(770, contentHeight + 120)); // 120px for controls/padding
+
+      if (Math.abs(optimalHeight - this.state.currentHeight) > 20) {
+        this.state.timeline?.setOptions({ height: `${optimalHeight}px` });
+        this.setState({ currentHeight: optimalHeight });
+      }
+    }
+  }, 100);
+};
+```

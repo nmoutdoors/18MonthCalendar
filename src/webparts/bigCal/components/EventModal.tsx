@@ -10,16 +10,17 @@ import {
   IDropdownOption,
   Text,
   IconButton,
-  IIconProps,
-  Icon
+  IIconProps
 } from '@fluentui/react';
 import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
+import { ColorPaletteService } from '../services/ColorPaletteService';
 import styles from './EventModal.module.scss';
 
 export interface IEventModalProps {
   isOpen: boolean;
   event?: ICalendarEvent;
   selectedDate?: Date;
+  colorPalette: string;
   onSave: (event: Partial<ICalendarEvent>) => Promise<void>;
   onDelete?: (eventId: number) => Promise<void>;
   onClose: () => void;
@@ -38,20 +39,16 @@ interface IEventModalState {
 }
 
 const swimlaneOptions: IDropdownOption[] = [
-  { key: 'Away w/RON', text: 'Away w/RON', data: { icon: 'Airplane' } },
-  { key: 'Day Trip - NCR', text: 'Day Trip - NCR', data: { icon: 'MapPin' } },
-  { key: 'Exercise', text: 'Exercise', data: { icon: 'Running' } },
-  { key: 'FYSA', text: 'FYSA', data: { icon: 'Info' } },
-  { key: 'Out of Office', text: 'Out of Office', data: { icon: 'Leave' } },
-  { key: 'Training Holiday', text: 'Training Holiday', data: { icon: 'Education' } },
-  { key: 'VIP/High Priority', text: 'VIP/High Priority', data: { icon: 'Important' } }
+  { key: 'Away w/RON', text: 'Away w/RON', data: { icon: '✈️' } },
+  { key: 'Day Trip - NCR', text: 'Day Trip - NCR', data: { icon: '📍' } },
+  { key: 'Exercise', text: 'Exercise', data: { icon: '🏃' } },
+  { key: 'FYSA', text: 'FYSA', data: { icon: 'ℹ️' } },
+  { key: 'Out of Office', text: 'Out of Office', data: { icon: '🚪' } },
+  { key: 'Training Holiday', text: 'Training Holiday', data: { icon: '🎓' } },
+  { key: 'VIP/High Priority', text: 'VIP/High Priority', data: { icon: '⚠️' } }
 ];
 
-const statusOptions: IDropdownOption[] = [
-  { key: 'Confirmed', text: 'Confirmed', data: { color: '#107C10' } }, // Green
-  { key: 'Tentative', text: 'Tentative', data: { color: '#FBC02D' } }, // Yellow
-  { key: 'Canceled', text: 'Canceled', data: { color: '#D32F2F' } } // Red
-];
+// Remove static statusOptions - will be created dynamically in component
 
 export class EventModal extends React.Component<IEventModalProps, IEventModalState> {
   constructor(props: IEventModalProps) {
@@ -103,8 +100,8 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           endDate: this.props.event.end,
           startTime: this.formatTime(this.props.event.start),
           endTime: this.formatTime(this.props.event.end),
-          swimlane: this.props.event.swimlane,
-          status: this.props.event.status,
+          swimlane: this.props.event.swimlane || 'FYSA',
+          status: this.props.event.status || 'Confirmed',
           isSaving: false,
           isDeleting: false
         });
@@ -112,10 +109,25 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     }
   }
 
+  private getStatusOptions = (): IDropdownOption[] => {
+    return [
+      { key: 'Confirmed', text: 'Confirmed', data: { color: ColorPaletteService.getStatusColor('Confirmed', this.props.colorPalette) } },
+      { key: 'Tentative', text: 'Tentative', data: { color: ColorPaletteService.getStatusColor('Tentative', this.props.colorPalette) } },
+      { key: 'Canceled', text: 'Canceled', data: { color: ColorPaletteService.getStatusColor('Canceled', this.props.colorPalette) } }
+    ];
+  };
+
   private onRenderSwimlaneOption = (option?: IDropdownOption): JSX.Element => {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Icon iconName={option?.data?.icon} style={{ fontSize: '14px' }} />
+        <span style={{
+          fontSize: '16px',
+          width: '18px',
+          textAlign: 'center',
+          display: 'inline-block'
+        }}>
+          {option?.data?.icon}
+        </span>
         <span>{option?.text}</span>
       </div>
     );
@@ -125,7 +137,14 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     const selectedOption = options?.[0];
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Icon iconName={selectedOption?.data?.icon} style={{ fontSize: '14px' }} />
+        <span style={{
+          fontSize: '16px',
+          width: '18px',
+          textAlign: 'center',
+          display: 'inline-block'
+        }}>
+          {selectedOption?.data?.icon}
+        </span>
         <span>{selectedOption?.text}</span>
       </div>
     );
@@ -222,7 +241,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     this.setState({ isDeleting: true });
 
     try {
-      await this.props.onDelete(this.props.event.id);
+      await this.props.onDelete(this.props.event.id as number);
       this.props.onClose();
     } catch (error) {
       console.error('Error deleting event:', error);
@@ -319,7 +338,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
             <Stack horizontal tokens={{ childrenGap: 16 }}>
               <Stack.Item grow>
                 <Dropdown
-                  label="Category"
+                  label="Event Category"
                   selectedKey={swimlane}
                   options={swimlaneOptions}
                   onChange={(_, option) => this.setState({ swimlane: option?.key as SwimlaneType })}
@@ -331,7 +350,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                 <Dropdown
                   label="Status"
                   selectedKey={status}
-                  options={statusOptions}
+                  options={this.getStatusOptions()}
                   onChange={(_, option) => this.setState({ status: option?.key as StatusType })}
                   onRenderOption={this.onRenderStatusOption}
                   onRenderTitle={this.onRenderStatusTitle}

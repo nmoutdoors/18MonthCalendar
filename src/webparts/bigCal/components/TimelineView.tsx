@@ -8,6 +8,9 @@ import styles from './TimelineView.module.scss';
 export interface ITimelineViewProps {
   events: ICalendarEvent[];
   colorPalette: string;
+  selectedEventCategories: Set<string>;
+  searchText?: string;
+  selectedStatuses?: Set<string>;
   onEventClick?: (event: ICalendarEvent) => void;
   onEventDoubleClick?: (event: ICalendarEvent) => void;
 }
@@ -15,6 +18,7 @@ export interface ITimelineViewProps {
 export interface ITimelineViewState {
   timeline: Timeline | undefined;
   isLoading: boolean;
+  currentHeight: number;
 }
 
 export class TimelineView extends React.Component<ITimelineViewProps, ITimelineViewState> {
@@ -28,7 +32,8 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     super(props);
     this.state = {
       timeline: undefined,
-      isLoading: true
+      isLoading: true,
+      currentHeight: 770 // Default height
     };
 
     // Initialize DataSets
@@ -43,36 +48,52 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     if (this.timelineRef.current) {
       this.timelineRef.current.addEventListener('wheel', this.handleMouseWheel, { passive: false });
     }
+
+    // Listen for timeline reset events
+    window.addEventListener('timelineReset', this.handleTimelineReset);
+  }
+
+  public componentWillUnmount(): void {
+    // Clean up event listeners
+    if (this.timelineRef.current) {
+      this.timelineRef.current.removeEventListener('wheel', this.handleMouseWheel);
+    }
+    window.removeEventListener('timelineReset', this.handleTimelineReset);
+
+    // Destroy timeline instance
+    if (this.state.timeline) {
+      this.state.timeline.destroy();
+    }
   }
 
   public componentDidUpdate(prevProps: ITimelineViewProps): void {
-    if (prevProps.events !== this.props.events) {
-      // Show loading when events change
+    if (prevProps.events !== this.props.events ||
+        prevProps.searchText !== this.props.searchText ||
+        prevProps.selectedStatuses !== this.props.selectedStatuses) {
+      // Show loading when events or filters change
       this.setState({ isLoading: true }, () => {
         this.updateTimelineData();
       });
     }
-  }
 
-  public componentWillUnmount(): void {
-    // Remove custom mouse wheel event handling
-    if (this.timelineRef.current) {
-      this.timelineRef.current.removeEventListener('wheel', this.handleMouseWheel);
-    }
-
-    if (this.state.timeline) {
-      this.state.timeline.destroy();
+    // Update groups visibility when selected event categories change
+    if (prevProps.selectedEventCategories !== this.props.selectedEventCategories) {
+      this.updateGroupsVisibility();
     }
   }
 
   private initializeTimeline = (): void => {
     if (!this.timelineRef.current) return;
 
-    // Create groups for swimlanes
+    // Create groups for event categories
     const groups = [
-      { id: 'Category 1', content: 'Category 1', className: 'swimlane-category1' },
-      { id: 'Category 2', content: 'Category 2', className: 'swimlane-category2' },
-      { id: 'Category 3', content: 'Category 3', className: 'swimlane-category3' }
+      { id: 'Away w/RON', content: 'Away w/RON', className: 'eventcategory-away' },
+      { id: 'Day Trip - NCR', content: 'Day Trip - NCR', className: 'eventcategory-daytrip' },
+      { id: 'Exercise', content: 'Exercise', className: 'eventcategory-exercise' },
+      { id: 'FYSA', content: 'FYSA', className: 'eventcategory-fysa' },
+      { id: 'Out of Office', content: 'Out of Office', className: 'eventcategory-ooo' },
+      { id: 'Training Holiday', content: 'Training Holiday', className: 'eventcategory-training' },
+      { id: 'VIP/High Priority', content: 'VIP/High Priority', className: 'eventcategory-vip' }
     ];
 
     this.groups.clear();
@@ -206,11 +227,19 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
 
     // Listen to various vis.js events
     timeline.on('changed', hideLoadingSpinner);
-    timeline.on('rangechanged', hideLoadingSpinner);
+    timeline.on('rangechanged', () => {
+      hideLoadingSpinner();
+      // Recalculate height when zoom/pan changes affect visible content
+      this.recalculateTimelineHeight();
+    });
 
     // Try to listen for redraw events (vis.js internal)
     try {
-      timeline.on('redraw', hideLoadingSpinner);
+      timeline.on('redraw', () => {
+        hideLoadingSpinner();
+        // Recalculate height after redraw to optimize space usage
+        this.recalculateTimelineHeight();
+      });
     } catch {
       // Redraw event might not be available in all vis.js versions
     }
@@ -223,21 +252,203 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     }, 3000);
 
     this.setState({ timeline }, () => {
+      // Initialize with proper height and groups
+      this.updateGroupsVisibility();
       this.updateTimelineData();
     });
+  };
+
+  private getEventCategoryIcon = (eventCategory: string): string => {
+    // Return Unicode symbols that will display reliably
+    switch (eventCategory) {
+      case 'Away w/RON':
+        return '✈️'; // Airplane
+      case 'Day Trip - NCR':
+        return '📍'; // Map pin
+      case 'Exercise':
+        return '🏃'; // Running person
+      case 'FYSA':
+        return 'ℹ️'; // Information
+      case 'Out of Office':
+        return '🚪'; // Door (leave)
+      case 'Training Holiday':
+        return '🎓'; // Graduation cap (education)
+      case 'VIP/High Priority':
+        return '⚠️'; // Warning (important)
+      default:
+        return 'ℹ️'; // Information
+    }
+  };
+
+
+
+  private generateEventContent = (event: ICalendarEvent): string => {
+    const iconSymbol = this.getEventCategoryIcon(event.swimlane || 'FYSA');
+
+    // Generate HTML content with Unicode emoji icon and title
+    // Unicode symbols display reliably across all contexts
+    return `<span class="timeline-event-content" style="display: inline-flex; align-items: center; font-family: 'Segoe UI', system-ui, sans-serif;">
+      <span style="margin-right: 8px; font-size: 16px; flex-shrink: 0; display: inline-block; width: 18px; text-align: center;">${iconSymbol}</span>
+      <span style="font-size: 13px; line-height: 1.2; font-weight: 500;">${event.title}</span>
+    </span>`;
+  };
+
+  private updateGroupsVisibility = (): void => {
+    if (!this.state.timeline) return;
+
+    // Get all possible event categories
+    const allEventCategories = [
+      'Away w/RON',
+      'Day Trip - NCR',
+      'Exercise',
+      'FYSA',
+      'Out of Office',
+      'Training Holiday',
+      'VIP/High Priority'
+    ];
+
+    // Create groups array with only selected categories
+    const visibleGroups = allEventCategories
+      .filter(category => this.props.selectedEventCategories.has(category))
+      .map(category => ({
+        id: category,
+        content: category,
+        className: `eventcategory-${category.toLowerCase().replace(/[^a-z0-9]/g, '')}`
+      }));
+
+    // Update the groups dataset
+    this.groups.clear();
+    this.groups.add(visibleGroups);
+
+    // Calculate dynamic height based on number of visible groups
+    this.updateTimelineHeight(visibleGroups.length);
+
+    // Force timeline redraw to reflect group changes
+    this.state.timeline.redraw();
+  };
+
+  private updateTimelineHeight = (visibleGroupCount: number): void => {
+    if (!this.state.timeline) return;
+
+    // Calculate height based on visible groups
+    // Base height: 120px for timeline controls and padding
+    // Per group: 80px (gives good spacing for events and group labels)
+    // Minimum height: 200px (for at least some content)
+    // Maximum height: 770px (original full height)
+    const baseHeight = 120;
+    const heightPerGroup = 80;
+    const minHeight = 200;
+    const maxHeight = 770;
+
+    const calculatedHeight = Math.max(
+      minHeight,
+      Math.min(maxHeight, baseHeight + (visibleGroupCount * heightPerGroup))
+    );
+
+    // Update timeline options with new height
+    this.state.timeline.setOptions({
+      height: `${calculatedHeight}px`
+    });
+
+    // Track current height in state
+    this.setState({ currentHeight: calculatedHeight });
+  };
+
+  private recalculateTimelineHeight = (): void => {
+    if (!this.state.timeline) return;
+
+    // Use a small delay to allow vis-timeline to finish its internal calculations
+    setTimeout(() => {
+      try {
+        // Get the actual rendered timeline content
+        const timelineElement = this.timelineRef.current;
+        if (!timelineElement) return;
+
+        // Find the vis-timeline content area
+        const visContent = timelineElement.querySelector('.vis-content') as HTMLElement;
+        if (!visContent) return;
+
+        // Calculate the actual content height needed
+        const visItemsContainer = timelineElement.querySelector('.vis-itemset') as HTMLElement;
+        if (!visItemsContainer) return;
+
+        // Get the bounding box of all visible content
+        const contentHeight = visItemsContainer.scrollHeight;
+
+        // Add padding for timeline controls and margins
+        const controlsHeight = 80; // Timeline axis and controls
+        const paddingHeight = 40; // Extra padding
+        const minHeight = 200;
+        const maxHeight = 770;
+
+        const optimalHeight = Math.max(
+          minHeight,
+          Math.min(maxHeight, contentHeight + controlsHeight + paddingHeight)
+        );
+
+        // Only update if the height difference is significant (avoid constant micro-adjustments)
+        const currentHeight = this.state.currentHeight;
+        if (Math.abs(optimalHeight - currentHeight) > 20) {
+          this.state.timeline?.setOptions({
+            height: `${optimalHeight}px`
+          });
+
+          // Update tracked height
+          this.setState({ currentHeight: optimalHeight });
+        }
+      } catch (error) {
+        console.warn('Error recalculating timeline height:', error);
+      }
+    }, 100); // Small delay to let vis-timeline finish rendering
+  };
+
+  private handleTimelineReset = (event: Event): void => {
+    if (!this.state.timeline) return;
+
+    try {
+      // Reset to today with a reasonable default range
+      const today = new Date();
+      const startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1); // Start of previous month
+      const endDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // End of next month
+
+      // Set the timeline window to show today with context
+      this.state.timeline.setWindow(startDate, endDate);
+
+      // Optionally fit all items if there are any
+      if (this.items.length > 0) {
+        // Small delay to let the window change take effect first
+        setTimeout(() => {
+          this.state.timeline?.fit();
+        }, 100);
+      }
+    } catch (error) {
+      console.warn('Error resetting timeline:', error);
+    }
   };
 
   private updateTimelineData = (): void => {
     if (!this.state.timeline) return;
 
+    // Apply search and status filters (event category filtering is handled by group visibility)
+    const filteredEvents = this.props.events.filter(event => {
+      // Search filter
+      const matchesSearch = !this.props.searchText || this.props.searchText === '' ||
+        event.title.toLowerCase().indexOf(this.props.searchText.toLowerCase()) !== -1;
+
+      // Status filter
+      const matchesStatus = !this.props.selectedStatuses || this.props.selectedStatuses.has(event.status || 'Confirmed');
+
+      return matchesSearch && matchesStatus;
+    });
+
     // Convert calendar events to timeline items
-    const timelineItems = this.props.events.map(event => ({
+    const timelineItems = filteredEvents.map(event => ({
       id: event.id,
-      content: event.title, // This text appears to the right of the status indicator
+      content: this.generateEventContent(event), // HTML content with icon and title
       start: event.start,
       group: event.swimlane,
-      className: `status-${event.status.toLowerCase().replace(/\s+/g, '')}`,
-      title: `${event.title}\nStatus: ${event.status}\nSwimlane: ${event.swimlane}\nStart: ${event.start.toLocaleDateString()}\nEnd: ${event.end.toLocaleDateString()}`,
+      className: `status-${(event.status || 'confirmed').toLowerCase().replace(/\s+/g, '')}`,
+      title: `${event.title}\nEvent Category: ${event.swimlane}\nStatus: ${event.status}\nStart: ${event.start.toLocaleDateString()}\nEnd: ${event.end.toLocaleDateString()}`,
       type: 'point' // This is crucial for icon + text layout
     }));
 
@@ -251,6 +462,9 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
 
     // Force a redraw to ensure everything is positioned correctly
     this.state.timeline.redraw();
+
+    // Recalculate height after data update to optimize space usage
+    this.recalculateTimelineHeight();
 
     // The timeline events will handle hiding the loading spinner
     // No need for setTimeout here as the events will fire when ready

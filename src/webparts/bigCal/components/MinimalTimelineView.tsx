@@ -135,7 +135,7 @@ export class MinimalTimelineView extends React.Component<IMinimalTimelineViewPro
         content: event.title,
         start: event.start,
         group: event.swimlane,
-        className: `status-${event.status.toLowerCase().replace(/\s+/g, '')}`,
+        className: `status-${(event.status || 'confirmed').toLowerCase().replace(/\s+/g, '')}`,
         type: 'point'
       }));
 
