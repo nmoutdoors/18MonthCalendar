@@ -9,5 +9,6 @@ export interface IBigCalProps {
   isUserAdmin: boolean;
   context: WebPartContext;
   colorPalette: string;
+  listName: string;
   onConfigureProperties?: () => void;
 }

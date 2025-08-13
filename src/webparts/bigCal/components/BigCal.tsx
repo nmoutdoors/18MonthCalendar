@@ -73,7 +73,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       isPopoverVisible: false
     };
 
-    this.sharePointService = new SharePointService(props.context);
+    this.sharePointService = new SharePointService(props.context, props.listName);
   }
 
   public async componentDidMount(): Promise<void> {
