@@ -13,6 +13,7 @@ import { EventModal } from './EventModal';
 import { EventPopover } from './EventPopover';
 import { TimelineView } from './TimelineView';
 import { ExcelExport } from './ExcelExport';
+import { PrintDialog } from './PrintDialog';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Setup the localizer for react-big-calendar
@@ -36,6 +37,7 @@ interface IBigCalState {
   monthNavigatorExpanded: boolean;
   viewMode: 'calendar' | 'grid' | 'timeline';
   isExportDialogOpen: boolean;
+  isPrintDialogOpen: boolean;
   // Popover state
   popoverEvent?: ICalendarEvent;
   popoverTarget?: HTMLElement;
@@ -67,6 +69,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       monthNavigatorExpanded: true,
       viewMode: 'calendar',
       isExportDialogOpen: false,
+      isPrintDialogOpen: false,
       // Popover state
       popoverEvent: undefined,
       popoverTarget: undefined,
@@ -713,22 +716,75 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     });
   };
 
-  private eventStyleGetter = (event: ICalendarEvent): { className: string } => {
+  private eventStyleGetter = (event: ICalendarEvent): { className: string; style: React.CSSProperties } => {
     // Holiday events get special styling
     if (event.isHoliday) {
       const observedClass = event.isObserved ? 'holiday-observed' : '';
       return {
-        className: `holiday-event ${observedClass}`
+        className: `holiday-event ${observedClass}`,
+        style: {
+          backgroundColor: '#ff9800',
+          color: 'white',
+          border: 'none'
+        }
       };
     }
 
-    // Regular events
+    // For agenda view, use minimal styling to avoid colorful backgrounds
+    if (this.state.currentView === 'agenda') {
+      const statusClass = `status-${event.status!.toLowerCase().replace(/\s+/g, '')}`;
+      const swimlaneClass = `swimlane-${event.swimlane!.toLowerCase().replace(' ', '')}`;
+
+      return {
+        className: `${statusClass} ${swimlaneClass}`,
+        style: {
+          backgroundColor: 'transparent',
+          color: 'inherit',
+          border: 'none'
+        }
+      };
+    }
+
+    // Regular events for other views (month, week, day)
     const statusClass = `status-${event.status!.toLowerCase().replace(/\s+/g, '')}`;
     const swimlaneClass = `swimlane-${event.swimlane!.toLowerCase().replace(' ', '')}`;
 
+    // Get color based on swimlane and status
+    const backgroundColor = this.getEventColor(event.swimlane || 'default', event.status || 'Confirmed');
+
     return {
-      className: `${statusClass} ${swimlaneClass}`
+      className: `${statusClass} ${swimlaneClass}`,
+      style: {
+        backgroundColor,
+        color: 'white',
+        border: 'none'
+      }
     };
+  };
+
+  private getEventColor = (swimlane: string, status: string): string => {
+    // Color mapping based on swimlane
+    const colorMap: { [key: string]: string } = {
+      'Away w/RON': '#e91e63',
+      'Day Trip - NCR': '#2196f3',
+      'Exercise': '#4caf50',
+      'FYSA': '#ff9800',
+      'Out of Office': '#9c27b0',
+      'Training Holiday': '#00bcd4',
+      'VIP/High Priority': '#f44336',
+      'default': '#0078d4'
+    };
+
+    let baseColor = colorMap[swimlane] || colorMap.default;
+
+    // Adjust opacity based on status
+    if (status === 'Tentative') {
+      baseColor = baseColor + '80'; // Add transparency
+    } else if (status === 'Canceled') {
+      baseColor = '#999999';
+    }
+
+    return baseColor;
   };
 
   private getEventCategoryIcon = (eventCategory: string): string => {
@@ -920,6 +976,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     this.setState({ isExportDialogOpen: false });
   };
 
+  private openPrintDialog = (): void => {
+    this.setState({ isPrintDialogOpen: true });
+  };
+
+  private closePrintDialog = (): void => {
+    this.setState({ isPrintDialogOpen: false });
+  };
+
   // Popover event handlers
   private showPopover = (event: ICalendarEvent, target: HTMLElement): void => {
     // Don't show popover for holiday events
@@ -1052,7 +1116,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   public render(): React.ReactElement<IBigCalProps> {
     const { hasTeamsContext } = this.props;
-    const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedEventCategories, selectedStatuses, viewMode, isExportDialogOpen } = this.state;
+    const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedEventCategories, selectedStatuses, viewMode, isExportDialogOpen, isPrintDialogOpen } = this.state;
 
     // Combine regular events with holiday events and apply filters
     const allEventsWithHolidays = this.getAllEventsWithHolidays();
@@ -1105,7 +1169,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 value={searchText}
                 onChange={(_, newValue) => this.handleSearchChange(newValue || '')}
                 styles={{
-                  root: { width: '250px', marginRight: '16px' }
+                  root: {
+                    width: '180px',
+                    minWidth: '120px',
+                    maxWidth: '220px',
+                    flex: '1 1 180px'
+                  }
                 }}
               />
 
@@ -1122,7 +1191,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 onRenderOption={this.renderEventCategoryOption}
                 onRenderTitle={this.renderEventCategoryTitle}
                 styles={{
-                  root: { width: '250px', marginRight: '16px' },
+                  root: {
+                    width: '200px',
+                    minWidth: '150px',
+                    maxWidth: '220px',
+                    flex: '1 1 200px'
+                  },
                   title: { fontSize: '13px' }
                 }}
               />
@@ -1140,7 +1214,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 onRenderOption={this.renderStatusOption}
                 onRenderTitle={this.renderStatusTitle}
                 styles={{
-                  root: { width: '250px', marginRight: '16px' },
+                  root: {
+                    width: '140px',
+                    minWidth: '80px',
+                    maxWidth: '160px',
+                    flex: '1 1 140px'
+                  },
                   title: { fontSize: '13px' }
                 }}
               />
@@ -1217,6 +1296,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 iconProps={{ iconName: 'ExcelDocument' }}
                 title="Export to Excel"
                 onClick={this.openExportDialog}
+                className={styles.navbarButton}
+              />
+              <IconButton
+                iconProps={{ iconName: 'Print' }}
+                title="Print Calendar"
+                onClick={this.openPrintDialog}
                 className={styles.navbarButton}
               />
               <IconButton
@@ -1371,6 +1456,17 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           currentDate={currentDate}
           onDismiss={this.closeExportDialog}
           onImportEvents={this.handleImportEvents}
+        />
+
+        {/* Print Dialog */}
+        <PrintDialog
+          isOpen={isPrintDialogOpen}
+          events={allFilteredEvents}
+          currentDate={currentDate}
+          currentView={currentView}
+          colorPalette={this.props.colorPalette}
+          eventStyleGetter={this.eventStyleGetter}
+          onDismiss={this.closePrintDialog}
         />
 
         {/* Event Popover */}

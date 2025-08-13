@@ -23,6 +23,17 @@ build.addSuppression(`Warning - [sass] The local CSS class 'rbc-off-range-bg' is
 build.addSuppression(`Warning - [sass] The local CSS class 'rbc-today' is not camelCase and will not be type-safe.`);
 build.addSuppression(`Warning - [sass] The local CSS class 'rbc-event' is not camelCase and will not be type-safe.`);
 build.addSuppression(`Warning - [sass] The local CSS class 'rbc-event-content' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-toolbar' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-button-link' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-agenda-view' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-agenda-table' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-agenda-date-cell' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-agenda-time-cell' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'rbc-agenda-event-cell' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'no-print' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'page-break-before' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'page-break-after' is not camelCase and will not be type-safe.`);
+build.addSuppression(`Warning - [sass] The local CSS class 'page-break-inside-avoid' is not camelCase and will not be type-safe.`);
 
 var getTasks = build.rig.getTasks;
 build.rig.getTasks = function () {
