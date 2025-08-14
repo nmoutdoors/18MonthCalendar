@@ -14,6 +14,8 @@ export interface ISharePointEvent {
   Swimlane: string;
   Status: string;
   Description: string;
+  Private: boolean;
+  PrivateEventId?: string;
 }
 
 export interface IListValidationResult {
@@ -91,6 +93,19 @@ export class SharePointService {
         'Canceled'
       ],
       defaultValue: 'Confirmed'
+    },
+    {
+      internalName: 'Private',
+      displayName: 'Private',
+      fieldType: 'Boolean',
+      required: false,
+      defaultValue: 'No'
+    },
+    {
+      internalName: 'PrivateEventId',
+      displayName: 'Private Event ID',
+      fieldType: 'Text',
+      required: false
     }
   ];
 
@@ -100,25 +115,62 @@ export class SharePointService {
     this.listName = listName;
   }
 
+  /**
+   * Check if the list has the Private and PrivateEventId fields
+   */
+  private async checkForPrivateFields(): Promise<boolean> {
+    try {
+      const fields = await this.sp.web.lists.getByTitle(this.listName).fields
+        .select('InternalName')();
+
+      const fieldNames = fields.map(f => f.InternalName);
+      const hasPrivate = fieldNames.indexOf('Private') !== -1;
+      const hasPrivateEventId = fieldNames.indexOf('PrivateEventId') !== -1;
+
+      console.log('SharePointService.checkForPrivateFields:', {
+        totalFields: fieldNames.length,
+        fieldNames: fieldNames,
+        hasPrivate,
+        hasPrivateEventId,
+        lookingFor: ['Private', 'PrivateEventId']
+      });
+
+      return hasPrivate && hasPrivateEventId;
+    } catch (error: unknown) {
+      console.warn('Could not check for private fields:', error);
+      return false;
+    }
+  }
+
   public async getEvents(): Promise<ISharePointEvent[]> {
     try {
+      // Check if the list has the new Private fields
+      const hasPrivateFields = await this.checkForPrivateFields();
+
       // Use PnP.js to get items from the Events list
       // Increase limit to handle large datasets (default is 100)
+      let selectFields = 'Id,Title,Start,End,Swimlane,Status,Description';
+      if (hasPrivateFields) {
+        selectFields += ',Private,PrivateEventId';
+      }
+
       const items = await this.sp.web.lists.getByTitle(this.listName).items
-        .select('Id', 'Title', 'Start', 'End', 'Swimlane', 'Status', 'Description')
+        .select(selectFields)
         .orderBy('Start', true)
         .top(5000)(); // Increase limit to 5000 events
 
       console.log(`SharePoint query returned ${items.length} events`);
 
-      return items.map((item: {Id: number; Title: string; Start: string; End: string; Swimlane: string; Status: string; Description: string}) => ({
+      return items.map((item: {Id: number; Title: string; Start: string; End: string; Swimlane: string; Status: string; Description: string; Private?: boolean; PrivateEventId?: string}) => ({
         Id: item.Id,
         Title: item.Title,
         Start: item.Start,
         End: item.End,
         Swimlane: item.Swimlane,
         Status: item.Status,
-        Description: item.Description || ''
+        Description: item.Description || '',
+        Private: item.Private || false,
+        PrivateEventId: item.PrivateEventId
       }));
 
     } catch (error: unknown) {
@@ -134,16 +186,54 @@ export class SharePointService {
     }
   }
 
-  public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', description: string = ''): Promise<ISharePointEvent> {
+
+
+  public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', description: string = '', isPrivate: boolean = false, privateEventId?: string): Promise<ISharePointEvent> {
     try {
+      console.log('SharePointService.createEvent called with:', {
+        title,
+        isPrivate,
+        privateEventId
+      });
+
+      // Check if the list has the new Private fields
+      const hasPrivateFields = await this.checkForPrivateFields();
+      console.log('SharePointService: hasPrivateFields =', hasPrivateFields);
+
       // Use PnP.js to create a new item in the Events list
-      const result = await this.sp.web.lists.getByTitle(this.listName).items.add({
+      const itemData: Record<string, unknown> = {
         Title: title,
         Start: start,
         End: end,
         Swimlane: swimlane,
         Status: status,
         Description: description
+      };
+
+      // Only add Private fields if they exist in the list
+      if (hasPrivateFields) {
+        itemData.Private = isPrivate;
+        if (privateEventId) {
+          itemData.PrivateEventId = privateEventId;
+        }
+        console.log('SharePointService: Added Private fields to itemData:', {
+          Private: itemData.Private,
+          PrivateEventId: itemData.PrivateEventId
+        });
+      } else if (isPrivate) {
+        // If Private fields don't exist but user wants private event, log warning
+        console.warn('Cannot create private event - Private fields do not exist in SharePoint list');
+      }
+
+      const result = await this.sp.web.lists.getByTitle(this.listName).items.add(itemData);
+
+      // Debug logging
+      console.log('SharePointService.createEvent - Created event:', {
+        title: result.Title,
+        isPrivate: isPrivate,
+        hasPrivateFields: hasPrivateFields,
+        resultPrivate: result.Private,
+        privateEventId: result.PrivateEventId
       });
 
       return {
@@ -153,7 +243,9 @@ export class SharePointService {
         End: result.End,
         Swimlane: result.Swimlane,
         Status: result.Status,
-        Description: result.Description || ''
+        Description: result.Description || '',
+        Private: result.Private || false,
+        PrivateEventId: result.PrivateEventId || undefined
       };
 
     } catch (error: unknown) {
@@ -163,8 +255,11 @@ export class SharePointService {
     }
   }
 
-  public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string, description?: string): Promise<void> {
+  public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string, description?: string, isPrivate?: boolean, privateEventId?: string): Promise<void> {
     try {
+      // Check if the list has the new Private fields
+      const hasPrivateFields = await this.checkForPrivateFields();
+
       const updateData: Record<string, unknown> = {
         Title: title,
         Start: start,
@@ -174,6 +269,12 @@ export class SharePointService {
       if (swimlane) updateData.Swimlane = swimlane;
       if (status) updateData.Status = status;
       if (description !== undefined) updateData.Description = description;
+
+      // Only add Private fields if they exist in the list
+      if (hasPrivateFields) {
+        if (isPrivate !== undefined) updateData.Private = isPrivate;
+        if (privateEventId !== undefined) updateData.PrivateEventId = privateEventId;
+      }
 
       await this.sp.web.lists.getByTitle(this.listName).items.getById(id).update(updateData);
 
@@ -198,6 +299,7 @@ export class SharePointService {
   public async validateList(listName?: string): Promise<IListValidationResult> {
     const targetListName = listName || this.listName;
     const requiredFields = ['Start', 'End', 'Description', 'Swimlane', 'Status'];
+    const privateFields = ['Private', 'PrivateEventId']; // Optional fields for private events
 
     try {
       // Check if list exists
@@ -219,15 +321,33 @@ export class SharePointService {
 
       const fieldNames = fields.map(field => field.InternalName);
       const missingFields = requiredFields.filter(field => fieldNames.indexOf(field) === -1);
+      const missingPrivateFields = privateFields.filter(field => fieldNames.indexOf(field) === -1);
 
       const isValid = missingFields.length === 0;
+      const hasPrivateSupport = missingPrivateFields.length === 0;
+
+      let errorMessage = undefined;
+      if (!isValid) {
+        errorMessage = `List '${targetListName}' is missing required fields: ${missingFields.join(', ')}`;
+      }
+
+      if (!hasPrivateSupport) {
+        const privateMessage = `\n\nOptional: For private events support, add these fields:\n` +
+          missingPrivateFields.map(field => {
+            if (field === 'Private') return '• Private (Yes/No field)';
+            if (field === 'PrivateEventId') return '• PrivateEventId (Single line of text field)';
+            return `• ${field}`;
+          }).join('\n') +
+          `\n\nWithout these fields, all events will be public only.`;
+
+        errorMessage = (errorMessage || '') + privateMessage;
+      }
 
       return {
         isValid,
         listExists: true,
         missingFields,
-        errorMessage: isValid ? undefined :
-          `List '${targetListName}' is missing required fields: ${missingFields.join(', ')}`,
+        errorMessage,
         canCreate: false // List exists, so we can't create it
       };
 
@@ -298,6 +418,19 @@ export class SharePointService {
               Required: fieldDef.required || false
             });
             console.log(`Added multiline text field: ${fieldDef.internalName}`);
+          } else if (fieldDef.fieldType === 'Boolean') {
+            // Create Yes/No field
+            await createdList.fields.addBoolean(fieldDef.internalName, {
+              Required: fieldDef.required || false
+            });
+            console.log(`Added boolean field: ${fieldDef.internalName}`);
+          } else if (fieldDef.fieldType === 'Text') {
+            // Create single line of text field
+            await createdList.fields.addText(fieldDef.internalName, {
+              MaxLength: 255,
+              Required: fieldDef.required || false
+            });
+            console.log(`Added text field: ${fieldDef.internalName}`);
           }
         } catch (fieldError) {
           console.warn(`Warning: Could not add field ${fieldDef.internalName}:`, fieldError);

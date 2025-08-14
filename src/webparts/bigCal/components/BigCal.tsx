@@ -5,8 +5,9 @@ import { IconButton, IIconProps, Spinner, SpinnerSize, MessageBar, MessageBarTyp
 import styles from './BigCal.module.scss';
 import type { IBigCalProps } from './IBigCalProps';
 import type { ICalendarEvent } from './ICalendarEvent';
-import { convertSharePointEventToCalendarEvent } from './ICalendarEvent';
+
 import { SharePointService } from '../services/SharePointService';
+import { HybridEventsService } from '../services/HybridEventsService';
 import { ColorPaletteService } from '../services/ColorPaletteService';
 import { HolidayService } from '../services/HolidayService';
 import { EventModal } from './EventModal';
@@ -42,11 +43,14 @@ interface IBigCalState {
   popoverEvent?: ICalendarEvent;
   popoverTarget?: HTMLElement;
   isPopoverVisible: boolean;
+  // Testing toggle for emulating non-privileged user
+  emulateNonPrivilegedUser: boolean;
 }
 
 export default class BigCal extends React.Component<IBigCalProps, IBigCalState> {
   private webPartElement: HTMLElement | null = null;
   private sharePointService: SharePointService;
+  private hybridEventsService: HybridEventsService;
   private popoverTimeout: number | null = null;
 
   constructor(props: IBigCalProps) {
@@ -64,7 +68,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       selectedEvent: undefined,
       selectedDate: undefined,
       searchText: '',
-      selectedEventCategories: new Set(['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority']), // All selected by default
+      selectedEventCategories: new Set(['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority', 'Private Events']), // All selected by default
       selectedStatuses: new Set(['Confirmed', 'Tentative', 'Canceled']), // All selected by default
       monthNavigatorExpanded: true,
       viewMode: 'calendar',
@@ -73,10 +77,13 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       // Popover state
       popoverEvent: undefined,
       popoverTarget: undefined,
+      // Testing toggle for emulating non-privileged user
+      emulateNonPrivilegedUser: false,
       isPopoverVisible: false
     };
 
     this.sharePointService = new SharePointService(props.context, props.listName);
+    this.hybridEventsService = new HybridEventsService(props.context, props.listName);
   }
 
   public async componentDidMount(): Promise<void> {
@@ -132,8 +139,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     try {
       this.setState({ isLoading: true, error: undefined });
 
-      const sharePointEvents = await this.sharePointService.getEvents();
-      const calendarEvents = sharePointEvents.map(convertSharePointEventToCalendarEvent);
+      // Use HybridEventsService to get all events (public + private based on permissions)
+      // Pass the emulation flag for testing
+      const calendarEvents = await this.hybridEventsService.getAllEvents(this.state.emulateNonPrivilegedUser);
 
       this.setState({
         events: calendarEvents,
@@ -230,8 +238,17 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       };
     });
 
+    // Add Private Events option
+    const privateCount = filteredEvents.filter(e => !e.isHoliday && e.isPrivate).length;
+    options.push({
+      key: 'Private Events',
+      text: `Private Events (${privateCount})`,
+      data: { icon: '🔒', count: privateCount }
+    });
+
     // Add Select All/Unselect All toggle option
-    const allSelected = categories.every(cat => selectedEventCategories.has(cat));
+    const allCategories = [...categories, 'Private Events'];
+    const allSelected = allCategories.every(cat => selectedEventCategories.has(cat));
     options.push({
       key: '__toggle_all_categories__',
       text: allSelected ? 'Unselect All' : 'Select All',
@@ -292,6 +309,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         .rbc-event.status-canceled {
           background-color: ${palette.offTrack} !important;
           border-color: ${ColorPaletteService.getBorderColor('Canceled', this.props.colorPalette)} !important;
+        }
+
+        .rbc-event.private-event {
+          background-color: #8a8886 !important;
+          border-color: #605e5c !important;
+          color: white !important;
         }
 
         .vis-item.status-confirmed .vis-dot {
@@ -371,7 +394,17 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       // Fix: When no categories are selected, show no events (not all events)
       // Fix: When no statuses are selected, show no events (not all events)
       // This matches user expectation that "Unselect All" hides everything
-      const matchesCategory = selectedEventCategories.size > 0 && selectedEventCategories.has(event.swimlane!);
+
+      // Check if event matches category (including Private Events)
+      let matchesCategory = false;
+      if (selectedEventCategories.size > 0) {
+        if (event.isPrivate && selectedEventCategories.has('Private Events')) {
+          matchesCategory = true;
+        } else if (!event.isPrivate && selectedEventCategories.has(event.swimlane!)) {
+          matchesCategory = true;
+        }
+      }
+
       const matchesStatus = selectedStatuses.size > 0 && selectedStatuses.has(event.status!);
       const matchesSearch = !searchText || event.title.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
 
@@ -383,7 +416,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (option) {
       // Handle Select All/Unselect All toggle
       if (option.key === '__toggle_all_categories__') {
-        const categories = ['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority'];
+        const categories = ['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority', 'Private Events'];
         const allSelected = option.data?.allSelected;
         const newSelected = allSelected ? new Set<string>() : new Set<string>(categories);
 
@@ -730,6 +763,21 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       };
     }
 
+    // Private events always get grey styling regardless of status
+    if (event.isPrivate) {
+      const statusClass = `status-${event.status!.toLowerCase().replace(/\s+/g, '')}`;
+      const swimlaneClass = `swimlane-${event.swimlane!.toLowerCase().replace(' ', '')}`;
+
+      return {
+        className: `private-event ${statusClass} ${swimlaneClass}`,
+        style: {
+          backgroundColor: '#8a8886', // Neutral grey color
+          color: 'white',
+          border: 'none'
+        }
+      };
+    }
+
     // For agenda view, use minimal styling to avoid colorful backgrounds
     if (this.state.currentView === 'agenda') {
       const statusClass = `status-${event.status!.toLowerCase().replace(/\s+/g, '')}`;
@@ -815,17 +863,20 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     // Holiday events get special display
     if (event.isHoliday) {
       return (
-        <div className={styles.customEvent}>
-          <span
-            className={styles.eventIcon}
-            style={{ fontSize: '14px', marginRight: '6px' }}
-          >
-            🏛️
-          </span>
-          <span className={styles.eventTitle}>
-            {event.title}
-            {event.isObserved && ' (observed)'}
-          </span>
+        <div className={styles.eventWrapper}>
+          <div className={styles.eventIconContainer}>
+            <span className={styles.eventIcon}>
+              🏛️
+            </span>
+          </div>
+          <div className={styles.customEvent}>
+            <div className={styles.eventContent}>
+              <span className={styles.eventTitle}>
+                {event.title}
+                {event.isObserved && ' (observed)'}
+              </span>
+            </div>
+          </div>
         </div>
       );
     }
@@ -835,7 +886,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     return (
       <div
-        className={styles.customEvent}
+        className={styles.eventWrapper}
         onMouseEnter={(e) => {
           // Clear any existing timeout and show immediately for better responsiveness
           if (this.popoverTimeout) {
@@ -848,13 +899,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           this.hidePopover();
         }}
       >
-        <span
-          className={styles.eventIcon}
-          style={{ fontSize: '14px', marginRight: '6px' }}
-        >
-          {iconEmoji}
-        </span>
-        <span className={styles.eventTitle}>{event.title}</span>
+        <div className={styles.eventIconContainer}>
+          <span className={styles.eventIcon}>
+            {iconEmoji}
+          </span>
+        </div>
+        <div className={styles.customEvent}>
+          <div className={styles.eventContent}>
+            <span className={styles.eventTitle}>{event.title}</span>
+          </div>
+        </div>
       </div>
     );
   };
@@ -886,17 +940,20 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     // Holiday events get special display
     if (event.isHoliday) {
       return (
-        <div className={`${styles.customEvent} ${styles.monthEventItem}`}>
-          <span
-            className={styles.eventIcon}
-            style={{ fontSize: '12px', marginRight: '4px' }}
-          >
-            🏛️
-          </span>
-          <span className={styles.eventTitle}>
-            {event.title}
-            {event.isObserved && ' (obs)'}
-          </span>
+        <div className={`${styles.eventWrapper} ${styles.monthEventItem}`}>
+          <div className={styles.eventIconContainer}>
+            <span className={styles.eventIcon}>
+              🏛️
+            </span>
+          </div>
+          <div className={styles.customEvent}>
+            <div className={styles.eventContent}>
+              <span className={styles.eventTitle}>
+                {event.title}
+                {event.isObserved && ' (obs)'}
+              </span>
+            </div>
+          </div>
         </div>
       );
     }
@@ -906,7 +963,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     return (
       <div
-        className={`${styles.customEvent} ${styles.monthEventItem}`}
+        className={`${styles.eventWrapper} ${styles.monthEventItem}`}
         onMouseEnter={(e) => {
           // Clear any existing timeout and show immediately for better responsiveness
           if (this.popoverTimeout) {
@@ -919,13 +976,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           this.hidePopover();
         }}
       >
-        <span
-          className={styles.eventIcon}
-          style={{ fontSize: '12px', marginRight: '4px' }}
-        >
-          {iconEmoji}
-        </span>
-        <span className={styles.eventTitle}>{event.title}</span>
+        <div className={styles.eventIconContainer}>
+          <span className={styles.eventIcon}>
+            {iconEmoji}
+          </span>
+        </div>
+        <div className={styles.customEvent}>
+          <div className={styles.eventContent}>
+            <span className={styles.eventTitle}>{event.title}</span>
+          </div>
+        </div>
       </div>
     );
   };
@@ -935,10 +995,20 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       ? (event.title.length > 6 ? `${event.title.substring(0, 6)}...` : event.title)
       : (event.title.length > 8 ? `${event.title.substring(0, 8)}...` : event.title);
 
+    // Determine CSS classes based on event type
+    let eventClasses = styles.miniEvent;
+    if (event.isHoliday) {
+      eventClasses += ` ${styles.miniHolidayEvent}`;
+    } else if (event.isPrivate) {
+      eventClasses += ` ${styles.miniPrivateEvent}`;
+    }
+
     return (
-      <div className={`${styles.miniEvent} ${event.isHoliday ? styles.miniHolidayEvent : ''}`} title={event.title}>
+      <div className={eventClasses} title={event.title}>
         <span className={styles.miniEventText}>
-          {event.isHoliday && '🏛️ '}{displayTitle}
+          {event.isHoliday && '🏛️ '}
+          {event.isPrivate && '🔒 '}
+          {displayTitle}
         </span>
       </div>
     );
@@ -982,6 +1052,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private closePrintDialog = (): void => {
     this.setState({ isPrintDialogOpen: false });
+  };
+
+  // Testing method - remove after testing
+  private togglePrivilegeEmulation = (): void => {
+    this.setState(prevState => ({
+      emulateNonPrivilegedUser: !prevState.emulateNonPrivilegedUser
+    }), () => {
+      // Reload events to apply the privilege emulation
+      this.loadEvents().catch(console.error);
+    });
   };
 
   // Popover event handlers
@@ -1069,27 +1149,48 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   private handleSaveEvent = async (eventData: Partial<ICalendarEvent>): Promise<void> => {
     try {
       if (eventData.id) {
-        // Update existing event
-        await this.sharePointService.updateEvent(
+        // Update existing event using HybridEventsService
+        const result = await this.hybridEventsService.updateEvent(
           eventData.id as number,
           eventData.title!,
           eventData.start!,
           eventData.end!,
           eventData.swimlane!,
           eventData.status!,
-          eventData.description
+          eventData.description || '',
+          eventData.isPrivate || false
         );
+
+        if (!result.success) {
+          throw new Error(result.errorMessage || 'Failed to update event');
+        }
+
+        if (result.warning) {
+          console.warn('Event update warning:', result.warning);
+        }
+
         console.log('Event updated successfully');
       } else {
-        // Create new event
-        await this.sharePointService.createEvent(
+        // Create new event using HybridEventsService
+        const result = await this.hybridEventsService.createEvent(
           eventData.title!,
           eventData.start!,
           eventData.end!,
           eventData.swimlane!,
           eventData.status!,
-          eventData.description || ''
+          eventData.description || '',
+          eventData.isPrivate || false
         );
+
+        if (!result.success) {
+          throw new Error(result.errorMessage || 'Failed to create event');
+        }
+
+        if (result.warning) {
+          console.warn('Event creation warning:', result.warning);
+          // You could show this warning to the user if desired
+        }
+
         console.log('Event created successfully');
       }
 
@@ -1215,10 +1316,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 onRenderTitle={this.renderStatusTitle}
                 styles={{
                   root: {
-                    width: '140px',
-                    minWidth: '80px',
-                    maxWidth: '160px',
-                    flex: '1 1 140px'
+                    width: '170px',
+                    minWidth: '120px',
+                    maxWidth: '190px',
+                    flex: '1 1 170px'
                   },
                   title: { fontSize: '13px' }
                 }}
@@ -1303,6 +1404,19 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 title="Print Calendar"
                 onClick={this.openPrintDialog}
                 className={styles.navbarButton}
+              />
+              {/* Testing Toggle - Remove after testing */}
+              <IconButton
+                iconProps={{ iconName: this.state.emulateNonPrivilegedUser ? 'RedEye' : 'View' }}
+                title={this.state.emulateNonPrivilegedUser ? "Testing: Non-Privileged User Mode" : "Testing: Normal User Mode"}
+                onClick={this.togglePrivilegeEmulation}
+                className={styles.navbarButton}
+                styles={{
+                  root: {
+                    backgroundColor: this.state.emulateNonPrivilegedUser ? '#d13438' : 'transparent',
+                    color: this.state.emulateNonPrivilegedUser ? 'white' : 'inherit'
+                  }
+                }}
               />
               <IconButton
                 iconProps={propertiesIcon}
@@ -1407,8 +1521,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                   }}
                   popup
                   onSelectEvent={(event) => {
-                    // Don't allow editing holiday events
-                    if (!event.isHoliday) {
+                    // Don't allow editing holiday events or "Unavailable" private events
+                    if (!event.isHoliday && !(event.isPrivate && event.title === 'Unavailable')) {
                       this.openEditModal(event);
                     }
                   }}

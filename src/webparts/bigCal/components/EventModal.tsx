@@ -10,7 +10,8 @@ import {
   IDropdownOption,
   Text,
   IconButton,
-  IIconProps
+  IIconProps,
+  Checkbox
 } from '@fluentui/react';
 import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
 import { ColorPaletteService } from '../services/ColorPaletteService';
@@ -37,6 +38,7 @@ interface IEventModalState {
   endAmPm: 'AM' | 'PM';
   swimlane: SwimlaneType;
   status: StatusType;
+  isPrivate: boolean;
   isSaving: boolean;
   isDeleting: boolean;
 }
@@ -80,6 +82,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       endAmPm: endTimeData.amPm,
       swimlane: props.event?.swimlane || 'FYSA',
       status: props.event?.status || 'Confirmed',
+      isPrivate: props.event?.isPrivate || false,
       isSaving: false,
       isDeleting: false
     };
@@ -109,6 +112,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           endAmPm: endTimeData.amPm,
           swimlane: 'FYSA',
           status: 'Confirmed',
+          isPrivate: false,
           isSaving: false,
           isDeleting: false
         });
@@ -128,6 +132,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           endAmPm: endTimeData.amPm,
           swimlane: this.props.event.swimlane || 'FYSA',
           status: this.props.event.status || 'Confirmed',
+          isPrivate: this.props.event.isPrivate || false,
           isSaving: false,
           isDeleting: false
         });
@@ -252,7 +257,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
 
   private handleSave = async (): Promise<void> => {
-    const { title, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status } = this.state;
+    const { title, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, isPrivate } = this.state;
 
     if (!title.trim()) {
       alert('Please enter a title for the event.');
@@ -272,7 +277,8 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         start,
         end,
         swimlane,
-        status
+        status,
+        isPrivate
       };
 
       await this.props.onSave(eventData);
@@ -309,7 +315,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
   public render(): React.ReactElement<IEventModalProps> {
     const { isOpen, event, onClose } = this.props;
-    const { title, description, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, isSaving, isDeleting } = this.state;
+    const { title, description, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, isPrivate, isSaving, isDeleting } = this.state;
     
     const closeIcon: IIconProps = { iconName: 'Cancel' };
     const isEditMode = !!event;
@@ -343,6 +349,31 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
         <div className={styles.modalBody}>
           <Stack tokens={{ childrenGap: 16 }}>
+            {/* Private Event Checkbox - Top Center */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <Checkbox
+                label="Private Event"
+                checked={isPrivate}
+                onChange={(_, checked) => this.setState({ isPrivate: checked || false })}
+                styles={{
+                  root: {
+                    backgroundColor: isPrivate ? '#fff4e6' : 'transparent',
+                    padding: '8px 16px',
+                    borderRadius: '4px',
+                    border: isPrivate ? '1px solid #d83b01' : '1px solid transparent'
+                  },
+                  text: {
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: isPrivate ? '#d83b01' : '#323130'
+                  },
+                  checkbox: {
+                    borderColor: isPrivate ? '#d83b01' : '#605e5c'
+                  }
+                }}
+              />
+            </div>
+
             <TextField
               label="Event Title"
               value={title}

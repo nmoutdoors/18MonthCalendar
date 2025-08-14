@@ -14,6 +14,8 @@ export interface ICalendarEvent {
   description?: string;
   isHoliday?: boolean;
   isObserved?: boolean;
+  isPrivate?: boolean;
+  privateEventId?: string; // GUID linking to PrivateEvents list
 }
 
 // Helper function to convert SharePoint event to calendar event

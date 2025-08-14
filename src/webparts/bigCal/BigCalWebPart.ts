@@ -9,6 +9,7 @@ import {
   IPropertyPaneDropdownOption,
   PropertyPaneButton,
   PropertyPaneButtonType,
+  PropertyPaneLabel,
   IPropertyPaneField
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
@@ -32,7 +33,9 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
   private _isDarkTheme: boolean = false;
   private _sharePointService: SharePointService | undefined;
   private _listValidationResult: IListValidationResult | undefined;
+  private _privateListValidationResult: IListValidationResult | undefined;
   private _isCreatingList: boolean = false;
+  private _isCreatingPrivateList: boolean = false;
 
   // Color palette options
   private getColorPaletteOptions(): IPropertyPaneDropdownOption[] {
@@ -72,7 +75,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     ReactDom.render(element, this.domElement);
   }
 
-  protected onInit(): Promise<void> {
+  protected async onInit(): Promise<void> {
     // Set default value for startInFullscreen if not already set (ProgramTracker pattern)
     if (this.properties.startInFullscreen === undefined) {
       this.properties.startInFullscreen = true;  // Default to fullscreen
@@ -88,8 +91,12 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       this.properties.listName = 'Events';  // Default to Events list
     }
 
-    // Initialize SharePoint service
+    // Initialize SharePoint services
     this._sharePointService = new SharePointService(this.context, this.properties.listName);
+
+    // Validate lists on initialization
+    this._listValidationResult = await this._validateListName(this.properties.listName);
+    this._privateListValidationResult = await this._validatePrivateList();
 
     return Promise.resolve();
   }
@@ -136,6 +143,33 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     }
   }
 
+  private async _validatePrivateList(): Promise<IListValidationResult> {
+    if (!this._sharePointService) {
+      return {
+        isValid: false,
+        listExists: false,
+        missingFields: [],
+        errorMessage: 'SharePoint service not initialized',
+        canCreate: false
+      };
+    }
+
+    try {
+      // Check if PrivateEvents list exists and has required fields
+      const result = await this._sharePointService.validateList('PrivateEvents');
+      return result;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      return {
+        isValid: false,
+        listExists: false,
+        missingFields: [],
+        errorMessage: `Failed to validate PrivateEvents list: ${errorMessage}`,
+        canCreate: true
+      };
+    }
+  }
+
   private async _createList(): Promise<void> {
     if (!this._sharePointService || !this.properties.listName || this._isCreatingList) {
       return;
@@ -174,6 +208,45 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       };
     } finally {
       this._isCreatingList = false;
+      this.context.propertyPane.refresh();
+    }
+  }
+
+  private async _createPrivateList(): Promise<void> {
+    if (!this._sharePointService || this._isCreatingPrivateList) {
+      return;
+    }
+
+    this._isCreatingPrivateList = true;
+    this.context.propertyPane.refresh();
+
+    try {
+      const result: IListCreationResult = await this._sharePointService.createList('PrivateEvents');
+
+      if (result.success) {
+        // Re-validate the private list to update the UI
+        this._privateListValidationResult = await this._validatePrivateList();
+      } else {
+        // Update validation result with creation error
+        this._privateListValidationResult = {
+          isValid: false,
+          listExists: false,
+          missingFields: [],
+          errorMessage: result.errorMessage,
+          canCreate: true
+        };
+      }
+    } catch (error) {
+      console.error('Error creating private list:', error);
+      this._privateListValidationResult = {
+        isValid: false,
+        listExists: false,
+        missingFields: [],
+        errorMessage: `Failed to create PrivateEvents list: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        canCreate: true
+      };
+    } finally {
+      this._isCreatingPrivateList = false;
       this.context.propertyPane.refresh();
     }
   }
@@ -230,6 +303,36 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     return undefined;
   }
 
+  private _getPrivateListDescription(): string {
+    if (this._isCreatingPrivateList) {
+      return '🔄 Creating PrivateEvents list with required fields...';
+    }
+
+    if (!this._privateListValidationResult) {
+      return 'Checking PrivateEvents list...';
+    }
+
+    if (this._privateListValidationResult.isValid) {
+      return '✅ PrivateEvents list exists with all required fields - private events enabled';
+    }
+
+    if (!this._privateListValidationResult.listExists && this._privateListValidationResult.canCreate) {
+      return '❌ PrivateEvents list does not exist - use the "Create PrivateEvents List" button below';
+    }
+
+    if (!this._privateListValidationResult.listExists) {
+      return '❌ PrivateEvents list does not exist - private events will not work';
+    }
+
+    if (this._privateListValidationResult.missingFields.length > 0) {
+      return `⚠️ PrivateEvents list exists but missing required fields: ${this._privateListValidationResult.missingFields.join(', ')}`;
+    }
+
+    return '❌ PrivateEvents list validation failed';
+  }
+
+
+
   private _getPropertyPaneFields(): IPropertyPaneField<unknown>[] {
     const fields = [
       PropertyPaneTextField('description', {
@@ -250,6 +353,12 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         description: this._getListNameDescription(),
         placeholder: 'Events',
         errorMessage: this._getListNameErrorMessage()
+      }),
+      PropertyPaneLabel('privateListStatus', {
+        text: 'Private Events Configuration'
+      }),
+      PropertyPaneLabel('privateListDescription', {
+        text: this._getPrivateListDescription()
       })
     ];
 
@@ -264,6 +373,21 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
             this._createList();
           },
           disabled: this._isCreatingList
+        })
+      );
+    }
+
+    // Add create private list button if validation shows we can create it
+    if (this._privateListValidationResult && this._privateListValidationResult.canCreate && !this._privateListValidationResult.isValid) {
+      fields.push(
+        PropertyPaneButton('createPrivateList', {
+          text: this._isCreatingPrivateList ? 'Creating PrivateEvents List...' : 'Create PrivateEvents List',
+          buttonType: PropertyPaneButtonType.Normal,
+          onClick: () => {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            this._createPrivateList();
+          },
+          disabled: this._isCreatingPrivateList
         })
       );
     }
