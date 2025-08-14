@@ -10,5 +10,9 @@ export interface IBigCalProps {
   context: WebPartContext;
   colorPalette: string;
   listName: string;
+  showImpersonateButton: boolean;
+  showPalettePicker: boolean;
+  showIconSelector: boolean;
   onConfigureProperties?: () => void;
+  onPaletteChange?: (palette: string) => void;
 }

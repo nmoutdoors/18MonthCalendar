@@ -180,6 +180,32 @@
   }
 }
 
+.navbarCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 0 16px;
+
+  @media (max-width: 1300px) {
+    margin: 0 12px;
+  }
+
+  @media (max-width: 1100px) {
+    margin: 0 8px;
+  }
+
+  @media (max-width: 900px) {
+    margin: 0 4px;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    margin: 4px 0;
+    order: 3; // Place after left and right sections on mobile
+  }
+}
+
 .navbarRight {
   display: flex;
   align-items: center;
@@ -714,6 +740,22 @@
     background-color: var(--themeDark, #106ebe);
   }
 
+  // Allow icons to show outside calendar cells
+  .rbc-month-view .rbc-date-cell,
+  .rbc-month-view .rbc-day-bg {
+    overflow: visible !important;
+  }
+
+  // Ensure event containers allow overflow for icons
+  .rbc-event-content {
+    overflow: visible !important;
+  }
+
+  // Add left padding to calendar cells to accommodate icons
+  .rbc-month-view .rbc-date-cell {
+    padding-left: 35px !important;
+  }
+
   .rbc-slot-selection {
     background-color: "[theme:themeLight, default: #c7e0f4]";
     background-color: var(--themeLight, #c7e0f4);
@@ -740,58 +782,26 @@
 
 }
 
-// Custom event component styling
-// Wrapper that contains both icon container and event
-.eventWrapper {
-  display: flex;
-  align-items: stretch;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  overflow: visible; // Allow icon container to show outside
-  position: relative;
-}
-
-// Separate white icon container - same height as event
-.eventIconContainer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  min-width: 28px;
-  height: 100%; // Same height as the event
-  background-color: white;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  flex-shrink: 0;
-  z-index: 10;
-  margin-right: 3px; // Gap between icon and event
-}
-
-// The colored event content area
+// Custom event component styling - simple nested approach
 .customEvent {
   display: flex;
-  align-items: stretch;
-  flex: 1;
-  height: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-  border-radius: 3px; // Rounded corners on all sides
-}
-
-.eventContent {
-  display: flex;
   align-items: center;
-  flex: 1;
-  padding: 2px 6px;
+  gap: 2px; // Minimal gap for very tight spacing
+  width: 100%;
+  height: 100%;
+  padding: 1px 3px; // Minimal padding to maximize space efficiency
+  box-sizing: border-box;
   overflow: hidden;
 }
 
 .eventIcon {
-  font-size: 16px; // Larger icons to take advantage of bigger container
-  line-height: 1;
-  opacity: 1; // Full opacity since we have white background
+  font-size: 12px; // Smaller base font size
+  flex-shrink: 0;
+  opacity: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4)); // Subtle shadow for definition
+  transform: scale(1.2); // More modest 20% scaling
+  transform-origin: center; // Scale from center
+  margin-right: 0; // No extra margin for maximum space efficiency
 }
 
 .eventTitle {
@@ -801,6 +811,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  font-weight: 400; // Normal weight for white text on colored backgrounds
 }
 
 // Month date header with +New button

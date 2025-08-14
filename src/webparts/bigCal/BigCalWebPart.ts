@@ -20,12 +20,16 @@ import * as strings from 'BigCalWebPartStrings';
 import BigCal from './components/BigCal';
 import { IBigCalProps } from './components/IBigCalProps';
 import { SharePointService, IListValidationResult, IListCreationResult } from './services/SharePointService';
+import { Logger } from './services/LoggingService';
 
 export interface IBigCalWebPartProps {
   description: string;
   startInFullscreen: boolean;
   colorPalette: string;
   listName: string;
+  showImpersonateButton: boolean;
+  showPalettePicker: boolean;
+  showIconSelector: boolean;
 }
 
 export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartProps> {
@@ -66,8 +70,15 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         context: this.context,
         colorPalette: this.properties.colorPalette || 'disa2Deep',
         listName: this.properties.listName || 'Events',
+        showImpersonateButton: this.properties.showImpersonateButton || false, // Default to false
+        showPalettePicker: this.properties.showPalettePicker || false, // Default to false
+        showIconSelector: this.properties.showIconSelector || false, // Default to false
         onConfigureProperties: () => {
           this.context.propertyPane.open();
+        },
+        onPaletteChange: (palette: string) => {
+          this.properties.colorPalette = palette;
+          this.render(); // Re-render with new palette
         }
       }
     );
@@ -91,6 +102,21 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       this.properties.listName = 'Events';  // Default to Events list
     }
 
+    // Set default value for showImpersonateButton if not already set
+    if (this.properties.showImpersonateButton === undefined) {
+      this.properties.showImpersonateButton = false;  // Default to hidden
+    }
+
+    // Set default value for showPalettePicker if not already set
+    if (this.properties.showPalettePicker === undefined) {
+      this.properties.showPalettePicker = false;  // Default to hidden
+    }
+
+    // Set default value for showIconSelector if not already set
+    if (this.properties.showIconSelector === undefined) {
+      this.properties.showIconSelector = false;  // Default to hidden
+    }
+
     // Initialize SharePoint services
     this._sharePointService = new SharePointService(this.context, this.properties.listName);
 
@@ -110,7 +136,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
              this.displayMode === DisplayMode.Edit;
     } catch (error) {
       // Fallback: if we can't determine permissions, assume no admin rights
-      console.warn('Could not determine user permissions:', error);
+      Logger.warn('Could not determine user permissions', error);
       return false;
     }
   }
@@ -125,7 +151,8 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       };
     }
 
-    return await this._sharePointService.validateList(listName);
+    // Require private fields for full functionality
+    return await this._sharePointService.validateList(listName, true);
   }
 
   protected async onPropertyPaneFieldChanged(propertyPath: string, oldValue: unknown, newValue: unknown): Promise<void> {
@@ -156,7 +183,8 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
 
     try {
       // Check if PrivateEvents list exists and has required fields
-      const result = await this._sharePointService.validateList('PrivateEvents');
+      // PrivateEvents list does NOT need Private/PrivateEventId fields - those are in the main Events list
+      const result = await this._sharePointService.validateList('PrivateEvents', false);
       return result;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -284,7 +312,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
 
     if (this._listValidationResult) {
       if (this._listValidationResult.isValid) {
-        return '✅ List validated successfully - contains all required fields (Swimlane and Status)';
+        return '✅ List validated successfully - contains all required fields (Swimlane, Status, Private, PrivateEventId)';
       } else if (!this._listValidationResult.listExists && this._listValidationResult.canCreate) {
         return '❌ List does not exist - use the "Create List" button below to create it automatically';
       } else if (!this._listValidationResult.listExists) {
@@ -293,7 +321,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         return `⚠️ List exists but missing required fields: ${this._listValidationResult.missingFields.join(', ')}`;
       }
     }
-    return 'Name of the SharePoint list containing events (must have Swimlane and Status fields)';
+    return 'Name of the SharePoint list containing events (must have Swimlane, Status, Private, and PrivateEventId fields)';
   }
 
   private _getListNameErrorMessage(): string | undefined {
@@ -301,6 +329,27 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       return this._listValidationResult.errorMessage;
     }
     return undefined;
+  }
+
+  private _getPrivateFieldsStatus(): string {
+    if (!this._listValidationResult) {
+      return 'Checking private fields...';
+    }
+
+    if (!this._listValidationResult.listExists) {
+      return 'Private Fields: List must exist first';
+    }
+
+    // Check specifically for Private and PrivateEventId fields
+    const missingPrivateFields = this._listValidationResult.missingFields.filter(field =>
+      field === 'Private' || field === 'PrivateEventId'
+    );
+
+    if (missingPrivateFields.length === 0) {
+      return '✅ Private Fields: Private and PrivateEventId fields found - private events enabled';
+    } else {
+      return `❌ Private Fields: Missing ${missingPrivateFields.join(', ')} in main Events list - required for private events`;
+    }
   }
 
   private _getPrivateListDescription(): string {
@@ -343,6 +392,21 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         onText: 'Yes',
         offText: 'No'
       }),
+      PropertyPaneToggle('showImpersonateButton', {
+        label: 'Show Impersonate Button (Testing)',
+        onText: 'Visible',
+        offText: 'Hidden'
+      }),
+      PropertyPaneToggle('showPalettePicker', {
+        label: 'Show Color Palette Picker in Navbar',
+        onText: 'Visible',
+        offText: 'Hidden'
+      }),
+      PropertyPaneToggle('showIconSelector', {
+        label: 'Show Icon Selector (Temporary Feature)',
+        onText: 'Visible',
+        offText: 'Hidden'
+      }),
       PropertyPaneDropdown('colorPalette', {
         label: 'Color Palette',
         options: this.getColorPaletteOptions(),
@@ -353,6 +417,9 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         description: this._getListNameDescription(),
         placeholder: 'Events',
         errorMessage: this._getListNameErrorMessage()
+      }),
+      PropertyPaneLabel('privateFieldsStatus', {
+        text: this._getPrivateFieldsStatus()
       }),
       PropertyPaneLabel('privateListStatus', {
         text: 'Private Events Configuration'

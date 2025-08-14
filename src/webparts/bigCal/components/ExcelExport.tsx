@@ -10,6 +10,7 @@ import { Pivot, PivotItem } from '@fluentui/react/lib/Pivot';
 import { Icon } from '@fluentui/react/lib/Icon';
 import * as XLSX from 'xlsx';
 import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
+import { Logger } from '../services/LoggingService';
 import styles from './ExcelExport.module.scss';
 
 export interface IExcelExportProps {
@@ -210,7 +211,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       });
 
     } catch (error) {
-      console.error('Error importing Excel file:', error);
+      Logger.error('Error importing Excel file', error);
       this.setState({
         importMessage: 'Error reading Excel file. Please ensure it\'s a valid Excel file.',
         importMessageType: MessageBarType.error,
@@ -242,14 +243,10 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     }
 
     // Debug logging for header detection
-    console.log('Excel Import Debug:', {
-      headers,
+    Logger.debug('Excel Import header detection', {
+      headers: headers.length,
       titleIndex,
-      descriptionIndex,
       startIndex,
-      endIndex,
-      swimlaneIndex,
-      statusIndex,
       totalRows: rawData.length
     });
 
@@ -271,16 +268,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         const startRaw = row[startIndex]?.toString();
         const startDate = this.parseExcelDate(startRaw);
 
-        // Debug logging for date parsing
-        console.log(`Row ${i} date parsing:`, {
-          title,
-          startRaw,
-          startDate: startDate?.toString(),
-          startValid: startDate && !isNaN(startDate.getTime())
-        });
-
         if (!startDate) {
-          console.warn(`Row ${i}: Failed to parse start date "${startRaw}"`);
+          Logger.debug(`Row ${i}: Failed to parse start date "${startRaw}"`);
           continue;
         }
 
@@ -304,7 +293,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
 
         events.push(event);
       } catch (error) {
-        console.warn(`Error parsing row ${i}:`, error);
+        Logger.debug(`Error parsing row ${i}`, error);
         // Continue with next row
       }
     }
@@ -528,7 +517,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       return null;
 
     } catch (error) {
-      console.warn('Error parsing date:', dateStr, error);
+      Logger.debug('Error parsing date', { dateStr, error });
       return null;
     }
   };
@@ -613,7 +602,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       });
 
     } catch (error) {
-      console.error('Export error:', error);
+      Logger.error('Export error', error);
       this.setState({
         exportMessage: 'An error occurred while exporting. Please try again.',
         exportMessageType: MessageBarType.error,

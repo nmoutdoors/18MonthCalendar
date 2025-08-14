@@ -4,6 +4,7 @@ import '@pnp/sp/webs';
 import '@pnp/sp/lists';
 import '@pnp/sp/items';
 import { ISharePointEvent } from './SharePointService';
+import { Logger } from './LoggingService';
 
 export interface IPrivateEventData extends ISharePointEvent {
   // Private events use the same structure as SharePoint events
@@ -36,11 +37,11 @@ export class PrivateEventsService {
         .select('Id')
         .top(1)();
       
-      console.log('User has access to private events');
+      Logger.debug('User has access to private events');
       this.canAccessPrivateEvents = true;
       return true;
-    } catch (error: unknown) {
-      console.log('User does not have access to private events:', error);
+    } catch {
+      Logger.debug('User does not have access to private events');
       this.canAccessPrivateEvents = false;
       return false;
     }
@@ -84,7 +85,7 @@ export class PrivateEventsService {
       }));
 
     } catch (error: unknown) {
-      console.error('Error fetching private events:', error);
+      Logger.error('Error fetching private events', error);
       return []; // Return empty array on error
     }
   }
@@ -128,8 +129,8 @@ export class PrivateEventsService {
       };
 
     } catch (error: unknown) {
-      console.error('Error creating private event:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error creating private event', error);
       throw new Error(`Failed to create private event: ${errorMessage}`);
     }
   }
@@ -165,8 +166,8 @@ export class PrivateEventsService {
       await this.sp.web.lists.getByTitle(this.privateListName).items.getById(id).update(updateData);
 
     } catch (error: unknown) {
-      console.error('Error updating private event:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error updating private event', error);
       throw new Error(`Failed to update private event: ${errorMessage}`);
     }
   }
@@ -183,8 +184,8 @@ export class PrivateEventsService {
     try {
       await this.sp.web.lists.getByTitle(this.privateListName).items.getById(id).delete();
     } catch (error: unknown) {
-      console.error('Error deleting private event:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error deleting private event', error);
       throw new Error(`Failed to delete private event: ${errorMessage}`);
     }
   }
@@ -222,7 +223,7 @@ export class PrivateEventsService {
       };
 
     } catch (error: unknown) {
-      console.error('Error fetching private event by GUID:', error);
+      Logger.error('Error fetching private event by GUID', error);
       return undefined;
     }
   }

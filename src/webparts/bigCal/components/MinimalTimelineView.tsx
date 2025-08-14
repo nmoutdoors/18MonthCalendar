@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { ICalendarEvent } from './ICalendarEvent';
+import { Logger } from '../services/LoggingService';
 import styles from './TimelineView.module.scss';
 
 export interface IMinimalTimelineViewProps {
@@ -29,19 +30,19 @@ export class MinimalTimelineView extends React.Component<IMinimalTimelineViewPro
   }
 
   public async componentDidMount(): Promise<void> {
-    console.log('BigCalendar: MinimalTimelineView mounting...');
+    Logger.debug('MinimalTimelineView mounting');
     try {
       // Dynamic import of vis-timeline to avoid initial bundle issues
-      console.log('BigCalendar: Loading vis-timeline module...');
+      Logger.debug('Loading vis-timeline module');
       const visModule = await import(/* webpackChunkName: 'vis-timeline' */ 'vis-timeline/standalone');
       // Import CSS using require to avoid TypeScript module resolution issues
       require('vis-timeline/styles/vis-timeline-graph2d.css');
-      console.log('BigCalendar: vis-timeline loaded successfully');
-      
+      Logger.debug('vis-timeline loaded successfully');
+
       this.timelineModule = visModule;
       this.initializeTimeline();
     } catch (error) {
-      console.error('BigCalendar: Failed to load vis-timeline:', error);
+      Logger.error('Failed to load vis-timeline', error);
       this.setState({
         isLoading: false,
         error: 'Failed to load timeline component'
@@ -54,7 +55,7 @@ export class MinimalTimelineView extends React.Component<IMinimalTimelineViewPro
       try {
         this.state.timeline.destroy();
       } catch (error) {
-        console.warn('Error destroying timeline:', error);
+        Logger.warn('Error destroying timeline', error);
       }
     }
   }
@@ -112,16 +113,15 @@ export class MinimalTimelineView extends React.Component<IMinimalTimelineViewPro
       });
 
       this.setState({ timeline, isLoading: false }, () => {
-        console.log('BigCalendar: Timeline initialized, updating data...');
+        Logger.debug('Timeline initialized, updating data');
         this.updateTimelineData();
-        console.log('BigCalendar: Timeline should now be visible');
       });
 
     } catch (error) {
-      console.error('Error initializing timeline:', error);
-      this.setState({ 
-        isLoading: false, 
-        error: 'Failed to initialize timeline' 
+      Logger.error('Error initializing timeline', error);
+      this.setState({
+        isLoading: false,
+        error: 'Failed to initialize timeline'
       });
     }
   };

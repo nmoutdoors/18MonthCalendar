@@ -4,6 +4,7 @@ import '@pnp/sp/webs';
 import '@pnp/sp/lists';
 import '@pnp/sp/items';
 import '@pnp/sp/fields';
+import { Logger } from './LoggingService';
 import '@pnp/sp/content-types';
 
 export interface ISharePointEvent {
@@ -43,7 +44,6 @@ export interface IFieldDefinition {
 
 export class SharePointService {
   private sp: ReturnType<typeof spfi>;
-  private siteUrl: string = 'https://scottsdevnstuff.sharepoint.com/sites/Dev';
   private listName: string;
 
   // Field definitions for list creation
@@ -116,28 +116,92 @@ export class SharePointService {
   }
 
   /**
+   * Normalize boolean values from SharePoint across different environments
+   * SharePoint can return: true/false, 1/0, "Yes"/"No", "True"/"False"
+   */
+  private normalizeBoolean(value: unknown): boolean {
+    if (value === null || value === undefined) {
+      return false;
+    }
+
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'number') {
+      return value === 1;
+    }
+
+    if (typeof value === 'string') {
+      const lowerValue = value.toLowerCase();
+      return lowerValue === 'true' || lowerValue === 'yes' || lowerValue === '1';
+    }
+
+    return false;
+  }
+
+  /**
    * Check if the list has the Private and PrivateEventId fields
+   * Enhanced for production environment compatibility
    */
   private async checkForPrivateFields(): Promise<boolean> {
     try {
       const fields = await this.sp.web.lists.getByTitle(this.listName).fields
-        .select('InternalName')();
+        .select('InternalName', 'Title', 'TypeAsString')();
 
-      const fieldNames = fields.map(f => f.InternalName);
-      const hasPrivate = fieldNames.indexOf('Private') !== -1;
-      const hasPrivateEventId = fieldNames.indexOf('PrivateEventId') !== -1;
+      const fieldNames = fields.map(f => f.InternalName.toLowerCase());
 
-      console.log('SharePointService.checkForPrivateFields:', {
+      // Case-insensitive field detection using ES5-compatible methods
+      const hasPrivate = fieldNames.some(name =>
+        name === 'private' || name === 'private0' || name.indexOf('private') !== -1
+      );
+      const hasPrivateEventId = fieldNames.some(name =>
+        name === 'privateeventid' || name === 'privateeventid0' || name.indexOf('privateeventid') !== -1
+      );
+
+      Logger.debug('Private fields detection', {
         totalFields: fieldNames.length,
-        fieldNames: fieldNames,
         hasPrivate,
-        hasPrivateEventId,
-        lookingFor: ['Private', 'PrivateEventId']
+        hasPrivateEventId
       });
 
-      return hasPrivate && hasPrivateEventId;
+      // Additional validation: try to query with these fields to ensure they're accessible
+      if (hasPrivate && hasPrivateEventId) {
+        try {
+          // Find the actual field names (case-sensitive) using ES5-compatible methods
+          let privateField: { InternalName: string } | undefined = undefined;
+          let privateEventIdField: { InternalName: string } | undefined = undefined;
+
+          for (let i = 0; i < fields.length; i++) {
+            const field = fields[i];
+            const lowerName = field.InternalName.toLowerCase();
+            if (lowerName.indexOf('private') !== -1 && lowerName.indexOf('privateeventid') === -1) {
+              privateField = field;
+            }
+            if (lowerName.indexOf('privateeventid') !== -1) {
+              privateEventIdField = field;
+            }
+          }
+
+          if (privateField && privateEventIdField) {
+            // Test query to ensure fields are accessible
+            await this.sp.web.lists.getByTitle(this.listName).items
+              .select(`Id,${privateField.InternalName},${privateEventIdField.InternalName}`)
+              .top(1)();
+
+            Logger.debug('Private fields validated successfully');
+
+            return true;
+          }
+        } catch (testError) {
+          Logger.warn('Private fields exist but not accessible', testError);
+          return false;
+        }
+      }
+
+      return false;
     } catch (error: unknown) {
-      console.warn('Could not check for private fields:', error);
+      Logger.error('Critical error checking for private fields', error);
       return false;
     }
   }
@@ -150,8 +214,39 @@ export class SharePointService {
       // Use PnP.js to get items from the Events list
       // Increase limit to handle large datasets (default is 100)
       let selectFields = 'Id,Title,Start,End,Swimlane,Status,Description';
+
+      // Enhanced field selection for production environments
       if (hasPrivateFields) {
-        selectFields += ',Private,PrivateEventId';
+        try {
+          // Get actual field names to handle case sensitivity
+          const fields = await this.sp.web.lists.getByTitle(this.listName).fields
+            .select('InternalName')();
+
+          let privateField: { InternalName: string } | undefined = undefined;
+          let privateEventIdField: { InternalName: string } | undefined = undefined;
+
+          for (let i = 0; i < fields.length; i++) {
+            const field = fields[i];
+            const lowerName = field.InternalName.toLowerCase();
+            if (lowerName.indexOf('private') !== -1 && lowerName.indexOf('privateeventid') === -1) {
+              privateField = field;
+            }
+            if (lowerName.indexOf('privateeventid') !== -1) {
+              privateEventIdField = field;
+            }
+          }
+
+          if (privateField && privateEventIdField) {
+            selectFields += `,${privateField.InternalName},${privateEventIdField.InternalName}`;
+            Logger.debug('Using actual private field names');
+          } else {
+            Logger.warn('Private fields detected but actual field names not found');
+            selectFields += ',Private,PrivateEventId'; // Fallback to expected names
+          }
+        } catch (fieldError) {
+          Logger.warn('Error getting field names, using defaults', fieldError);
+          selectFields += ',Private,PrivateEventId'; // Fallback to expected names
+        }
       }
 
       const items = await this.sp.web.lists.getByTitle(this.listName).items
@@ -159,27 +254,46 @@ export class SharePointService {
         .orderBy('Start', true)
         .top(5000)(); // Increase limit to 5000 events
 
-      console.log(`SharePoint query returned ${items.length} events`);
+      Logger.info(`Loaded ${items.length} events from SharePoint`);
 
-      return items.map((item: {Id: number; Title: string; Start: string; End: string; Swimlane: string; Status: string; Description: string; Private?: boolean; PrivateEventId?: string}) => ({
-        Id: item.Id,
-        Title: item.Title,
-        Start: item.Start,
-        End: item.End,
-        Swimlane: item.Swimlane,
-        Status: item.Status,
-        Description: item.Description || '',
-        Private: item.Private || false,
-        PrivateEventId: item.PrivateEventId
-      }));
+      return items.map((item: {
+        Id: number;
+        Title: string;
+        Start: string;
+        End: string;
+        Swimlane: string;
+        Status: string;
+        Description?: string;
+        Private?: unknown;
+        PrivateEventId?: string;
+      }) => {
+        // Enhanced boolean field handling for production environments
+        const isPrivate = this.normalizeBoolean(item.Private);
+
+        const mappedEvent = {
+          Id: item.Id,
+          Title: item.Title,
+          Start: item.Start,
+          End: item.End,
+          Swimlane: item.Swimlane,
+          Status: item.Status,
+          Description: item.Description || '',
+          Private: isPrivate,
+          PrivateEventId: item.PrivateEventId
+        };
+
+        // Only log private events in debug mode to avoid performance impact
+        if ((isPrivate || item.PrivateEventId) && Logger.getConfig().level >= 3) {
+          Logger.debug(`Private event: ${item.Title} (ID: ${item.Id})`);
+        }
+
+        return mappedEvent;
+      });
 
     } catch (error: unknown) {
-      console.error('Error fetching events from SharePoint:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('Error details:', {
+      Logger.error('Error fetching events from SharePoint', {
         message: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        siteUrl: this.siteUrl,
         listName: this.listName
       });
       throw new Error(`Failed to fetch events: ${errorMessage}`);
@@ -190,15 +304,10 @@ export class SharePointService {
 
   public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', description: string = '', isPrivate: boolean = false, privateEventId?: string): Promise<ISharePointEvent> {
     try {
-      console.log('SharePointService.createEvent called with:', {
-        title,
-        isPrivate,
-        privateEventId
-      });
+      Logger.debug('Creating event', { title, isPrivate });
 
       // Check if the list has the new Private fields
       const hasPrivateFields = await this.checkForPrivateFields();
-      console.log('SharePointService: hasPrivateFields =', hasPrivateFields);
 
       // Use PnP.js to create a new item in the Events list
       const itemData: Record<string, unknown> = {
@@ -216,25 +325,14 @@ export class SharePointService {
         if (privateEventId) {
           itemData.PrivateEventId = privateEventId;
         }
-        console.log('SharePointService: Added Private fields to itemData:', {
-          Private: itemData.Private,
-          PrivateEventId: itemData.PrivateEventId
-        });
       } else if (isPrivate) {
         // If Private fields don't exist but user wants private event, log warning
-        console.warn('Cannot create private event - Private fields do not exist in SharePoint list');
+        Logger.warn('Cannot create private event - Private fields do not exist in SharePoint list');
       }
 
       const result = await this.sp.web.lists.getByTitle(this.listName).items.add(itemData);
 
-      // Debug logging
-      console.log('SharePointService.createEvent - Created event:', {
-        title: result.Title,
-        isPrivate: isPrivate,
-        hasPrivateFields: hasPrivateFields,
-        resultPrivate: result.Private,
-        privateEventId: result.PrivateEventId
-      });
+      Logger.debug(`Created event: ${result.Title}`);
 
       return {
         Id: result.Id,
@@ -249,8 +347,8 @@ export class SharePointService {
       };
 
     } catch (error: unknown) {
-      console.error('Error creating event in SharePoint:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error creating event in SharePoint', error);
       throw new Error(`Failed to create event: ${errorMessage}`);
     }
   }
@@ -279,8 +377,8 @@ export class SharePointService {
       await this.sp.web.lists.getByTitle(this.listName).items.getById(id).update(updateData);
 
     } catch (error: unknown) {
-      console.error('Error updating event in SharePoint:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error updating event in SharePoint', error);
       throw new Error(`Failed to update event: ${errorMessage}`);
     }
   }
@@ -290,16 +388,21 @@ export class SharePointService {
       await this.sp.web.lists.getByTitle(this.listName).items.getById(id).delete();
 
     } catch (error: unknown) {
-      console.error('Error deleting event in SharePoint:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error deleting event in SharePoint', error);
       throw new Error(`Failed to delete event: ${errorMessage}`);
     }
   }
 
-  public async validateList(listName?: string): Promise<IListValidationResult> {
+  public async validateList(listName?: string, requirePrivateFields: boolean = true): Promise<IListValidationResult> {
     const targetListName = listName || this.listName;
-    const requiredFields = ['Start', 'End', 'Description', 'Swimlane', 'Status'];
-    const privateFields = ['Private', 'PrivateEventId']; // Optional fields for private events
+    let requiredFields = ['Start', 'End', 'Description', 'Swimlane', 'Status'];
+    const privateFields = ['Private', 'PrivateEventId'];
+
+    // Include private fields as required for full functionality
+    if (requirePrivateFields) {
+      requiredFields = requiredFields.concat(privateFields);
+    }
 
     try {
       // Check if list exists
@@ -321,18 +424,36 @@ export class SharePointService {
 
       const fieldNames = fields.map(field => field.InternalName);
       const missingFields = requiredFields.filter(field => fieldNames.indexOf(field) === -1);
-      const missingPrivateFields = privateFields.filter(field => fieldNames.indexOf(field) === -1);
+
+      // Separate missing fields into core and private
+      const coreFields = ['Start', 'End', 'Description', 'Swimlane', 'Status'];
+      const missingCoreFields = missingFields.filter(field => coreFields.indexOf(field) !== -1);
+      const missingPrivateFields = missingFields.filter(field => privateFields.indexOf(field) !== -1);
 
       const isValid = missingFields.length === 0;
+      const hasCoreFields = missingCoreFields.length === 0;
       const hasPrivateSupport = missingPrivateFields.length === 0;
 
       let errorMessage = undefined;
-      if (!isValid) {
-        errorMessage = `List '${targetListName}' is missing required fields: ${missingFields.join(', ')}`;
+
+      if (!hasCoreFields) {
+        errorMessage = `List '${targetListName}' is missing required core fields: ${missingCoreFields.join(', ')}`;
       }
 
-      if (!hasPrivateSupport) {
-        const privateMessage = `\n\nOptional: For private events support, add these fields:\n` +
+      if (!hasPrivateSupport && requirePrivateFields) {
+        const privateMessage = (errorMessage ? '\n\n' : '') +
+          `Missing required private event fields: ${missingPrivateFields.join(', ')}\n` +
+          missingPrivateFields.map(field => {
+            if (field === 'Private') return '• Private (Yes/No field) - marks events as private';
+            if (field === 'PrivateEventId') return '• PrivateEventId (Single line of text field) - links to private event details';
+            return `• ${field}`;
+          }).join('\n') +
+          `\n\nThese fields must be added to the main Events list for private events to work.`;
+
+        errorMessage = (errorMessage || '') + privateMessage;
+      } else if (!hasPrivateSupport && !requirePrivateFields) {
+        const privateMessage = (errorMessage ? '\n\n' : '') +
+          `Optional: For private events support, add these fields to the main Events list:\n` +
           missingPrivateFields.map(field => {
             if (field === 'Private') return '• Private (Yes/No field)';
             if (field === 'PrivateEventId') return '• PrivateEventId (Single line of text field)';
@@ -352,8 +473,8 @@ export class SharePointService {
       };
 
     } catch (error: unknown) {
-      console.error('Error validating list:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error validating list', error);
 
       // Check if it's a "list not found" error
       if (errorMessage.indexOf('does not exist') !== -1 || errorMessage.indexOf('not found') !== -1) {
@@ -378,11 +499,10 @@ export class SharePointService {
 
   public async createList(listName: string): Promise<IListCreationResult> {
     try {
-      console.log(`Creating SharePoint list: ${listName}`);
+      Logger.info(`Creating SharePoint list: ${listName}`);
 
       // Create the list based on Calendar template (simpler than Events)
       await this.sp.web.lists.add(listName, `Calendar list created by BigCal webpart with required fields for event management`, 100, true);
-      console.log(`List '${listName}' created successfully`);
 
       // Get the created list to add fields
       const createdList = this.sp.web.lists.getByTitle(listName);
@@ -398,7 +518,6 @@ export class SharePointService {
               FriendlyDisplayFormat: 0, // Standard format
               Required: fieldDef.required || false
             });
-            console.log(`Added DateTime field: ${fieldDef.internalName}`);
           } else if (fieldDef.fieldType === 'Choice') {
             // Create choice field
             await createdList.fields.addChoice(fieldDef.internalName, {
@@ -406,7 +525,6 @@ export class SharePointService {
               Required: fieldDef.required || false,
               FillInChoice: false
             });
-            console.log(`Added choice field: ${fieldDef.internalName}`);
           } else if (fieldDef.fieldType === 'Note') {
             // Create multiple lines of text field
             await createdList.fields.addMultilineText(fieldDef.internalName, {
@@ -417,23 +535,20 @@ export class SharePointService {
               AllowHyperlink: true,
               Required: fieldDef.required || false
             });
-            console.log(`Added multiline text field: ${fieldDef.internalName}`);
           } else if (fieldDef.fieldType === 'Boolean') {
             // Create Yes/No field
             await createdList.fields.addBoolean(fieldDef.internalName, {
               Required: fieldDef.required || false
             });
-            console.log(`Added boolean field: ${fieldDef.internalName}`);
           } else if (fieldDef.fieldType === 'Text') {
             // Create single line of text field
             await createdList.fields.addText(fieldDef.internalName, {
               MaxLength: 255,
               Required: fieldDef.required || false
             });
-            console.log(`Added text field: ${fieldDef.internalName}`);
           }
         } catch (fieldError) {
-          console.warn(`Warning: Could not add field ${fieldDef.internalName}:`, fieldError);
+          Logger.warn(`Could not add field ${fieldDef.internalName}`, fieldError);
           // Continue with other fields even if one fails
         }
       }
@@ -454,8 +569,8 @@ export class SharePointService {
       }
 
     } catch (error: unknown) {
-      console.error('Error creating list:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error creating list', error);
       return {
         success: false,
         listName: listName,

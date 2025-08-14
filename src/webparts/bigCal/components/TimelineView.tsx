@@ -298,7 +298,8 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
 
 
   private generateEventContent = (event: ICalendarEvent): string => {
-    const iconSymbol = this.getEventCategoryIcon(event.swimlane || 'FYSA');
+    // Private events get locked icon, regular events get category icon
+    const iconSymbol = event.isPrivate ? '🔒' : this.getEventCategoryIcon(event.swimlane || 'FYSA');
 
     // Generate HTML content with Unicode emoji icon and title
     // Unicode symbols display reliably across all contexts

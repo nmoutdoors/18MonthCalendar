@@ -10,6 +10,7 @@ import { ChoiceGroup, IChoiceGroupOption } from '@fluentui/react/lib/ChoiceGroup
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import * as moment from 'moment';
 import { ICalendarEvent } from './ICalendarEvent';
+import { Logger } from '../services/LoggingService';
 import styles from './PrintDialog.module.scss';
 
 // Setup the localizer for react-big-calendar
@@ -164,7 +165,7 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
       }
 
     } catch (error) {
-      console.error('Print error:', error);
+      Logger.error('Print error', error);
       this.setState({
         printMessage: 'An error occurred while preparing the print. Please try again.',
         printMessageType: MessageBarType.error,

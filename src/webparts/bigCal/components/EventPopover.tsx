@@ -6,6 +6,7 @@ import { Icon } from '@fluentui/react/lib/Icon';
 import { IconButton } from '@fluentui/react/lib/Button';
 import { ICalendarEvent } from './ICalendarEvent';
 import { ColorPaletteService } from '../services/ColorPaletteService';
+import { Logger } from '../services/LoggingService';
 import styles from './EventPopover.module.scss';
 
 export interface IEventPopoverProps {
@@ -70,7 +71,7 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
   public render(): React.ReactElement<IEventPopoverProps> {
     const { event, target, isVisible, onDismiss, onEdit } = this.props;
 
-    console.log('EventPopover render:', { isVisible, hasTarget: !!target, hasEvent: !!event, eventTitle: event?.title }); // Debug log
+    Logger.debug(`EventPopover render: ${event?.title || 'no event'} (visible: ${isVisible})`);
 
     if (!isVisible || !target || !event) {
       return <div />;
@@ -81,7 +82,8 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
       return <div />;
     }
 
-    const iconEmoji = this.getEventCategoryIcon(event.swimlane!);
+    // Private events get locked icon, regular events get category icon
+    const iconEmoji = event.isPrivate ? '🔒' : this.getEventCategoryIcon(event.swimlane!);
     const statusColor = ColorPaletteService.getStatusColor(event.status!, this.props.colorPalette);
     const isAllDay = this.isAllDayEvent(event);
     const isSameDayEvent = this.isSameDay(event.start, event.end);

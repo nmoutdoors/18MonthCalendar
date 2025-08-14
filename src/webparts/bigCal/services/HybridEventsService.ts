@@ -1,6 +1,7 @@
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { SharePointService, ISharePointEvent } from './SharePointService';
 import { PrivateEventsService, IPrivateEventData } from './PrivateEventsService';
+import { Logger } from './LoggingService';
 import { ICalendarEvent, SwimlaneType, StatusType } from '../components/ICalendarEvent';
 
 export interface IHybridEventResult {
@@ -126,7 +127,7 @@ export class HybridEventsService {
         };
 
       } catch (privateError) {
-        console.warn('Could not create private event with hybrid approach, falling back to simple private event:', privateError);
+        Logger.warn('Could not create private event with hybrid approach, falling back to simple private event', privateError);
 
         // Fallback: Create as private event in main list only (without separate private list)
         const result = await this.sharePointService.createEvent(

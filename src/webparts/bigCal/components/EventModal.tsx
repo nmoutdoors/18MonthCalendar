@@ -15,6 +15,7 @@ import {
 } from '@fluentui/react';
 import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
 import { ColorPaletteService } from '../services/ColorPaletteService';
+import { Logger } from '../services/LoggingService';
 import styles from './EventModal.module.scss';
 
 export interface IEventModalProps {
@@ -286,7 +287,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       // Close the modal after successful save (both create and update)
       this.props.onClose();
     } catch (error) {
-      console.error('Error saving event:', error);
+      Logger.error('Error saving event', error);
       alert('Failed to save event. Please try again.');
     } finally {
       this.setState({ isSaving: false });
