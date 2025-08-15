@@ -2,6 +2,9 @@
 
 > **Transform your team's planning with the most powerful 18-month calendar experience for SharePoint**
 
+## 📸 **Documentation Update Required**
+> ⚠️ **Note**: The screenshots and images in this README need to be updated to reflect the current stable version of BigCal. The current images may show features from development branches that are not present in this stable release.
+
 [![SharePoint Framework](https://img.shields.io/badge/SharePoint-Framework-blue.svg)](https://docs.microsoft.com/en-us/sharepoint/dev/spfx/sharepoint-framework-overview)
 [![TypeScript](https://img.shields.io/badge/TypeScript-4.7.4-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-17.0.1-blue.svg)](https://reactjs.org/)
@@ -9,7 +12,7 @@
 
 ## ✨ **Why BigCal?**
 
-BigCal revolutionizes SharePoint calendar management by providing **dual-view planning capabilities** that scale from daily task management to strategic 18-month planning. Built with modern React and Fluent UI, it delivers enterprise-grade performance with consumer-grade usability.
+BigCal revolutionizes SharePoint calendar management by providing **comprehensive calendar views** that scale from daily task management to strategic 18-month planning. This stable version features a proven 3-color event categorization system with advanced filtering, timeline visualization, and Excel import/export capabilities. Built with modern React and Fluent UI, it delivers enterprise-grade performance with consumer-grade usability.
 
 ![BigCal Overview](docs/month.png)
 *Full-featured calendar with advanced filtering, 18-month navigation, and professional event management*
@@ -85,6 +88,30 @@ Complete data management for enterprise migration and backup:
 - **🎨 Fluent UI Integration** - Native SharePoint look and feel
 - **📱 Responsive Design** - Perfect experience on all devices
 - **⚡ Smooth Animations** - Polished interactions and transitions
+
+## 🏷️ **Current Stable Version**
+
+This branch (`Hidden-Events`) represents the **stable 3-color BigCal version** with the following characteristics:
+
+### ✅ **Proven Features**
+- **🎨 3-Color Event System** - Reliable color-coded event categorization
+- **📅 18-Month Navigation** - Complete calendar navigation with mini calendars
+- **⏱️ Timeline View** - Interactive vis.js timeline with swimlane organization
+- **📊 Excel Import/Export** - Full-featured data management with dual-tab exports
+- **🔍 Advanced Filtering** - Search, category, and status-based filtering
+- **🏛️ Holiday Integration** - US Federal holidays with visual indicators
+- **📱 Responsive Design** - Optimized for all devices and screen sizes
+
+### 🔧 **Technical Stability**
+- **✅ Zero Build Warnings** - Clean TypeScript compilation
+- **✅ Production Ready** - Thoroughly tested and stable
+- **✅ SharePoint Compatible** - Full SPFx compliance
+- **✅ Performance Optimized** - Efficient rendering and data handling
+
+### 🎯 **Event Icon System**
+- **📍 Icons Inside Events** - Clean, integrated icon display within event containers
+- **🎨 Category-based Icons** - Visual indicators for different event types
+- **📱 Responsive Icons** - Properly scaled for all view modes
 
 ## 🚀 **Quick Start**
 
