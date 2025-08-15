@@ -23,6 +23,7 @@ export interface IEventModalProps {
   event?: ICalendarEvent;
   selectedDate?: Date;
   colorPalette: string;
+  eventRenderingMode: string;
   onSave: (event: Partial<ICalendarEvent>) => Promise<void>;
   onDelete?: (eventId: number) => Promise<void>;
   onClose: () => void;
@@ -44,7 +45,7 @@ interface IEventModalState {
   isDeleting: boolean;
 }
 
-const swimlaneOptions: IDropdownOption[] = [
+const getAllSwimlaneOptions = (): IDropdownOption[] => [
   { key: 'Away w/RON', text: 'Away w/RON', data: { icon: '✈️' } },
   { key: 'Day Trip - NCR', text: 'Day Trip - NCR', data: { icon: '📍' } },
   { key: 'Exercise', text: 'Exercise', data: { icon: '🏃' } },
@@ -53,6 +54,15 @@ const swimlaneOptions: IDropdownOption[] = [
   { key: 'Training Holiday', text: 'Training Holiday', data: { icon: '🎓' } },
   { key: 'VIP/High Priority', text: 'VIP/High Priority', data: { icon: '⚠️' } }
 ];
+
+const getFilteredSwimlaneOptions = (eventRenderingMode: string): IDropdownOption[] => {
+  const allOptions = getAllSwimlaneOptions();
+  const hiddenCategories = ['Away w/RON', 'Day Trip - NCR'];
+
+  return eventRenderingMode === 'typeAndStatusBased'
+    ? allOptions.filter(option => hiddenCategories.indexOf(option.key as string) === -1)
+    : allOptions;
+};
 
 const amPmOptions: IDropdownOption[] = [
   { key: 'AM', text: 'AM' },
@@ -142,11 +152,17 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
   }
 
   private getStatusOptions = (): IDropdownOption[] => {
-    return [
+    const allStatuses = [
       { key: 'Confirmed', text: 'Confirmed', data: { color: ColorPaletteService.getStatusColor('Confirmed', this.props.colorPalette) } },
       { key: 'Tentative', text: 'Tentative', data: { color: ColorPaletteService.getStatusColor('Tentative', this.props.colorPalette) } },
       { key: 'Canceled', text: 'Canceled', data: { color: ColorPaletteService.getStatusColor('Canceled', this.props.colorPalette) } }
     ];
+
+    // Filter statuses based on rendering mode
+    const hiddenStatuses = ['Canceled'];
+    return this.props.eventRenderingMode === 'typeAndStatusBased'
+      ? allStatuses.filter(option => hiddenStatuses.indexOf(option.key as string) === -1)
+      : allStatuses;
   };
 
   private onRenderSwimlaneOption = (option?: IDropdownOption): JSX.Element => {
@@ -455,7 +471,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                 <Dropdown
                   label="Event Category"
                   selectedKey={swimlane}
-                  options={swimlaneOptions}
+                  options={getFilteredSwimlaneOptions(this.props.eventRenderingMode)}
                   onChange={(_, option) => this.setState({ swimlane: option?.key as SwimlaneType })}
                   onRenderOption={this.onRenderSwimlaneOption}
                   onRenderTitle={this.onRenderSwimlaneTitle}

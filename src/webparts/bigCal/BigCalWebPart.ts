@@ -30,6 +30,7 @@ export interface IBigCalWebPartProps {
   showImpersonateButton: boolean;
   showPalettePicker: boolean;
   showIconSelector: boolean;
+  eventRenderingMode: string;
 }
 
 export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartProps> {
@@ -73,6 +74,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         showImpersonateButton: this.properties.showImpersonateButton || false, // Default to false
         showPalettePicker: this.properties.showPalettePicker || false, // Default to false
         showIconSelector: this.properties.showIconSelector || false, // Default to false
+        eventRenderingMode: this.properties.eventRenderingMode || 'statusBased', // Default to current behavior
         onConfigureProperties: () => {
           this.context.propertyPane.open();
         },
@@ -100,6 +102,11 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     // Set default list name if not already set
     if (this.properties.listName === undefined) {
       this.properties.listName = 'Events';  // Default to Events list
+    }
+
+    // Set default event rendering mode if not already set
+    if (this.properties.eventRenderingMode === undefined) {
+      this.properties.eventRenderingMode = 'statusBased';  // Default to current behavior
     }
 
     // Set default value for showImpersonateButton if not already set
@@ -411,6 +418,14 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         label: 'Color Palette',
         options: this.getColorPaletteOptions(),
         selectedKey: this.properties.colorPalette || 'disa2Deep'
+      }),
+      PropertyPaneDropdown('eventRenderingMode', {
+        label: 'Event Rendering Mode',
+        options: [
+          { key: 'statusBased', text: 'Status-Based (Current - 3 colors by status)' },
+          { key: 'typeAndStatusBased', text: 'Type + Status-Based (7 colors by event type and status)' }
+        ],
+        selectedKey: this.properties.eventRenderingMode || 'statusBased'
       }),
       PropertyPaneTextField('listName', {
         label: 'SharePoint List Name',

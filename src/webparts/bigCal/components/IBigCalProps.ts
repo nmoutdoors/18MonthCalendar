@@ -13,6 +13,7 @@ export interface IBigCalProps {
   showImpersonateButton: boolean;
   showPalettePicker: boolean;
   showIconSelector: boolean;
+  eventRenderingMode: string;
   onConfigureProperties?: () => void;
   onPaletteChange?: (palette: string) => void;
 }

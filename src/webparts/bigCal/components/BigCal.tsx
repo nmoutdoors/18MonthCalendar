@@ -232,7 +232,13 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private getEventCategoryDropdownOptions = (): IDropdownOption[] => {
     const { filteredEvents, selectedEventCategories } = this.state;
-    const categories = ['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority'];
+    const allCategories = ['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority'];
+
+    // Filter categories based on rendering mode
+    const hiddenCategories = ['Away w/RON', 'Day Trip - NCR'];
+    const categories = this.props.eventRenderingMode === 'typeAndStatusBased'
+      ? allCategories.filter(cat => hiddenCategories.indexOf(cat) === -1)
+      : allCategories;
 
     const options = categories.map(eventCategory => {
       // Only count regular events, not holidays
@@ -253,8 +259,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     });
 
     // Add Select All/Unselect All toggle option
-    const allCategories = [...categories, 'Private Events'];
-    const allSelected = allCategories.every(cat => selectedEventCategories.has(cat));
+    const allAvailableCategories = [...categories, 'Private Events'];
+    const allSelected = allAvailableCategories.every(cat => selectedEventCategories.has(cat));
     options.push({
       key: '__toggle_all_categories__',
       text: allSelected ? 'Unselect All' : 'Select All',
@@ -266,7 +272,13 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private getStatusDropdownOptions = (): IDropdownOption[] => {
     const { filteredEvents, selectedStatuses } = this.state;
-    const statuses = ['Confirmed', 'Tentative', 'Canceled'];
+    const allStatuses = ['Confirmed', 'Tentative', 'Canceled'];
+
+    // Filter statuses based on rendering mode
+    const hiddenStatuses = ['Canceled'];
+    const statuses = this.props.eventRenderingMode === 'typeAndStatusBased'
+      ? allStatuses.filter(status => hiddenStatuses.indexOf(status) === -1)
+      : allStatuses;
 
     const options = statuses.map(status => {
       // Only count regular events, not holidays
@@ -553,6 +565,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         return true;
       }
 
+      // In 7-color mode, filter out events with hidden categories/statuses
+      if (this.props.eventRenderingMode === 'typeAndStatusBased') {
+        const hiddenCategories = ['Away w/RON', 'Day Trip - NCR'];
+        const hiddenStatuses = ['Canceled'];
+
+        if (hiddenCategories.indexOf(event.swimlane!) !== -1 || hiddenStatuses.indexOf(event.status!) !== -1) {
+          return false; // Hide these events completely in 7-color mode
+        }
+      }
+
       // Regular event filters
       // Fix: When no categories are selected, show no events (not all events)
       // Fix: When no statuses are selected, show no events (not all events)
@@ -579,9 +601,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (option) {
       // Handle Select All/Unselect All toggle
       if (option.key === '__toggle_all_categories__') {
-        const categories = ['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority', 'Private Events'];
+        const allCategories = ['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority'];
+        const hiddenCategories = ['Away w/RON', 'Day Trip - NCR'];
+        const availableCategories = this.props.eventRenderingMode === 'typeAndStatusBased'
+          ? allCategories.filter(cat => hiddenCategories.indexOf(cat) === -1)
+          : allCategories;
+        const allAvailableCategories = [...availableCategories, 'Private Events'];
         const allSelected = option.data?.allSelected;
-        const newSelected = allSelected ? new Set<string>() : new Set<string>(categories);
+        const newSelected = allSelected ? new Set<string>() : new Set<string>(allAvailableCategories);
 
         this.setState({ selectedEventCategories: newSelected }, () => {
           this.applyFilters();
@@ -610,9 +637,13 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (option) {
       // Handle Select All/Unselect All toggle
       if (option.key === '__toggle_all_statuses__') {
-        const statuses = ['Confirmed', 'Tentative', 'Canceled'];
+        const allStatuses = ['Confirmed', 'Tentative', 'Canceled'];
+        const hiddenStatuses = ['Canceled'];
+        const availableStatuses = this.props.eventRenderingMode === 'typeAndStatusBased'
+          ? allStatuses.filter(status => hiddenStatuses.indexOf(status) === -1)
+          : allStatuses;
         const allSelected = option.data?.allSelected;
-        const newSelected = allSelected ? new Set<string>() : new Set<string>(statuses);
+        const newSelected = allSelected ? new Set<string>() : new Set<string>(availableStatuses);
 
         this.setState({ selectedStatuses: newSelected }, () => {
           this.applyFilters();
@@ -960,8 +991,19 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     const statusClass = `status-${event.status!.toLowerCase().replace(/\s+/g, '')}`;
     const swimlaneClass = `swimlane-${event.swimlane!.toLowerCase().replace(' ', '')}`;
 
-    // Get color based on swimlane and status
-    const backgroundColor = this.getEventColor(event.swimlane || 'default', event.status || 'Confirmed');
+    // Choose coloring strategy based on rendering mode
+    let backgroundColor: string;
+    if (this.props.eventRenderingMode === 'typeAndStatusBased') {
+      // New 7-color system: color by event type + status
+      backgroundColor = ColorPaletteService.getEventTypeColor(
+        event.swimlane || 'FYSA',
+        event.status || 'Confirmed',
+        'militaryOperations'
+      );
+    } else {
+      // Current system: color by swimlane and status
+      backgroundColor = this.getEventColor(event.swimlane || 'default', event.status || 'Confirmed');
+    }
 
     return {
       className: `${statusClass} ${swimlaneClass}`,
@@ -1780,6 +1822,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           event={selectedEvent}
           selectedDate={selectedDate}
           colorPalette={this.props.colorPalette}
+          eventRenderingMode={this.props.eventRenderingMode}
           onSave={this.handleSaveEvent}
           onDelete={selectedEvent ? this.handleDeleteEvent : undefined}
           onClose={this.closeModal}
