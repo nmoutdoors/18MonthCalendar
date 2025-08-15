@@ -863,19 +863,15 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     // Holiday events get special display
     if (event.isHoliday) {
       return (
-        <div className={styles.eventWrapper}>
-          <div className={styles.eventIconContainer}>
-            <span className={styles.eventIcon}>
-              🏛️
+        <div className={styles.customEvent}>
+          <span className={styles.eventIcon}>
+            🏛️
+          </span>
+          <div className={styles.eventContent}>
+            <span className={styles.eventTitle}>
+              {event.title}
+              {event.isObserved && ' (observed)'}
             </span>
-          </div>
-          <div className={styles.customEvent}>
-            <div className={styles.eventContent}>
-              <span className={styles.eventTitle}>
-                {event.title}
-                {event.isObserved && ' (observed)'}
-              </span>
-            </div>
           </div>
         </div>
       );
@@ -886,7 +882,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     return (
       <div
-        className={styles.eventWrapper}
+        className={styles.customEvent}
         onMouseEnter={(e) => {
           // Clear any existing timeout and show immediately for better responsiveness
           if (this.popoverTimeout) {
@@ -899,15 +895,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           this.hidePopover();
         }}
       >
-        <div className={styles.eventIconContainer}>
-          <span className={styles.eventIcon}>
-            {iconEmoji}
-          </span>
-        </div>
-        <div className={styles.customEvent}>
-          <div className={styles.eventContent}>
-            <span className={styles.eventTitle}>{event.title}</span>
-          </div>
+        <span className={styles.eventIcon}>
+          {iconEmoji}
+        </span>
+        <div className={styles.eventContent}>
+          <span className={styles.eventTitle}>{event.title}</span>
         </div>
       </div>
     );
@@ -940,19 +932,15 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     // Holiday events get special display
     if (event.isHoliday) {
       return (
-        <div className={`${styles.eventWrapper} ${styles.monthEventItem}`}>
-          <div className={styles.eventIconContainer}>
-            <span className={styles.eventIcon}>
-              🏛️
+        <div className={`${styles.customEvent} ${styles.monthEventItem}`}>
+          <span className={styles.eventIcon}>
+            🏛️
+          </span>
+          <div className={styles.eventContent}>
+            <span className={styles.eventTitle}>
+              {event.title}
+              {event.isObserved && ' (obs)'}
             </span>
-          </div>
-          <div className={styles.customEvent}>
-            <div className={styles.eventContent}>
-              <span className={styles.eventTitle}>
-                {event.title}
-                {event.isObserved && ' (obs)'}
-              </span>
-            </div>
           </div>
         </div>
       );
@@ -963,7 +951,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     return (
       <div
-        className={`${styles.eventWrapper} ${styles.monthEventItem}`}
+        className={`${styles.customEvent} ${styles.monthEventItem}`}
         onMouseEnter={(e) => {
           // Clear any existing timeout and show immediately for better responsiveness
           if (this.popoverTimeout) {
@@ -976,15 +964,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           this.hidePopover();
         }}
       >
-        <div className={styles.eventIconContainer}>
-          <span className={styles.eventIcon}>
-            {iconEmoji}
-          </span>
-        </div>
-        <div className={styles.customEvent}>
-          <div className={styles.eventContent}>
-            <span className={styles.eventTitle}>{event.title}</span>
-          </div>
+        <span className={styles.eventIcon}>
+          {iconEmoji}
+        </span>
+        <div className={styles.eventContent}>
+          <span className={styles.eventTitle}>{event.title}</span>
         </div>
       </div>
     );

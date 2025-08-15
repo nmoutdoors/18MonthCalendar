@@ -752,46 +752,31 @@
   position: relative;
 }
 
-// Separate white icon container - same height as event
-.eventIconContainer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  min-width: 28px;
-  height: 100%; // Same height as the event
-  background-color: white;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  flex-shrink: 0;
-  z-index: 10;
-  margin-right: 3px; // Gap between icon and event
-}
-
-// The colored event content area
+// The colored event content area with icon inside
 .customEvent {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   flex: 1;
   height: 100%;
   box-sizing: border-box;
   overflow: hidden;
   border-radius: 3px; // Rounded corners on all sides
+  padding: 2px 6px;
 }
 
 .eventContent {
   display: flex;
   align-items: center;
   flex: 1;
-  padding: 2px 6px;
   overflow: hidden;
+  margin-left: 4px; // Space after icon
 }
 
 .eventIcon {
-  font-size: 16px; // Larger icons to take advantage of bigger container
+  font-size: 14px;
   line-height: 1;
-  opacity: 1; // Full opacity since we have white background
+  margin-right: 4px;
+  flex-shrink: 0; // Don't shrink the icon
 }
 
 .eventTitle {
