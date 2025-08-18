@@ -302,6 +302,70 @@ export class SharePointService {
 
 
 
+  /**
+   * Create multiple events in a single batch operation for better performance
+   */
+  public async createEventsBatch(events: Array<{
+    title: string;
+    start: Date;
+    end: Date;
+    swimlane: string;
+    status: string;
+    description: string;
+    isPrivate?: boolean;
+    privateEventId?: string;
+  }>): Promise<ISharePointEvent[]> {
+    try {
+      Logger.debug(`Creating batch of ${events.length} events`);
+
+      // Check if the list has the new Private fields
+      const hasPrivateFields = await this.checkForPrivateFields();
+
+      // Use Promise.all for parallel processing (simpler and more reliable than batch)
+      const promises = events.map(async event => {
+        const itemData: Record<string, unknown> = {
+          Title: event.title,
+          Start: event.start,
+          End: event.end,
+          Swimlane: event.swimlane,
+          Status: event.status,
+          Description: event.description
+        };
+
+        // Only add Private fields if they exist in the list
+        if (hasPrivateFields) {
+          itemData.Private = event.isPrivate || false;
+          if (event.privateEventId) {
+            itemData.PrivateEventId = event.privateEventId;
+          }
+        }
+
+        const result = await this.sp.web.lists.getByTitle(this.listName).items.add(itemData);
+
+        return {
+          Id: result.data.Id,
+          Title: result.data.Title,
+          Start: result.data.Start,
+          End: result.data.End,
+          Swimlane: result.data.Swimlane,
+          Status: result.data.Status,
+          Description: result.data.Description || '',
+          Private: result.data.Private || false,
+          PrivateEventId: result.data.PrivateEventId || undefined
+        };
+      });
+
+      const results = await Promise.all(promises);
+
+      Logger.debug(`Successfully created batch of ${results.length} events`);
+      return results;
+
+    } catch (error) {
+      Logger.error('Error creating events batch', error);
+      throw error;
+    }
+  }
+
   public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', description: string = '', isPrivate: boolean = false, privateEventId?: string): Promise<ISharePointEvent> {
     try {
       Logger.debug('Creating event', { title, isPrivate });
@@ -418,6 +482,17 @@ export class SharePointService {
         };
       }
 
+      // Check if list is Events type (template 106) for Outlook sync capability
+      if (list.BaseTemplate !== 106) {
+        return {
+          isValid: false,
+          listExists: true,
+          missingFields: [],
+          errorMessage: `List '${targetListName}' exists but is not an Events list (template ${list.BaseTemplate}). For Outlook sync capability, please use an Events list (template 106) or create a new one using the button below.`,
+          canCreate: true
+        };
+      }
+
       // Get all fields in the list
       const fields = await this.sp.web.lists.getByTitle(targetListName).fields
         .select('InternalName', 'Title')();
@@ -501,8 +576,8 @@ export class SharePointService {
     try {
       Logger.info(`Creating SharePoint list: ${listName}`);
 
-      // Create the list based on Calendar template (simpler than Events)
-      await this.sp.web.lists.add(listName, `Calendar list created by BigCal webpart with required fields for event management`, 100, true);
+      // Create the list based on Events template (enables Outlook sync)
+      await this.sp.web.lists.add(listName, `Events list created by BigCal webpart with required fields for event management and Outlook sync`, 106, true);
 
       // Get the created list to add fields
       const createdList = this.sp.web.lists.getByTitle(listName);

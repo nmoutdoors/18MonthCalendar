@@ -213,6 +213,13 @@
     border-left: 4px solid #ff9800;
   }
 
+  /* Private Events group styling */
+  .vis-labelset .vis-label.eventcategory-private {
+    border-left: 4px solid #9c27b0;
+    background-color: #f3e5f5;
+    font-style: italic;
+  }
+
   /* Timeline background */
   .vis-panel.vis-background {
     background-color: $ms-color-white;

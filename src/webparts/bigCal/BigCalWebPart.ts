@@ -319,16 +319,16 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
 
     if (this._listValidationResult) {
       if (this._listValidationResult.isValid) {
-        return '✅ List validated successfully - contains all required fields (Swimlane, Status, Private, PrivateEventId)';
+        return '✅ Events list validated successfully - contains all required fields and supports Outlook sync';
       } else if (!this._listValidationResult.listExists && this._listValidationResult.canCreate) {
-        return '❌ List does not exist - use the "Create List" button below to create it automatically';
+        return '❌ Events list does not exist - use the "Create List" button below to create it automatically';
       } else if (!this._listValidationResult.listExists) {
-        return '❌ List does not exist';
+        return '❌ Events list does not exist';
       } else if (this._listValidationResult.missingFields.length > 0) {
         return `⚠️ List exists but missing required fields: ${this._listValidationResult.missingFields.join(', ')}`;
       }
     }
-    return 'Name of the SharePoint list containing events (must have Swimlane, Status, Private, and PrivateEventId fields)';
+    return 'Name of the SharePoint Events list containing events (must be Events list type for Outlook sync)';
   }
 
   private _getListNameErrorMessage(): string | undefined {
@@ -390,7 +390,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
 
 
   private _getPropertyPaneFields(): IPropertyPaneField<unknown>[] {
-    const fields = [
+    const fields: IPropertyPaneField<unknown>[] = [
       PropertyPaneTextField('description', {
         label: strings.DescriptionFieldLabel
       }),
@@ -432,23 +432,14 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         description: this._getListNameDescription(),
         placeholder: 'Events',
         errorMessage: this._getListNameErrorMessage()
-      }),
-      PropertyPaneLabel('privateFieldsStatus', {
-        text: this._getPrivateFieldsStatus()
-      }),
-      PropertyPaneLabel('privateListStatus', {
-        text: 'Private Events Configuration'
-      }),
-      PropertyPaneLabel('privateListDescription', {
-        text: this._getPrivateListDescription()
       })
     ];
 
-    // Add create list button if validation shows we can create the list
+    // Add create list button directly after the list name field if validation shows we can create the list
     if (this._listValidationResult && this._listValidationResult.canCreate && !this._listValidationResult.isValid) {
       fields.push(
         PropertyPaneButton('createList', {
-          text: this._isCreatingList ? 'Creating List...' : 'Create List with Required Fields',
+          text: this._isCreatingList ? 'Creating Events List...' : 'Create Events List with Outlook Sync',
           buttonType: PropertyPaneButtonType.Primary,
           onClick: () => {
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -458,6 +449,23 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         })
       );
     }
+
+    // Add private events configuration fields
+    fields.push(
+      PropertyPaneLabel('privateFieldsStatus', {
+        text: this._getPrivateFieldsStatus()
+      })
+    );
+    fields.push(
+      PropertyPaneLabel('privateListStatus', {
+        text: 'Private Events Configuration'
+      })
+    );
+    fields.push(
+      PropertyPaneLabel('privateListDescription', {
+        text: this._getPrivateListDescription()
+      })
+    );
 
     // Add create private list button if validation shows we can create it
     if (this._privateListValidationResult && this._privateListValidationResult.canCreate && !this._privateListValidationResult.isValid) {

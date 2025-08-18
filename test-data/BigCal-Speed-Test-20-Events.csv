@@ -1,0 +1,21 @@
+Title,Description,Start,End,Event Category,Status
+Speed Test Event 1,Testing optimized import performance,8/5/2025 9:00 AM,8/5/2025 10:00 AM,FYSA,Confirmed
+Speed Test Event 2,Testing batch processing improvements,8/6/2025 2:00 PM,8/6/2025 3:00 PM,Training Holiday,Tentative
+Speed Test Event 3,Testing instant UI updates,8/7/2025 10:00 AM,8/7/2025 11:00 AM,VIP/High Priority,Confirmed
+Speed Test Event 4,Testing parallel processing,8/8/2025 1:00 PM,8/8/2025 2:00 PM,Exercise,Tentative
+Speed Test Event 5,Testing SharePoint batch operations,8/9/2025 9:30 AM,8/9/2025 10:30 AM,Out of Office,Confirmed
+Speed Test Event 6,Testing reduced delays,8/12/2025 3:00 PM,8/12/2025 4:00 PM,FYSA,Tentative
+Speed Test Event 7,Testing larger batch sizes,8/13/2025 11:00 AM,8/13/2025 12:00 PM,Training Holiday,Confirmed
+Speed Test Event 8,Testing immediate UI feedback,8/14/2025 2:30 PM,8/14/2025 3:30 PM,VIP/High Priority,Tentative
+Speed Test Event 9,Testing background refresh,8/15/2025 8:00 AM,8/15/2025 9:00 AM,Exercise,Confirmed
+Speed Test Event 10,Testing optimized event loading,8/16/2025 4:00 PM,8/16/2025 5:00 PM,Out of Office,Tentative
+Speed Test Event 11,Testing performance improvements,8/19/2025 10:30 AM,8/19/2025 11:30 AM,FYSA,Confirmed
+Speed Test Event 12,Testing batch efficiency,8/20/2025 1:30 PM,8/20/2025 2:30 PM,Training Holiday,Tentative
+Speed Test Event 13,Testing UI responsiveness,8/21/2025 9:00 AM,8/21/2025 10:00 AM,VIP/High Priority,Confirmed
+Speed Test Event 14,Testing parallel execution,8/22/2025 3:30 PM,8/22/2025 4:30 PM,Exercise,Tentative
+Speed Test Event 15,Testing SharePoint optimization,8/23/2025 11:30 AM,8/23/2025 12:30 PM,Out of Office,Confirmed
+Speed Test Event 16,Testing reduced wait times,8/26/2025 2:00 PM,8/26/2025 3:00 PM,FYSA,Tentative
+Speed Test Event 17,Testing instant feedback,8/27/2025 8:30 AM,8/27/2025 9:30 AM,Training Holiday,Confirmed
+Speed Test Event 18,Testing background processing,8/28/2025 4:30 PM,8/28/2025 5:30 PM,VIP/High Priority,Tentative
+Speed Test Event 19,Testing final optimizations,8/29/2025 10:00 AM,8/29/2025 11:00 AM,Exercise,Confirmed
+Speed Test Event 20,Testing complete performance suite,8/30/2025 1:00 PM,8/30/2025 2:00 PM,Out of Office,Tentative

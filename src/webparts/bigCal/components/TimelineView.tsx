@@ -90,7 +90,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
   private initializeTimeline = (): void => {
     if (!this.timelineRef.current) return;
 
-    // Create groups for event categories
+    // Create groups for event categories (including Private Events)
     const groups = [
       { id: 'Away w/RON', content: 'Away w/RON', className: 'eventcategory-away' },
       { id: 'Day Trip - NCR', content: 'Day Trip - NCR', className: 'eventcategory-daytrip' },
@@ -98,7 +98,8 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
       { id: 'FYSA', content: 'FYSA', className: 'eventcategory-fysa' },
       { id: 'Out of Office', content: 'Out of Office', className: 'eventcategory-ooo' },
       { id: 'Training Holiday', content: 'Training Holiday', className: 'eventcategory-training' },
-      { id: 'VIP/High Priority', content: 'VIP/High Priority', className: 'eventcategory-vip' }
+      { id: 'VIP/High Priority', content: 'VIP/High Priority', className: 'eventcategory-vip' },
+      { id: 'Private Events', content: 'Private Events', className: 'eventcategory-private' }
     ];
 
     this.groups.clear();
@@ -193,7 +194,10 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
         const itemId = properties.items[0];
         const event = this.props.events.filter((e: ICalendarEvent) => e.id === itemId)[0];
         if (event) {
-          this.props.onEventClick(event);
+          // Don't allow editing holiday events or "Unavailable" private events (same logic as calendar view)
+          if (!event.isHoliday && !(event.isPrivate && event.title === 'Unavailable')) {
+            this.props.onEventClick(event);
+          }
           // Deselect item to allow re-selection
           timeline.setSelection([]);
         }
@@ -204,7 +208,10 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
       if (properties.item && this.props.onEventDoubleClick) {
         const event = this.props.events.filter((e: ICalendarEvent) => e.id === properties.item)[0];
         if (event) {
-          this.props.onEventDoubleClick(event);
+          // Don't allow editing holiday events or "Unavailable" private events (same logic as calendar view)
+          if (!event.isHoliday && !(event.isPrivate && event.title === 'Unavailable')) {
+            this.props.onEventDoubleClick(event);
+          }
         }
       }
     });
@@ -290,6 +297,8 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
         return '🎓'; // Graduation cap (education)
       case 'VIP/High Priority':
         return '⚠️'; // Warning (important)
+      case 'Private Events':
+        return '🔒'; // Lock (private)
       default:
         return 'ℹ️'; // Information
     }
@@ -312,7 +321,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
   private updateGroupsVisibility = (): void => {
     if (!this.state.timeline) return;
 
-    // Get all possible event categories
+    // Get all possible event categories (including Private Events)
     const allEventCategories = [
       'Away w/RON',
       'Day Trip - NCR',
@@ -320,7 +329,8 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
       'FYSA',
       'Out of Office',
       'Training Holiday',
-      'VIP/High Priority'
+      'VIP/High Priority',
+      'Private Events'
     ];
 
     // Create groups array with only selected categories
@@ -462,9 +472,9 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
       id: event.id,
       content: this.generateEventContent(event), // HTML content with icon and title
       start: event.start,
-      group: event.swimlane,
+      group: event.isPrivate ? 'Private Events' : event.swimlane, // Private events go to dedicated lane
       className: `status-${(event.status || 'confirmed').toLowerCase().replace(/\s+/g, '')}`,
-      title: `${event.title}\nEvent Category: ${event.swimlane}\nStatus: ${event.status}\nStart: ${event.start.toLocaleDateString()}\nEnd: ${event.end.toLocaleDateString()}`,
+      title: `${event.title}\nEvent Category: ${event.isPrivate ? 'Private Events' : event.swimlane}\nStatus: ${event.status}\nStart: ${event.start.toLocaleDateString()}\nEnd: ${event.end.toLocaleDateString()}`,
       type: 'point' // This is crucial for icon + text layout
     }));
 

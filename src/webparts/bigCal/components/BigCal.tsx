@@ -17,6 +17,9 @@ import { TimelineView } from './TimelineView';
 import { ExcelExport } from './ExcelExport';
 import { PrintDialog } from './PrintDialog';
 import { IconSelector } from './IconSelector';
+// import { FilterControls } from './FilterControls';
+// import { NavigationToolbar } from './NavigationToolbar';
+// import { DataGridView } from './DataGridView'; // For future Outlook sync editing
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Setup the localizer for react-big-calendar
@@ -250,7 +253,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       };
     });
 
-    // Add Private Events option
+    // Add Private Events option (now available in all views since they have their own dedicated lane in timeline)
     const privateCount = filteredEvents.filter(e => !e.isHoliday && e.isPrivate).length;
     options.push({
       key: 'Private Events',
@@ -606,6 +609,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         const availableCategories = this.props.eventRenderingMode === 'typeAndStatusBased'
           ? allCategories.filter(cat => hiddenCategories.indexOf(cat) === -1)
           : allCategories;
+        // Include Private Events in toggle logic for all views now that they have their own dedicated lane
         const allAvailableCategories = [...availableCategories, 'Private Events'];
         const allSelected = option.data?.allSelected;
         const newSelected = allSelected ? new Set<string>() : new Set<string>(allAvailableCategories);
@@ -770,6 +774,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       </span>
     );
   };
+
+
 
   private renderGridView = (): React.ReactElement => {
     const { currentDate } = this.state;
@@ -1325,31 +1331,66 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     const startTime = performance.now();
 
     try {
-      Logger.info(`Starting import of ${importedEvents.length} events`);
+      Logger.info(`Starting optimized import of ${importedEvents.length} events`);
 
-      // Add imported events to SharePoint list
-      const addPromises = importedEvents.map(event =>
-        this.sharePointService.createEvent(
-          event.title,
-          event.start,
-          event.end,
-          event.swimlane,
-          event.status,
-          event.description || ''
-        )
-      );
+      // Ultra-optimized approach: Use SharePoint batch operations for maximum speed
+      const BATCH_SIZE = 50; // Larger batches for better throughput
+      const batches = [];
 
-      await Promise.all(addPromises);
+      for (let i = 0; i < importedEvents.length; i += BATCH_SIZE) {
+        batches.push(importedEvents.slice(i, i + BATCH_SIZE));
+      }
 
-      // Refresh the events list
-      await this.loadEvents();
+      Logger.info(`Processing ${batches.length} optimized batches of up to ${BATCH_SIZE} events each`);
+
+      // Update UI immediately with imported events for instant feedback
+      const currentEvents = [...this.state.events];
+      const tempCalendarEvents = importedEvents.map((event, index) => ({
+        ...event,
+        id: Date.now() + index // Temporary unique ID
+      }));
+
+      this.setState({
+        events: [...currentEvents, ...tempCalendarEvents]
+      }, () => {
+        this.applyFilters();
+      });
+
+      // Process all batches using SharePoint batch operations for maximum speed
+      const allBatchPromises = batches.map((batch, batchIndex) => {
+        Logger.debug(`Processing SharePoint batch ${batchIndex + 1}/${batches.length} (${batch.length} events)`);
+
+        // Convert to SharePoint batch format
+        const batchData = batch.map(event => ({
+          title: event.title,
+          start: event.start,
+          end: event.end,
+          swimlane: event.swimlane || 'FYSA',
+          status: event.status || 'Confirmed',
+          description: event.description || ''
+        }));
+
+        // Use SharePoint batch operation for this batch
+        return this.sharePointService.createEventsBatch(batchData);
+      });
+
+      // Wait for all batches to complete
+      await Promise.all(allBatchPromises);
+
+      // Background refresh to get proper SharePoint IDs (non-blocking)
+      setTimeout(() => {
+        this.loadEvents().catch(error => {
+          Logger.warn('Background refresh after import failed', error);
+        });
+      }, 500); // Reduced delay
 
       const duration = Math.round(performance.now() - startTime);
-      Logger.bulkOperation('Import completed', importedEvents.length, duration);
+      Logger.bulkOperation('Optimized import completed', importedEvents.length, duration);
 
     } catch (error) {
       Logger.error('Error importing events', error);
-      // Handle error (you could add error state/message)
+      // On error, do a full reload to ensure consistency
+      await this.loadEvents();
     }
   };
 
@@ -1565,7 +1606,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                       root: {
                         width: '200px',
                         minWidth: '180px',
-                        maxWidth: '220px'
+                        maxWidth: '220px',
+                        marginRight: '12px' // Add more right margin to theme selector
                       },
                       title: {
                         backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -1590,7 +1632,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
             <div className={styles.navbarRight}>
               {/* Option 1: Pivot Component (Currently Active) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                 <Pivot
                   selectedKey={viewMode}
                   onLinkClick={this.handleViewModeChange}

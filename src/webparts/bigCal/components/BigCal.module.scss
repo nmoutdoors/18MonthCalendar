@@ -12,6 +12,44 @@
   }
 }
 
+// Filter Controls Component Styles
+.filterControls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 8px 0;
+}
+
+// Grid View Component Styles
+.gridView {
+  height: 100%;
+  overflow: auto;
+  background: #fff;
+}
+
+// Navigation Toolbar Component Styles
+.navControls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.currentDate {
+  font-size: 18px;
+  font-weight: 600;
+  color: $ms-color-neutralPrimary;
+  margin: 0 16px;
+}
+
+.viewModePivot {
+  margin: 0 8px; // Reduced from 16px for more compact layout
+}
+
+.calendarViewPivot {
+  margin: 0 4px; // Reduced from 8px for more compact layout
+}
+
 // Print-specific styles for BigCal
 @media print {
   .bigCal {
@@ -158,14 +196,14 @@
   align-items: center;
   flex: 1;
   min-width: 0; // Allow shrinking
-  gap: 8px;
+  gap: 6px; // Reduced from 8px for more compact layout
 
   @media (max-width: 1300px) {
-    gap: 6px;
+    gap: 4px; // More compact on laptops
   }
 
   @media (max-width: 1100px) {
-    gap: 4px;
+    gap: 3px; // Even more compact on smaller laptops
   }
 
   @media (max-width: 900px) {
@@ -185,14 +223,14 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin: 0 16px;
+  margin: 0 8px; // Reduced from 16px for more compact layout
 
   @media (max-width: 1300px) {
-    margin: 0 12px;
+    margin: 0 6px; // More compact on laptops
   }
 
   @media (max-width: 1100px) {
-    margin: 0 8px;
+    margin: 0 4px; // Even more compact on smaller laptops
   }
 
   @media (max-width: 900px) {
@@ -342,19 +380,29 @@
     .ms-Pivot {
       display: flex;
       align-items: center;
+      gap: 0; // Remove any default gap between pivot items
+      margin: 0; // Remove any default margin
+      padding: 0; // Remove any default padding
+      width: auto; // Let content determine width
+      min-width: auto; // Remove minimum width
     }
 
     .ms-Pivot-link {
       color: white !important;
-      font-size: 14px;
+      font-size: 14px; // Restored original font size
       font-weight: 400;
-      padding: 8px 12px;
-      margin: 0 2px;
+      padding: 8px 4px; // Focus on reducing right padding (was 8px 12px)
+      margin: 0; // Remove margin completely for tighter buttons
       border-radius: 4px;
       transition: all 0.2s ease;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 6px; // Restored original gap
+      width: auto; // Let content determine width
+      min-width: auto; // Remove any minimum width constraints
+      max-width: fit-content; // Shrink to content size
+      flex-shrink: 1; // Allow shrinking
+      white-space: nowrap; // Prevent text wrapping
       min-height: 32px;
 
       &:hover {
@@ -373,15 +421,27 @@
         flex-shrink: 0; // Keep icons visible
       }
 
-      // Responsive pivot sizing - hide text on smaller screens
-      @media (max-width: 1100px) {
-        padding: 6px 8px;
-        font-size: 12px;
-        gap: 4px;
+      // Responsive pivot sizing - focus on right padding reduction
+      @media (max-width: 1300px) {
+        padding: 6px 3px; // Reduce right padding even more for laptops
+        font-size: 14px; // Keep original font size
+        gap: 6px;
         min-height: 28px;
 
         .ms-Icon {
           font-size: 14px;
+        }
+      }
+
+      // Hide text, show only icons on smaller laptops
+      @media (max-width: 1100px) {
+        padding: 6px 2px; // Minimal right padding
+        font-size: 12px;
+        gap: 4px;
+        min-height: 26px;
+
+        .ms-Icon {
+          font-size: 13px;
         }
 
         // Hide text, show only icons
@@ -429,8 +489,26 @@
     .ms-Pivot-text {
       color: inherit;
     }
+
+    // Target any button containers that might be adding extra width
+    .ms-Button,
+    .ms-Button-flexContainer,
+    .ms-Pivot-linkContent {
+      width: auto !important;
+      min-width: auto !important;
+      max-width: fit-content !important;
+    }
+
+    // Force compact button sizing
+    button[data-is-focusable="true"] {
+      width: auto !important;
+      min-width: auto !important;
+      padding: 8px 4px !important;
+    }
   }
 }
+
+
 
 .mainContent {
   display: flex;
