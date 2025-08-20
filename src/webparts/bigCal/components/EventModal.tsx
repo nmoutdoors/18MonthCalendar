@@ -48,10 +48,19 @@ interface IEventModalState {
 const getAllSwimlaneOptions = (): IDropdownOption[] => [
   { key: 'Away w/RON', text: 'Away w/RON', data: { icon: '✈️' } },
   { key: 'Day Trip - NCR', text: 'Day Trip - NCR', data: { icon: '📍' } },
+  { key: 'DCDC', text: 'DCDC', data: { icon: '🏛️' } },
+  { key: 'DISA', text: 'DISA', data: { icon: '🔒' } },
+  { key: 'DOD CIO / NSA / USCC', text: 'DOD CIO / NSA / USCC', data: { icon: '🛡️' } },
+  { key: 'Exec Time', text: 'Exec Time', data: { icon: '👔' } },
   { key: 'Exercise', text: 'Exercise', data: { icon: '🏃' } },
   { key: 'FYSA', text: 'FYSA', data: { icon: 'ℹ️' } },
+  { key: 'Joint DISA & DCDC', text: 'Joint DISA & DCDC', data: { icon: '🤝' } },
+  { key: 'Mission Partner', text: 'Mission Partner', data: { icon: '🌐' } },
   { key: 'Out of Office', text: 'Out of Office', data: { icon: '🚪' } },
+  { key: 'Speaking Engagement', text: 'Speaking Engagement', data: { icon: '🎤' } },
+  { key: 'TDY Meetings/Congressional', text: 'TDY Meetings/Congressional', data: { icon: '🏛️' } },
   { key: 'Training Holiday', text: 'Training Holiday', data: { icon: '🎓' } },
+  { key: 'Transit', text: 'Transit', data: { icon: '🚗' } },
   { key: 'VIP/High Priority', text: 'VIP/High Priority', data: { icon: '⚠️' } }
 ];
 
@@ -92,7 +101,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       startAmPm: startTimeData.amPm,
       endAmPm: endTimeData.amPm,
       swimlane: props.event?.swimlane || 'FYSA',
-      status: props.event?.status || 'Confirmed',
+      status: props.event?.status ? props.event.status : 'Not Set', // Convert blank/null to "Not Set" for dropdown
       isPrivate: props.event?.isPrivate || false,
       isSaving: false,
       isDeleting: false
@@ -142,7 +151,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           startAmPm: startTimeData.amPm,
           endAmPm: endTimeData.amPm,
           swimlane: this.props.event.swimlane || 'FYSA',
-          status: this.props.event.status || 'Confirmed',
+          status: this.props.event.status ? this.props.event.status : 'Not Set', // Convert blank/null to "Not Set" for dropdown
           isPrivate: this.props.event.isPrivate || false,
           isSaving: false,
           isDeleting: false
@@ -155,14 +164,11 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     const allStatuses = [
       { key: 'Confirmed', text: 'Confirmed', data: { color: ColorPaletteService.getStatusColor('Confirmed', this.props.colorPalette) } },
       { key: 'Tentative', text: 'Tentative', data: { color: ColorPaletteService.getStatusColor('Tentative', this.props.colorPalette) } },
-      { key: 'Canceled', text: 'Canceled', data: { color: ColorPaletteService.getStatusColor('Canceled', this.props.colorPalette) } }
+      { key: 'Not Set', text: 'Not Set', data: { color: '#6c757d' } } // Gray color for "Not Set"
     ];
 
-    // Filter statuses based on rendering mode
-    const hiddenStatuses = ['Canceled'];
-    return this.props.eventRenderingMode === 'typeAndStatusBased'
-      ? allStatuses.filter(option => hiddenStatuses.indexOf(option.key as string) === -1)
-      : allStatuses;
+    // All statuses are available in both rendering modes now
+    return allStatuses;
   };
 
   private onRenderSwimlaneOption = (option?: IDropdownOption): JSX.Element => {
@@ -294,7 +300,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         start,
         end,
         swimlane,
-        status,
+        status: status === 'Not Set' ? '' : status, // Convert "Not Set" to empty string for saving
         isPrivate
       };
 

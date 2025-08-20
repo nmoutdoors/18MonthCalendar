@@ -112,10 +112,19 @@ When validation fails because a list doesn't exist, the webpart now offers to cr
 #### Swimlane Field Options
 - Away w/RON
 - Day Trip - NCR
+- DCDC
+- DISA
+- DOD CIO / NSA / USCC
+- Exec Time
 - Exercise
 - FYSA (default)
+- Joint DISA & DCDC
+- Mission Partner
 - Out of Office
+- Speaking Engagement
+- TDY Meetings/Congressional
 - Training Holiday
+- Transit
 - VIP/High Priority
 
 #### Status Field Options

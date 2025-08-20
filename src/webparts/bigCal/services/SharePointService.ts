@@ -10,8 +10,8 @@ import '@pnp/sp/content-types';
 export interface ISharePointEvent {
   Id: number;
   Title: string;
-  Start: string;
-  End: string;
+  EventDate: string; // Standard SharePoint Events list field
+  EndDate: string;   // Standard SharePoint Events list field
   Swimlane: string;
   Status: string;
   Description: string;
@@ -47,16 +47,18 @@ export class SharePointService {
   private listName: string;
 
   // Field definitions for list creation
+  // NOTE: For standard SharePoint Events lists, use EventDate and EndDate (built-in fields)
+  // These custom fields are only for when creating new lists from scratch
   private static readonly REQUIRED_FIELDS: IFieldDefinition[] = [
     {
-      internalName: 'Start',
-      displayName: 'Start',
+      internalName: 'EventDate',
+      displayName: 'Start Time',
       fieldType: 'DateTime',
       required: false
     },
     {
-      internalName: 'End',
-      displayName: 'End',
+      internalName: 'EndDate',
+      displayName: 'End Time',
       fieldType: 'DateTime',
       required: false
     },
@@ -72,13 +74,18 @@ export class SharePointService {
       fieldType: 'Choice',
       required: false,
       choices: [
-        'Away w/RON',
-        'Day Trip - NCR',
-        'Exercise',
+        'DCDC',
+        'DISA',
+        'DOD CIO / NSA / USCC',
+        'Exec Time',
+        'Exercises',
         'FYSA',
+        'Joint DISA & DCDC',
+        'Mission Partner',
         'Out of Office',
-        'Training Holiday',
-        'VIP/High Priority'
+        'Speaking Event',
+        'TDY Meetings/Congressional',
+        'Transit'
       ],
       defaultValue: 'FYSA'
     },
@@ -92,7 +99,7 @@ export class SharePointService {
         'Tentative',
         'Canceled'
       ],
-      defaultValue: 'Confirmed'
+      defaultValue: '' // No default - allow blank/null
     },
     {
       internalName: 'Private',
@@ -213,7 +220,7 @@ export class SharePointService {
 
       // Use PnP.js to get items from the Events list
       // Increase limit to handle large datasets (default is 100)
-      let selectFields = 'Id,Title,Start,End,Swimlane,Status,Description';
+      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,Description';
 
       // Enhanced field selection for production environments
       if (hasPrivateFields) {
@@ -251,7 +258,7 @@ export class SharePointService {
 
       const items = await this.sp.web.lists.getByTitle(this.listName).items
         .select(selectFields)
-        .orderBy('Start', true)
+        .orderBy('EventDate', true)
         .top(5000)(); // Increase limit to 5000 events
 
       Logger.info(`Loaded ${items.length} events from SharePoint`);
@@ -259,8 +266,8 @@ export class SharePointService {
       return items.map((item: {
         Id: number;
         Title: string;
-        Start: string;
-        End: string;
+        EventDate: string;
+        EndDate: string;
         Swimlane: string;
         Status: string;
         Description?: string;
@@ -273,8 +280,8 @@ export class SharePointService {
         const mappedEvent = {
           Id: item.Id,
           Title: item.Title,
-          Start: item.Start,
-          End: item.End,
+          EventDate: item.EventDate,
+          EndDate: item.EndDate,
           Swimlane: item.Swimlane,
           Status: item.Status,
           Description: item.Description || '',
@@ -310,7 +317,7 @@ export class SharePointService {
     start: Date;
     end: Date;
     swimlane: string;
-    status: string;
+    status?: string; // Make status optional
     description: string;
     isPrivate?: boolean;
     privateEventId?: string;
@@ -325,12 +332,16 @@ export class SharePointService {
       const promises = events.map(async event => {
         const itemData: Record<string, unknown> = {
           Title: event.title,
-          Start: event.start,
-          End: event.end,
+          EventDate: event.start.toISOString(), // Standard SharePoint Events field
+          EndDate: event.end.toISOString(),     // Standard SharePoint Events field
           Swimlane: event.swimlane,
-          Status: event.status,
           Description: event.description
         };
+
+        // Only add Status if it's provided (not undefined/null/empty)
+        if (event.status && event.status.trim()) {
+          itemData.Status = event.status;
+        }
 
         // Only add Private fields if they exist in the list
         if (hasPrivateFields) {
@@ -342,16 +353,31 @@ export class SharePointService {
 
         const result = await this.sp.web.lists.getByTitle(this.listName).items.add(itemData);
 
+        Logger.debug('Batch item creation result:', result);
+
+        // Handle different PnP.js response formats
+        let itemData_result;
+        if (result && result.data) {
+          Logger.debug('Using result.data format');
+          itemData_result = result.data;
+        } else if (result && result.Id) {
+          Logger.debug('Using direct result format');
+          itemData_result = result;
+        } else {
+          Logger.error('Unexpected response format:', result);
+          throw new Error('Unexpected response format from SharePoint item creation');
+        }
+
         return {
-          Id: result.data.Id,
-          Title: result.data.Title,
-          Start: result.data.Start,
-          End: result.data.End,
-          Swimlane: result.data.Swimlane,
-          Status: result.data.Status,
-          Description: result.data.Description || '',
-          Private: result.data.Private || false,
-          PrivateEventId: result.data.PrivateEventId || undefined
+          Id: itemData_result.Id,
+          Title: itemData_result.Title,
+          EventDate: itemData_result.EventDate,
+          EndDate: itemData_result.EndDate,
+          Swimlane: itemData_result.Swimlane,
+          Status: itemData_result.Status,
+          Description: itemData_result.Description || '',
+          Private: itemData_result.Private || false,
+          PrivateEventId: itemData_result.PrivateEventId || undefined
         };
       });
 
@@ -376,8 +402,8 @@ export class SharePointService {
       // Use PnP.js to create a new item in the Events list
       const itemData: Record<string, unknown> = {
         Title: title,
-        Start: start,
-        End: end,
+        EventDate: start.toISOString(), // Standard SharePoint Events field
+        EndDate: end.toISOString(),     // Standard SharePoint Events field
         Swimlane: swimlane,
         Status: status,
         Description: description
@@ -401,8 +427,8 @@ export class SharePointService {
       return {
         Id: result.Id,
         Title: result.Title,
-        Start: result.Start,
-        End: result.End,
+        EventDate: result.EventDate,
+        EndDate: result.EndDate,
         Swimlane: result.Swimlane,
         Status: result.Status,
         Description: result.Description || '',
@@ -424,8 +450,8 @@ export class SharePointService {
 
       const updateData: Record<string, unknown> = {
         Title: title,
-        Start: start,
-        End: end
+        EventDate: start.toISOString(), // Standard SharePoint Events field
+        EndDate: end.toISOString()      // Standard SharePoint Events field
       };
 
       if (swimlane) updateData.Swimlane = swimlane;
@@ -460,7 +486,10 @@ export class SharePointService {
 
   public async validateList(listName?: string, requirePrivateFields: boolean = true): Promise<IListValidationResult> {
     const targetListName = listName || this.listName;
-    let requiredFields = ['Start', 'End', 'Description', 'Swimlane', 'Status'];
+
+    // For Events lists (template 106), use EventDate/EndDate. For custom lists, use Start/End
+    // We'll determine the correct field names after checking the list type
+    let requiredFields: string[] = [];
     const privateFields = ['Private', 'PrivateEventId'];
 
     // Include private fields as required for full functionality
@@ -493,6 +522,10 @@ export class SharePointService {
         };
       }
 
+      // For Events lists (template 106), use the built-in field names
+      const coreFields = ['EventDate', 'EndDate', 'Description', 'Swimlane', 'Status'];
+      requiredFields = coreFields.concat(requirePrivateFields ? privateFields : []);
+
       // Get all fields in the list
       const fields = await this.sp.web.lists.getByTitle(targetListName).fields
         .select('InternalName', 'Title')();
@@ -501,7 +534,6 @@ export class SharePointService {
       const missingFields = requiredFields.filter(field => fieldNames.indexOf(field) === -1);
 
       // Separate missing fields into core and private
-      const coreFields = ['Start', 'End', 'Description', 'Swimlane', 'Status'];
       const missingCoreFields = missingFields.filter(field => coreFields.indexOf(field) !== -1);
       const missingPrivateFields = missingFields.filter(field => privateFields.indexOf(field) !== -1);
 
@@ -567,6 +599,89 @@ export class SharePointService {
         listExists: false,
         missingFields: [],
         errorMessage: `Error validating list: ${errorMessage}`,
+        canCreate: false // Unknown error, don't offer to create
+      };
+    }
+  }
+
+  public async validateConfigList(listName: string): Promise<IListValidationResult> {
+    const requiredFields = ['ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IsActive', 'SortOrder'];
+
+    try {
+      // Check if list exists
+      const list = await this.sp.web.lists.getByTitle(listName)();
+
+      if (!list) {
+        return {
+          isValid: false,
+          listExists: false,
+          missingFields: [],
+          errorMessage: `Configuration list '${listName}' does not exist.`,
+          canCreate: true
+        };
+      }
+
+      // Get all fields in the list
+      const fields = await this.sp.web.lists.getByTitle(listName).fields
+        .select('InternalName', 'Title', 'TypeAsString')();
+
+      const fieldNames = fields.map(f => f.InternalName.toLowerCase());
+      const missingFields: string[] = [];
+
+      // Check for required fields (case-insensitive)
+      for (const requiredField of requiredFields) {
+        const fieldFound = fieldNames.some(name =>
+          name === requiredField.toLowerCase() ||
+          name.indexOf(requiredField.toLowerCase()) !== -1
+        );
+
+        if (!fieldFound) {
+          missingFields.push(requiredField);
+        }
+      }
+
+      const isValid = missingFields.length === 0;
+      let errorMessage = '';
+
+      if (!isValid) {
+        errorMessage = `Configuration list '${listName}' is missing required fields: ${missingFields.join(', ')}\n\n` +
+          'Required fields for BigCalConfig list:\n' +
+          '• ConfigType (Choice field) - Type of configuration (e.g., "ColorMapping")\n' +
+          '• FieldName (Single line of text) - SharePoint field name (e.g., "Swimlanes", "Status")\n' +
+          '• OptionValue (Single line of text) - The choice value from SharePoint field\n' +
+          '• ColorHex (Single line of text) - Hex color code (e.g., "#FF5733")\n' +
+          '• IsActive (Yes/No field) - Enable/disable this color mapping\n' +
+          '• SortOrder (Number field) - Display order in UI';
+      }
+
+      return {
+        isValid,
+        listExists: true,
+        missingFields,
+        errorMessage,
+        canCreate: false // List exists, so we can't create it
+      };
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error validating config list', error);
+
+      // Check if it's a "list not found" error
+      if (errorMessage.indexOf('does not exist') !== -1 || errorMessage.indexOf('not found') !== -1) {
+        return {
+          isValid: false,
+          listExists: false,
+          missingFields: [],
+          errorMessage: `Configuration list '${listName}' does not exist.`,
+          canCreate: true
+        };
+      }
+
+      return {
+        isValid: false,
+        listExists: false,
+        missingFields: [],
+        errorMessage: `Error validating config list: ${errorMessage}`,
         canCreate: false // Unknown error, don't offer to create
       };
     }
@@ -650,6 +765,282 @@ export class SharePointService {
         success: false,
         listName: listName,
         errorMessage: `Failed to create list: ${errorMessage}`
+      };
+    }
+  }
+
+  /**
+   * Update field choices for existing SharePoint list fields
+   */
+  public async updateFieldChoices(listName: string, fieldName: string, choices: string[]): Promise<void> {
+    try {
+      Logger.info(`Updating field choices for ${fieldName} in list ${listName}`);
+
+      const field = await this.sp.web.lists.getByTitle(listName).fields.getByInternalNameOrTitle(fieldName)();
+
+      if (field && field.TypeAsString === 'Choice') {
+        await this.sp.web.lists.getByTitle(listName).fields.getByInternalNameOrTitle(fieldName).update({
+          Choices: choices
+        });
+        Logger.info(`Successfully updated ${fieldName} field choices`);
+      } else {
+        Logger.warn(`Field ${fieldName} is not a choice field or does not exist`);
+      }
+    } catch (error) {
+      Logger.error(`Error updating field choices for ${fieldName}`, error);
+      throw new Error(`Failed to update field choices: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Update all field choices to match current requirements
+   */
+  public async updateAllFieldChoices(listName?: string): Promise<void> {
+    const targetListName = listName || this.listName;
+
+    try {
+      Logger.info(`Updating all field choices for list ${targetListName}`);
+
+      // Update each choice field with current choices from REQUIRED_FIELDS
+      for (const fieldDef of SharePointService.REQUIRED_FIELDS) {
+        if (fieldDef.fieldType === 'Choice' && fieldDef.choices) {
+          try {
+            await this.updateFieldChoices(targetListName, fieldDef.internalName, fieldDef.choices);
+          } catch (fieldError) {
+            Logger.warn(`Could not update field ${fieldDef.internalName}`, fieldError);
+            // Continue with other fields even if one fails
+          }
+        }
+      }
+
+      Logger.info(`Completed updating field choices for list ${targetListName}`);
+    } catch (error) {
+      Logger.error(`Error updating field choices for list ${targetListName}`, error);
+      throw new Error(`Failed to update field choices: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  public async createPrivateEventsList(listName: string = 'PrivateEvents'): Promise<IListCreationResult> {
+    try {
+      Logger.info(`Creating PrivateEvents list: ${listName}`);
+
+      // Create the list as an Events list (template 106) - same as main Events list
+      await this.sp.web.lists.add(listName, `Private events list created by BigCal webpart for storing private event details with Outlook sync capability`, 106, true);
+
+      // Set to Classic experience for better data management
+      try {
+        const createdList = this.sp.web.lists.getByTitle(listName);
+        await createdList.update({
+          ListExperienceOptions: 1 // 1 = Classic, 0 = Auto (Modern), 2 = Modern
+        });
+        Logger.info('Set PrivateEvents list to Classic experience');
+      } catch (experienceError) {
+        Logger.warn('Could not set Classic experience, continuing with default', experienceError);
+      }
+
+      // Get the created list to add custom fields
+      const createdList = this.sp.web.lists.getByTitle(listName);
+
+      // Add all the same custom fields as the main Events list
+      for (const fieldDef of SharePointService.REQUIRED_FIELDS) {
+        try {
+          if (fieldDef.fieldType === 'DateTime') {
+            // Create date and time field
+            await createdList.fields.addDateTime(fieldDef.internalName, {
+              DisplayFormat: 0, // DateTime format (0 = DateTime, 1 = DateOnly)
+              DateTimeCalendarType: 1, // Gregorian calendar
+              FriendlyDisplayFormat: 0, // Standard format
+              Required: fieldDef.required || false
+            });
+          } else if (fieldDef.fieldType === 'Choice') {
+            // Create choice field
+            await createdList.fields.addChoice(fieldDef.internalName, {
+              Choices: fieldDef.choices || [],
+              Required: fieldDef.required || false,
+              FillInChoice: false
+            });
+          } else if (fieldDef.fieldType === 'Note') {
+            // Create multiple lines of text field
+            await createdList.fields.addMultilineText(fieldDef.internalName, {
+              NumberOfLines: 3,
+              RichText: false,
+              RestrictedMode: false,
+              AppendOnly: false,
+              AllowHyperlink: true,
+              Required: fieldDef.required || false
+            });
+          } else if (fieldDef.fieldType === 'Boolean') {
+            // Create boolean field
+            await createdList.fields.addBoolean(fieldDef.internalName, {
+              Required: fieldDef.required || false
+            });
+          } else if (fieldDef.fieldType === 'Text') {
+            // Create text field
+            await createdList.fields.addText(fieldDef.internalName, {
+              MaxLength: 255,
+              Required: fieldDef.required || false
+            });
+          }
+
+          Logger.info(`Added field: ${fieldDef.internalName} (${fieldDef.fieldType})`);
+        } catch (fieldError) {
+          Logger.warn(`Could not add field ${fieldDef.internalName}:`, fieldError);
+        }
+      }
+
+      // Add the additional field that PrivateEvents needs (PrivateEventId is already in REQUIRED_FIELDS)
+      // Note: Private field is also already in REQUIRED_FIELDS, so PrivateEvents list will have all needed fields
+
+
+
+      // Note: Custom view creation will be handled manually in SharePoint
+      // The list will have all required fields for private events
+      Logger.info('PrivateEvents list created with all required fields');
+
+      // Verify the list was created successfully
+      const validationResult = await this.validateList(listName, true); // true = check for Private/PrivateEventId fields (PrivateEvents needs them)
+      if (validationResult.isValid) {
+        return {
+          success: true,
+          listName: listName
+        };
+      } else {
+        return {
+          success: false,
+          listName: listName,
+          errorMessage: `PrivateEvents list created but validation failed: ${validationResult.errorMessage}`
+        };
+      }
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error(`Error creating PrivateEvents list: ${errorMessage}`);
+      return {
+        success: false,
+        listName: listName,
+        errorMessage: `Failed to create PrivateEvents list: ${errorMessage}`
+      };
+    }
+  }
+
+  public async createConfigList(listName: string): Promise<IListCreationResult> {
+    try {
+      Logger.info(`Creating BigCal configuration list: ${listName}`);
+
+      // Create the list as a custom list (template 100)
+      await this.sp.web.lists.add(listName, `BigCal configuration list for storing dynamic color palettes and settings`, 100, true);
+
+      // Set to Classic experience for better data management
+      try {
+        const createdList = this.sp.web.lists.getByTitle(listName);
+        await createdList.update({
+          ListExperienceOptions: 1 // 1 = Classic, 0 = Auto (Modern), 2 = Modern
+        });
+        Logger.info('Set BigCalConfig list to Classic experience');
+      } catch (experienceError) {
+        Logger.warn('Could not set Classic experience, continuing with default', experienceError);
+      }
+
+      // Get the created list to add fields
+      const createdList = this.sp.web.lists.getByTitle(listName);
+
+      // Define the required fields for BigCalConfig
+      const configFields = [
+        {
+          internalName: 'ConfigType',
+          displayName: 'Configuration Type',
+          fieldType: 'Choice',
+          choices: ['ColorMapping', 'Settings'],
+          defaultValue: 'ColorMapping'
+        },
+        {
+          internalName: 'FieldName',
+          displayName: 'Field Name',
+          fieldType: 'Text',
+          description: 'SharePoint field name (e.g., Swimlanes, Status)'
+        },
+        {
+          internalName: 'OptionValue',
+          displayName: 'Option Value',
+          fieldType: 'Text',
+          description: 'The choice value from SharePoint field'
+        },
+        {
+          internalName: 'ColorHex',
+          displayName: 'Color Hex',
+          fieldType: 'Text',
+          description: 'Hex color code (e.g., #FF5733)'
+        },
+        {
+          internalName: 'IsActive',
+          displayName: 'Is Active',
+          fieldType: 'Boolean',
+          defaultValue: true
+        },
+        {
+          internalName: 'SortOrder',
+          displayName: 'Sort Order',
+          fieldType: 'Number',
+          defaultValue: 0
+        }
+      ];
+
+      // Add each field to the list
+      for (const fieldDef of configFields) {
+        try {
+          if (fieldDef.fieldType === 'Choice') {
+            await createdList.fields.addChoice(fieldDef.internalName, {
+              Choices: fieldDef.choices || [],
+              Description: fieldDef.description || ''
+            });
+          } else if (fieldDef.fieldType === 'Boolean') {
+            await createdList.fields.addBoolean(fieldDef.internalName, {
+              Description: fieldDef.description || ''
+            });
+          } else if (fieldDef.fieldType === 'Number') {
+            await createdList.fields.addNumber(fieldDef.internalName, {
+              Description: fieldDef.description || ''
+            });
+          } else {
+            // Text field
+            await createdList.fields.addText(fieldDef.internalName, {
+              MaxLength: 255,
+              Description: fieldDef.description || ''
+            });
+          }
+          Logger.info(`Added field: ${fieldDef.internalName}`);
+        } catch (fieldError) {
+          Logger.warn(`Could not add field ${fieldDef.internalName}`, fieldError);
+          // Continue with other fields even if one fails
+        }
+      }
+
+      // Note: Custom view creation will be handled manually in SharePoint
+      // The list will have all required fields: Title, ConfigType, FieldName, OptionValue, ColorHex, IsActive, SortOrder
+      Logger.info('BigCalConfig list created with all required fields');
+
+      // Verify the list was created successfully
+      const validationResult = await this.validateConfigList(listName);
+      if (validationResult.isValid) {
+        return {
+          success: true,
+          listName: listName
+        };
+      } else {
+        return {
+          success: false,
+          listName: listName,
+          errorMessage: `Configuration list created but validation failed: ${validationResult.errorMessage}`
+        };
+      }
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error creating config list', error);
+      return {
+        success: false,
+        listName: listName,
+        errorMessage: `Failed to create configuration list: ${errorMessage}`
       };
     }
   }

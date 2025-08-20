@@ -414,8 +414,8 @@ export class HybridEventsService {
     return {
       id: event.Id,
       title: event.Title,
-      start: new Date(event.Start),
-      end: new Date(event.End),
+      start: new Date(event.EventDate),
+      end: new Date(event.EndDate),
       swimlane: event.Swimlane as SwimlaneType,
       status: event.Status as StatusType,
       description: event.Description,
@@ -431,8 +431,8 @@ export class HybridEventsService {
     return {
       id: placeholder.Id, // Use placeholder ID for UI operations
       title: privateEvent.Title, // Real title from private list
-      start: new Date(privateEvent.Start),
-      end: new Date(privateEvent.End),
+      start: new Date(privateEvent.EventDate),
+      end: new Date(privateEvent.EndDate),
       swimlane: privateEvent.Swimlane as SwimlaneType,
       status: privateEvent.Status as StatusType,
       description: privateEvent.Description,
@@ -448,8 +448,8 @@ export class HybridEventsService {
     return {
       id: placeholder.Id,
       title: 'Unavailable',
-      start: new Date(placeholder.Start),
-      end: new Date(placeholder.End),
+      start: new Date(placeholder.EventDate),
+      end: new Date(placeholder.EndDate),
       swimlane: placeholder.Swimlane as SwimlaneType,
       status: placeholder.Status as StatusType,
       description: '',

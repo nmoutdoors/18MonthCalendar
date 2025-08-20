@@ -18,7 +18,7 @@ export interface IExcelExportProps {
   isOpen: boolean;
   onDismiss: () => void;
   currentDate?: Date;
-  onImportEvents?: (events: ICalendarEvent[]) => void;
+  onImportEvents?: (events: ICalendarEvent[]) => Promise<void>;
 }
 
 export interface IExcelExportState {
@@ -199,9 +199,9 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         return;
       }
 
-      // Call the import callback if provided
+      // Call the import callback if provided and wait for it to complete
       if (this.props.onImportEvents) {
-        this.props.onImportEvents(events);
+        await this.props.onImportEvents(events);
       }
 
       this.setState({
@@ -238,15 +238,23 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       if (header && header.toLowerCase().indexOf('description') !== -1) descriptionIndex = i;
       if (header && header.toLowerCase().indexOf('start') !== -1) startIndex = i;
       if (header && header.toLowerCase().indexOf('end') !== -1) endIndex = i;
-      if (header && header.toLowerCase().indexOf('swimlane') !== -1) swimlaneIndex = i;
+      // Support both "Swimlane" and "Event Category" column names
+      if (header && (header.toLowerCase().indexOf('swimlane') !== -1 ||
+                    header.toLowerCase().indexOf('event category') !== -1 ||
+                    header.toLowerCase().indexOf('category') !== -1)) swimlaneIndex = i;
       if (header && header.toLowerCase().indexOf('status') !== -1) statusIndex = i;
     }
 
     // Debug logging for header detection
     Logger.debug('Excel Import header detection', {
-      headers: headers.length,
+      headers: headers,
+      headerCount: headers.length,
       titleIndex,
+      descriptionIndex,
       startIndex,
+      endIndex,
+      swimlaneIndex,
+      statusIndex,
       totalRows: rawData.length
     });
 
@@ -274,8 +282,12 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         }
 
         // Parse end date (use start date if not provided)
-        const endDate = endIndex !== -1 && row[endIndex] ?
-          this.parseExcelDate(row[endIndex]?.toString()) : startDate;
+        const endRaw = endIndex !== -1 && row[endIndex] ? row[endIndex]?.toString() : null;
+        const endDate = endRaw ? this.parseExcelDate(endRaw) : startDate;
+
+        // Parse status
+        const statusRaw = statusIndex !== -1 && row[statusIndex] ? row[statusIndex].toString().trim() : '';
+        const status = statusRaw ? statusRaw as StatusType : undefined;
 
         // Create event
         const event: ICalendarEvent = {
@@ -287,8 +299,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
           end: endDate || startDate,
           swimlane: (swimlaneIndex !== -1 && row[swimlaneIndex] ?
             row[swimlaneIndex].toString().trim() : 'FYSA') as SwimlaneType,
-          status: (statusIndex !== -1 && row[statusIndex] ?
-            row[statusIndex].toString().trim() : 'Confirmed') as StatusType
+          status: status
         };
 
         events.push(event);

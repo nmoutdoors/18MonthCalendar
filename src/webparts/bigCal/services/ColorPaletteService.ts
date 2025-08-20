@@ -155,6 +155,8 @@ export class ColorPaletteService {
         return palette.onTrack;
       case 'Tentative':
         return palette.atRisk;
+      case 'Not Set':
+        return '#6c757d'; // Gray for "Not Set" status
       case 'Canceled':
         return palette.offTrack;
       default:

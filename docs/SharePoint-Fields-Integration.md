@@ -13,10 +13,19 @@
 - `Swimlane` - Choice field (Event Category) with options:
   - Away w/RON
   - Day Trip - NCR
+  - DCDC
+  - DISA
+  - DOD CIO / NSA / USCC
+  - Exec Time
   - Exercise
   - FYSA
+  - Joint DISA & DCDC
+  - Mission Partner
   - Out of Office
+  - Speaking Engagement
+  - TDY Meetings/Congressional
   - Training Holiday
+  - Transit
   - VIP/High Priority
 - `Status` - Choice field with options:
   - Confirmed

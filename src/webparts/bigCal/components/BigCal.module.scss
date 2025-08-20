@@ -1164,3 +1164,29 @@
   font-weight: 600;
   font-size: 10px;
 }
+
+// Color Palette Studio Modal Styles
+.colorPaletteStudioModal {
+  :global(.ms-Modal-main) {
+    max-width: 800px;
+    min-width: 600px;
+    max-height: 90vh;
+  }
+}
+
+.colorPaletteStudioContent {
+  padding: 24px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.colorPickerModal {
+  :global(.ms-Modal-main) {
+    max-width: 400px;
+    min-width: 350px;
+  }
+}
+
+.colorPickerContent {
+  padding: 20px;
+}

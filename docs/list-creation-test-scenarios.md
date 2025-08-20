@@ -82,7 +82,7 @@ Test scenarios for the automatic SharePoint list creation feature in BigCal webp
 - Internal Name: "Swimlane"
 - Display Name: "Swimlane"
 - Required: No
-- Choices: Away w/RON, Day Trip - NCR, Exercise, FYSA, Out of Office, Training Holiday, VIP/High Priority
+- Choices: Away w/RON, Day Trip - NCR, DCDC, DISA, DOD CIO / NSA / USCC, Exec Time, Exercise, FYSA, Joint DISA & DCDC, Mission Partner, Out of Office, Speaking Engagement, TDY Meetings/Congressional, Training Holiday, Transit, VIP/High Priority
 - Default Value: FYSA
 
 ### Status Field Test

@@ -20,6 +20,7 @@ import * as strings from 'BigCalWebPartStrings';
 import BigCal from './components/BigCal';
 import { IBigCalProps } from './components/IBigCalProps';
 import { SharePointService, IListValidationResult, IListCreationResult } from './services/SharePointService';
+import { ColorMappingService } from './services/ColorMappingService';
 import { Logger } from './services/LoggingService';
 
 export interface IBigCalWebPartProps {
@@ -39,8 +40,10 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
   private _sharePointService: SharePointService | undefined;
   private _listValidationResult: IListValidationResult | undefined;
   private _privateListValidationResult: IListValidationResult | undefined;
+  private _configListValidationResult: IListValidationResult | undefined;
   private _isCreatingList: boolean = false;
   private _isCreatingPrivateList: boolean = false;
+  private _isCreatingConfigList: boolean = false;
 
   // Color palette options
   private getColorPaletteOptions(): IPropertyPaneDropdownOption[] {
@@ -130,6 +133,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     // Validate lists on initialization
     this._listValidationResult = await this._validateListName(this.properties.listName);
     this._privateListValidationResult = await this._validatePrivateList();
+    this._configListValidationResult = await this._validateConfigList();
 
     return Promise.resolve();
   }
@@ -205,6 +209,33 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     }
   }
 
+  private async _validateConfigList(): Promise<IListValidationResult> {
+    if (!this._sharePointService) {
+      return {
+        isValid: false,
+        listExists: false,
+        missingFields: [],
+        errorMessage: 'SharePoint service not initialized',
+        canCreate: false
+      };
+    }
+
+    try {
+      // Check if BigCalConfig list exists - it's a custom list for storing color configurations
+      const result = await this._sharePointService.validateConfigList('BigCalConfig');
+      return result;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      return {
+        isValid: false,
+        listExists: false,
+        missingFields: [],
+        errorMessage: `Failed to validate BigCalConfig list: ${errorMessage}`,
+        canCreate: true
+      };
+    }
+  }
+
   private async _createList(): Promise<void> {
     if (!this._sharePointService || !this.properties.listName || this._isCreatingList) {
       return;
@@ -256,7 +287,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     this.context.propertyPane.refresh();
 
     try {
-      const result: IListCreationResult = await this._sharePointService.createList('PrivateEvents');
+      const result: IListCreationResult = await this._sharePointService.createPrivateEventsList('PrivateEvents');
 
       if (result.success) {
         // Re-validate the private list to update the UI
@@ -282,6 +313,59 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       };
     } finally {
       this._isCreatingPrivateList = false;
+      this.context.propertyPane.refresh();
+    }
+  }
+
+  private async _createConfigList(): Promise<void> {
+    if (!this._sharePointService || this._isCreatingConfigList) {
+      return;
+    }
+
+    this._isCreatingConfigList = true;
+    this.context.propertyPane.refresh();
+
+    try {
+      const result: IListCreationResult = await this._sharePointService.createConfigList('BigCalConfig');
+
+      if (result.success) {
+        // Initialize the BigCalConfig list with default color mappings using custom colors
+        try {
+          const colorMappingService = new ColorMappingService(this.context);
+
+          // Use the configured list name (or default to 'Events') for field discovery
+          const eventsListName = this.properties.listName || 'Events';
+          await colorMappingService.initializeConfigListWithDefaults(eventsListName);
+
+          console.log('BigCalConfig list created and initialized with custom color defaults');
+        } catch (initError) {
+          console.warn('BigCalConfig list created but failed to initialize with defaults:', initError);
+          // Don't fail the entire operation if initialization fails
+        }
+
+        // Re-validate the config list to update the UI
+        this._configListValidationResult = await this._validateConfigList();
+      } else {
+        // Update validation result with creation error
+        this._configListValidationResult = {
+          isValid: false,
+          listExists: false,
+          missingFields: [],
+          errorMessage: result.errorMessage,
+          canCreate: true
+        };
+      }
+    } catch (error) {
+      console.error('Error creating config list:', error);
+      this._configListValidationResult = {
+        isValid: false,
+        listExists: false,
+        missingFields: [],
+        errorMessage: `Failed to create BigCalConfig list: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        canCreate: true
+      };
+    } finally {
+      this._isCreatingConfigList = false;
       this.context.propertyPane.refresh();
     }
   }
@@ -387,7 +471,33 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     return '❌ PrivateEvents list validation failed';
   }
 
+  private _getConfigListDescription(): string {
+    if (this._isCreatingConfigList) {
+      return '🔄 Creating BigCalConfig list with required fields...';
+    }
 
+    if (!this._configListValidationResult) {
+      return 'Checking BigCalConfig list...';
+    }
+
+    if (this._configListValidationResult.isValid) {
+      return '✅ BigCalConfig list exists with all required fields - dynamic color palettes enabled';
+    }
+
+    if (!this._configListValidationResult.listExists && this._configListValidationResult.canCreate) {
+      return '❌ BigCalConfig list does not exist - use the "Create BigCalConfig List" button below';
+    }
+
+    if (!this._configListValidationResult.listExists) {
+      return '❌ BigCalConfig list does not exist - dynamic color palettes will not work';
+    }
+
+    if (this._configListValidationResult.missingFields.length > 0) {
+      return `⚠️ BigCalConfig list exists but missing required fields: ${this._configListValidationResult.missingFields.join(', ')}`;
+    }
+
+    return '❌ BigCalConfig list validation failed';
+  }
 
   private _getPropertyPaneFields(): IPropertyPaneField<unknown>[] {
     const fields: IPropertyPaneField<unknown>[] = [
@@ -478,6 +588,33 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
             this._createPrivateList();
           },
           disabled: this._isCreatingPrivateList
+        })
+      );
+    }
+
+    // Add BigCalConfig list configuration fields
+    fields.push(
+      PropertyPaneLabel('configListStatus', {
+        text: 'Dynamic Color Palette Configuration'
+      })
+    );
+    fields.push(
+      PropertyPaneLabel('configListDescription', {
+        text: this._getConfigListDescription()
+      })
+    );
+
+    // Add create config list button if validation shows we can create it
+    if (this._configListValidationResult && this._configListValidationResult.canCreate && !this._configListValidationResult.isValid) {
+      fields.push(
+        PropertyPaneButton('createConfigList', {
+          text: this._isCreatingConfigList ? 'Creating BigCalConfig List...' : 'Create BigCalConfig List',
+          buttonType: PropertyPaneButtonType.Normal,
+          onClick: () => {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            this._createConfigList();
+          },
+          disabled: this._isCreatingConfigList
         })
       );
     }

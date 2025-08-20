@@ -58,25 +58,25 @@ export class PrivateEventsService {
 
     try {
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'Start', 'End', 'Swimlane', 'Status', 'Description', 'Private', 'PrivateEventId')
-        .orderBy('Start', true)
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'Description', 'Private', 'PrivateEventId')
+        .orderBy('EventDate', true)
         .top(5000)();
 
       return items.map((item: {
-        Id: number; 
-        Title: string; 
-        Start: string; 
-        End: string; 
-        Swimlane: string; 
-        Status: string; 
-        Description: string; 
+        Id: number;
+        Title: string;
+        EventDate: string;
+        EndDate: string;
+        Swimlane: string;
+        Status: string;
+        Description: string;
         Private: boolean;
         PrivateEventId: string;
       }) => ({
         Id: item.Id,
         Title: item.Title,
-        Start: item.Start,
-        End: item.End,
+        EventDate: item.EventDate,
+        EndDate: item.EndDate,
         Swimlane: item.Swimlane,
         Status: item.Status,
         Description: item.Description || '',
@@ -109,8 +109,8 @@ export class PrivateEventsService {
     try {
       const result = await this.sp.web.lists.getByTitle(this.privateListName).items.add({
         Title: title,
-        Start: start,
-        End: end,
+        EventDate: start.toISOString(), // Standard SharePoint Events field
+        EndDate: end.toISOString(),     // Standard SharePoint Events field
         Swimlane: swimlane,
         Status: status,
         Description: description,
@@ -120,8 +120,8 @@ export class PrivateEventsService {
       return {
         Id: result.Id,
         Title: result.Title,
-        Start: result.Start,
-        End: result.End,
+        EventDate: result.EventDate,
+        EndDate: result.EndDate,
         Swimlane: result.Swimlane,
         Status: result.Status,
         Description: result.Description || '',
@@ -155,8 +155,8 @@ export class PrivateEventsService {
     try {
       const updateData: Record<string, unknown> = {
         Title: title,
-        Start: start,
-        End: end
+        EventDate: start.toISOString(), // Standard SharePoint Events field
+        EndDate: end.toISOString()      // Standard SharePoint Events field
       };
 
       if (swimlane) updateData.Swimlane = swimlane;
@@ -201,7 +201,7 @@ export class PrivateEventsService {
 
     try {
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'Start', 'End', 'Swimlane', 'Status', 'Description', 'Private', 'PrivateEventId')
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'Description', 'Private', 'PrivateEventId')
         .filter(`PrivateEventId eq '${privateEventId}'`)
         .top(1)();
 
@@ -213,8 +213,8 @@ export class PrivateEventsService {
       return {
         Id: item.Id,
         Title: item.Title,
-        Start: item.Start,
-        End: item.End,
+        EventDate: item.EventDate,
+        EndDate: item.EndDate,
         Swimlane: item.Swimlane,
         Status: item.Status,
         Description: item.Description || '',

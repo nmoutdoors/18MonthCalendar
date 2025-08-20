@@ -1,3 +1,8 @@
+/* eslint-disable max-lines */
+// NOTE: This file is intentionally large due to the complexity of the calendar component.
+// New features should be added as separate components rather than expanding this file further.
+// See docs/component-refactoring-summary.md for refactoring guidelines.
+
 import * as React from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import * as moment from 'moment';
@@ -9,14 +14,17 @@ import type { ICalendarEvent } from './ICalendarEvent';
 import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
 import { ColorPaletteService } from '../services/ColorPaletteService';
+import { SPECIFIC_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
+
 import { HolidayService } from '../services/HolidayService';
 import { Logger } from '../services/LoggingService';
 import { EventModal } from './EventModal';
 import { EventPopover } from './EventPopover';
 import { TimelineView } from './TimelineView';
-import { ExcelExport } from './ExcelExport';
-import { PrintDialog } from './PrintDialog';
+import { ExportManager } from './ExportManager';
 import { IconSelector } from './IconSelector';
+import { ColorPaletteManager } from './ColorPaletteManager';
+import { GridView } from './GridView';
 // import { FilterControls } from './FilterControls';
 // import { NavigationToolbar } from './NavigationToolbar';
 // import { DataGridView } from './DataGridView'; // For future Outlook sync editing
@@ -52,6 +60,13 @@ interface IBigCalState {
   emulateNonPrivilegedUser: boolean;
   // Icon selector modal state
   isIconSelectorOpen: boolean;
+  // Color Palette Studio state
+  isColorPaletteStudioOpen: boolean;
+  // List configuration status
+  colorMappingsAvailable: boolean;
+  publicEventsListAvailable: boolean;
+  privateEventsListAvailable: boolean;
+  listConfigurationIssues: string[];
 }
 
 export default class BigCal extends React.Component<IBigCalProps, IBigCalState> {
@@ -75,8 +90,22 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       selectedEvent: undefined,
       selectedDate: undefined,
       searchText: '',
-      selectedEventCategories: new Set(['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority', 'Private Events']), // All selected by default
-      selectedStatuses: new Set(['Confirmed', 'Tentative', 'Canceled']), // All selected by default
+      selectedEventCategories: new Set([
+        'DCDC',
+        'DISA',
+        'DOD CIO / NSA / USCC',
+        'Exec Time',
+        'Exercises',
+        'FYSA',
+        'Joint DISA & DCDC',
+        'Mission Partner',
+        'Out of Office',
+        'Speaking Event',
+        'TDY Meetings/Congressional',
+        'Transit',
+        'Private Events'
+      ]), // All current swimlanes selected by default
+      selectedStatuses: new Set(['Confirmed', 'Tentative', 'Not Set']), // All selected by default (Not Set = null/empty status)
       monthNavigatorExpanded: true,
       viewMode: 'calendar',
       isExportDialogOpen: false,
@@ -88,7 +117,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       emulateNonPrivilegedUser: false,
       isPopoverVisible: false,
       // Icon selector modal state
-      isIconSelectorOpen: false
+      isIconSelectorOpen: false,
+      // Color Palette Studio state
+      isColorPaletteStudioOpen: false,
+      // List configuration status
+      colorMappingsAvailable: true, // Will be checked on load
+      publicEventsListAvailable: true, // Will be checked on load
+      privateEventsListAvailable: true, // Will be checked on load
+      listConfigurationIssues: [] // Will be populated on load
     };
 
     this.sharePointService = new SharePointService(props.context, props.listName);
@@ -96,6 +132,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   }
 
   public async componentDidMount(): Promise<void> {
+    // Add debug reference for console debugging
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).bigCalInstance = this;
+
     // Find the web part container element - try multiple selectors
     this.webPartElement = document.querySelector('[data-sp-web-part-id]') as HTMLElement ||
                          document.querySelector('.CanvasComponent') as HTMLElement ||
@@ -104,6 +144,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (this.webPartElement && this.state.isFullscreen) {
       this.enterFullscreen();
     }
+
+    // Check all list configurations
+    await this.checkListConfigurations();
 
     // Inject dynamic color styles
     this.injectDynamicStyles();
@@ -144,7 +187,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
   }
 
-  private async loadEvents(): Promise<void> {
+  private loadEvents = async (): Promise<void> => {
     try {
       this.setState({ isLoading: true, error: undefined });
 
@@ -166,7 +209,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         isLoading: false
       });
     }
-  }
+  };
 
   private applyFilters = (): void => {
     // This method is now handled by applyFiltersToEvents
@@ -187,24 +230,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
 
 
-  private get18MonthRange = (): Date[] => {
-    const months: Date[] = [];
-    const current = new Date();
 
-    for (let i = 0; i < 18; i++) {
-      const month = new Date(current.getFullYear(), current.getMonth() + i, 1);
-      months.push(month);
-    }
-    return months;
-  };
-
-  private getEventsForMonth = (month: Date): number => {
-    const { events } = this.state;
-    return events.filter(event => {
-      return event.start.getFullYear() === month.getFullYear() &&
-             event.start.getMonth() === month.getMonth();
-    }).length;
-  };
 
   private handleMonthNavigate = (month: Date): void => {
     this.setState({ currentDate: month, viewMode: 'calendar' });
@@ -229,13 +255,57 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
 
 
+
+
+
+
+
+
+
+
+  private get18MonthRange = (): Date[] => {
+    const months: Date[] = [];
+    const current = new Date();
+
+    for (let i = 0; i < 18; i++) {
+      const month = new Date(current.getFullYear(), current.getMonth() + i, 1);
+      months.push(month);
+    }
+    return months;
+  };
+
+  private getEventsForMonth = (month: Date): number => {
+    const { events } = this.state;
+    return events.filter(event => {
+      return event.start.getFullYear() === month.getFullYear() &&
+             event.start.getMonth() === month.getMonth();
+    }).length;
+  };
+
   private formatMonthYear = (date: Date): string => {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
   private getEventCategoryDropdownOptions = (): IDropdownOption[] => {
     const { filteredEvents, selectedEventCategories } = this.state;
-    const allCategories = ['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority'];
+    const allCategories = [
+      'Away w/RON',
+      'Day Trip - NCR',
+      'DCDC',
+      'DISA',
+      'DOD CIO / NSA / USCC',
+      'Exec Time',
+      'Exercise',
+      'FYSA',
+      'Joint DISA & DCDC',
+      'Mission Partner',
+      'Out of Office',
+      'Speaking Engagement',
+      'TDY Meetings/Congressional',
+      'Training Holiday',
+      'Transit',
+      'VIP/High Priority'
+    ];
 
     // Filter categories based on rendering mode
     const hiddenCategories = ['Away w/RON', 'Day Trip - NCR'];
@@ -253,7 +323,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       };
     });
 
-    // Add Private Events option (now available in all views since they have their own dedicated lane in timeline)
+    // Add Private Events option
     const privateCount = filteredEvents.filter(e => !e.isHoliday && e.isPrivate).length;
     options.push({
       key: 'Private Events',
@@ -275,29 +345,29 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private getStatusDropdownOptions = (): IDropdownOption[] => {
     const { filteredEvents, selectedStatuses } = this.state;
-    const allStatuses = ['Confirmed', 'Tentative', 'Canceled'];
+    const allStatuses = ['Confirmed', 'Tentative', 'Not Set'];
 
-    // Filter statuses based on rendering mode
-    const hiddenStatuses = ['Canceled'];
-    const statuses = this.props.eventRenderingMode === 'typeAndStatusBased'
-      ? allStatuses.filter(status => hiddenStatuses.indexOf(status) === -1)
-      : allStatuses;
+    const options = allStatuses.map(status => {
+      // Count events with this status, including events with no status for "Not Set"
+      let count: number;
+      if (status === 'Not Set') {
+        count = filteredEvents.filter(e => !e.isHoliday && (!e.status || e.status === 'Not Set')).length;
+      } else {
+        count = filteredEvents.filter(e => !e.isHoliday && e.status === status).length;
+      }
 
-    const options = statuses.map(status => {
-      // Only count regular events, not holidays
-      const count = filteredEvents.filter(e => !e.isHoliday && e.status === status).length;
       return {
         key: status,
         text: `${status} (${count})`,
         data: {
-          color: this.getStatusColor(status),
+          color: ColorPaletteService.getStatusColor(status, this.props.colorPalette),
           count
         }
       };
     });
 
     // Add Select All/Unselect All toggle option
-    const allSelected = statuses.every(status => selectedStatuses.has(status));
+    const allSelected = allStatuses.every((status: string) => selectedStatuses.has(status));
     options.push({
       key: '__toggle_all_statuses__',
       text: allSelected ? 'Unselect All' : 'Select All',
@@ -305,10 +375,6 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     });
 
     return options;
-  };
-
-  private getStatusColor = (status: string): string => {
-    return ColorPaletteService.getStatusColor(status, this.props.colorPalette);
   };
 
   private getPaletteDropdownOptions = (): IDropdownOption[] => {
@@ -568,12 +634,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         return true;
       }
 
-      // In 7-color mode, filter out events with hidden categories/statuses
+      // In 7-color mode, filter out events with hidden categories
       if (this.props.eventRenderingMode === 'typeAndStatusBased') {
         const hiddenCategories = ['Away w/RON', 'Day Trip - NCR'];
-        const hiddenStatuses = ['Canceled'];
 
-        if (hiddenCategories.indexOf(event.swimlane!) !== -1 || hiddenStatuses.indexOf(event.status!) !== -1) {
+        if (hiddenCategories.indexOf(event.swimlane!) !== -1) {
           return false; // Hide these events completely in 7-color mode
         }
       }
@@ -593,7 +658,15 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         }
       }
 
-      const matchesStatus = selectedStatuses.size > 0 && selectedStatuses.has(event.status!);
+      // Check status match, including "Not Set" for events with no status
+      let matchesStatus = false;
+      if (selectedStatuses.size > 0) {
+        if (selectedStatuses.has('Not Set') && (!event.status || event.status === 'Not Set')) {
+          matchesStatus = true;
+        } else if (event.status && selectedStatuses.has(event.status)) {
+          matchesStatus = true;
+        }
+      }
       const matchesSearch = !searchText || event.title.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
 
       return matchesCategory && matchesStatus && matchesSearch;
@@ -641,13 +714,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (option) {
       // Handle Select All/Unselect All toggle
       if (option.key === '__toggle_all_statuses__') {
-        const allStatuses = ['Confirmed', 'Tentative', 'Canceled'];
-        const hiddenStatuses = ['Canceled'];
-        const availableStatuses = this.props.eventRenderingMode === 'typeAndStatusBased'
-          ? allStatuses.filter(status => hiddenStatuses.indexOf(status) === -1)
-          : allStatuses;
+        const allStatuses = ['Confirmed', 'Tentative', 'Not Set'];
         const allSelected = option.data?.allSelected;
-        const newSelected = allSelected ? new Set<string>() : new Set<string>(availableStatuses);
+        const newSelected = allSelected ? new Set<string>() : new Set<string>(allStatuses);
 
         this.setState({ selectedStatuses: newSelected }, () => {
           this.applyFilters();
@@ -777,57 +846,21 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
 
 
+
+
   private renderGridView = (): React.ReactElement => {
     const { currentDate } = this.state;
     const allEventsWithHolidays = this.getAllEventsWithHolidays();
     const allFilteredEvents = this.applyFiltersToEvents(allEventsWithHolidays);
 
     return (
-      <div className={styles.gridViewContainer}>
-        <div className={styles.gridViewHeader}>
-          <h2>18-Month Overview</h2>
-        </div>
-        <div className={styles.gridViewContent}>
-          {this.get18MonthRange().map((month, index) => {
-            const monthEvents = allFilteredEvents.filter(event =>
-              event.start.getFullYear() === month.getFullYear() &&
-              event.start.getMonth() === month.getMonth()
-            );
-            const isCurrentMonth = month.getFullYear() === currentDate.getFullYear() &&
-                                 month.getMonth() === currentDate.getMonth();
-
-            return (
-              <div
-                key={index}
-                className={`${styles.gridCard} ${isCurrentMonth ? styles.currentGridCard : ''}`}
-                onClick={() => this.handleMonthNavigate(month)}
-              >
-                <div className={styles.gridCardHeader}>
-                  <h3>{this.formatMonthYear(month)}</h3>
-                  <span className={styles.gridCardCount}>({monthEvents.length})</span>
-                </div>
-                <div style={{ marginTop: '8px' }}>
-                  <Calendar
-                    localizer={localizer}
-                    events={monthEvents}
-                    startAccessor="start"
-                    endAccessor="end"
-                    style={{ height: '400px' }}
-                    views={['month']}
-                    view="month"
-                    date={month}
-                    toolbar={false}
-                    eventPropGetter={this.eventStyleGetter}
-                    components={{
-                      event: this.MiniCalendarEvent
-                    }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <GridView
+        currentDate={currentDate}
+        allFilteredEvents={allFilteredEvents}
+        eventStyleGetter={this.eventStyleGetter}
+        onMonthNavigate={this.handleMonthNavigate}
+        MiniCalendarEvent={this.MiniCalendarEvent}
+      />
     );
   };
 
@@ -994,21 +1027,29 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
 
     // Regular events for other views (month, week, day)
-    const statusClass = `status-${event.status!.toLowerCase().replace(/\s+/g, '')}`;
-    const swimlaneClass = `swimlane-${event.swimlane!.toLowerCase().replace(' ', '')}`;
+    const statusClass = `status-${(event.status || 'notset').toLowerCase().replace(/\s+/g, '')}`;
+    const swimlaneClass = `swimlane-${(event.swimlane || 'fysa').toLowerCase().replace(' ', '')}`;
+
+    // Check if there are any configuration issues - if so, show all events as gray
+    if (this.state.listConfigurationIssues.length > 0 || !this.state.colorMappingsAvailable) {
+      return {
+        className: `${statusClass} ${swimlaneClass} config-unavailable`,
+        style: {
+          backgroundColor: '#6c757d', // Gray when config unavailable
+          color: 'white',
+          border: 'none'
+        }
+      };
+    }
 
     // Choose coloring strategy based on rendering mode
     let backgroundColor: string;
     if (this.props.eventRenderingMode === 'typeAndStatusBased') {
       // New 7-color system: color by event type + status
-      backgroundColor = ColorPaletteService.getEventTypeColor(
-        event.swimlane || 'FYSA',
-        event.status || 'Confirmed',
-        'militaryOperations'
-      );
+      backgroundColor = this.getEventColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
     } else {
       // Current system: color by swimlane and status
-      backgroundColor = this.getEventColor(event.swimlane || 'default', event.status || 'Confirmed');
+      backgroundColor = this.getEventColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
     }
 
     return {
@@ -1021,29 +1062,106 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     };
   };
 
-  private getEventColor = (swimlane: string, status: string): string => {
-    // Color mapping based on swimlane
-    const colorMap: { [key: string]: string } = {
-      'Away w/RON': '#e91e63',
-      'Day Trip - NCR': '#2196f3',
-      'Exercise': '#4caf50',
-      'FYSA': '#ff9800',
-      'Out of Office': '#9c27b0',
-      'Training Holiday': '#00bcd4',
-      'VIP/High Priority': '#f44336',
-      'default': '#0078d4'
-    };
-
-    let baseColor = colorMap[swimlane] || colorMap.default;
-
-    // Adjust opacity based on status
+  private getEventColorFromMapping = (swimlane: string, status: string): string => {
+    // New color strategy: Confirmed and blank/null use swimlane color, Tentative uses its own color
     if (status === 'Tentative') {
-      baseColor = baseColor + '80'; // Add transparency
-    } else if (status === 'Canceled') {
-      baseColor = '#999999';
+      return SPECIFIC_COLOR_MAPPINGS.Tentative || '#ff00ff'; // Magenta for Tentative
     }
 
-    return baseColor;
+    // For Confirmed and blank/null status, use swimlane color
+    return SPECIFIC_COLOR_MAPPINGS[swimlane] || '#6c757d'; // Gray fallback
+  };
+
+  private checkListConfigurations = async (): Promise<void> => {
+    const issues: string[] = [];
+    let colorMappingsAvailable = true;
+    let publicEventsListAvailable = true;
+    let privateEventsListAvailable = true;
+
+    try {
+      // Check BigCalConfig list
+      try {
+        const { ColorMappingService } = await import(/* webpackChunkName: 'color-mapping-service' */ '../services/ColorMappingService');
+        const colorMappingService = new ColorMappingService(this.props.context);
+        colorMappingsAvailable = await colorMappingService.checkConfigListExists();
+
+        if (!colorMappingsAvailable) {
+          issues.push('BigCalConfig list is missing - events will display in gray');
+        }
+      } catch (error) {
+        colorMappingsAvailable = false;
+        issues.push('BigCalConfig list validation failed');
+        console.error('Error checking BigCalConfig:', error);
+      }
+
+      // Check Public Events list (main list)
+      try {
+        const { SharePointService } = await import(/* webpackChunkName: 'sharepoint-service' */ '../services/SharePointService');
+        const sharePointService = new SharePointService(this.props.context, this.props.listName);
+        const publicListValidation = await sharePointService.validateList(this.props.listName, true);
+
+        publicEventsListAvailable = publicListValidation.isValid;
+        if (!publicEventsListAvailable) {
+          if (!publicListValidation.listExists) {
+            issues.push(`Public Events list '${this.props.listName}' does not exist`);
+          } else if (publicListValidation.missingFields.length > 0) {
+            issues.push(`Public Events list is missing required fields: ${publicListValidation.missingFields.join(', ')}`);
+          } else {
+            issues.push('Public Events list configuration is invalid');
+          }
+        }
+      } catch (error) {
+        publicEventsListAvailable = false;
+        issues.push('Public Events list validation failed');
+        console.error('Error checking Public Events list:', error);
+      }
+
+      // Check PrivateEvents list
+      try {
+        const { SharePointService } = await import(/* webpackChunkName: 'sharepoint-service' */ '../services/SharePointService');
+        const sharePointService = new SharePointService(this.props.context, this.props.listName);
+        const privateListValidation = await sharePointService.validateList('PrivateEvents', true);
+
+        privateEventsListAvailable = privateListValidation.isValid;
+        if (!privateEventsListAvailable) {
+          if (!privateListValidation.listExists) {
+            issues.push('PrivateEvents list does not exist - private events will not work');
+          } else if (privateListValidation.missingFields.length > 0) {
+            issues.push(`PrivateEvents list is missing required fields: ${privateListValidation.missingFields.join(', ')}`);
+          } else {
+            issues.push('PrivateEvents list configuration is invalid');
+          }
+        }
+      } catch (error) {
+        privateEventsListAvailable = false;
+        issues.push('PrivateEvents list validation failed');
+        console.error('Error checking PrivateEvents list:', error);
+      }
+
+      // Update state with all results
+      this.setState({
+        colorMappingsAvailable,
+        publicEventsListAvailable,
+        privateEventsListAvailable,
+        listConfigurationIssues: issues
+      });
+
+      // Log summary
+      if (issues.length > 0) {
+        console.warn(`BigCal configuration issues found (${issues.length}):`, issues);
+      } else {
+        console.log('All BigCal lists are properly configured');
+      }
+
+    } catch (error) {
+      console.error('Error during list configuration check:', error);
+      this.setState({
+        colorMappingsAvailable: false,
+        publicEventsListAvailable: false,
+        privateEventsListAvailable: false,
+        listConfigurationIssues: ['Failed to validate list configurations - check console for details']
+      });
+    }
   };
 
 
@@ -1239,6 +1357,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     });
   };
 
+  // Export/Print dialog methods
   private openExportDialog = (): void => {
     this.setState({ isExportDialogOpen: true });
   };
@@ -1263,6 +1382,21 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     this.setState({ isIconSelectorOpen: false });
   };
 
+  // Color Palette Studio Methods
+  private openColorPaletteStudio = (): void => {
+    this.setState({ isColorPaletteStudioOpen: true });
+  };
+
+  private closeColorPaletteStudio = (): void => {
+    this.setState({ isColorPaletteStudioOpen: false });
+  };
+
+  // Color palette changes callback - refresh calendar when colors change
+  private handleColorPaletteChanged = (): void => {
+    // Reload events to apply new colors
+    this.loadEvents().catch(error => console.error('Failed to reload events after color change:', error));
+  };
+
   // Testing method - remove after testing
   private togglePrivilegeEmulation = (): void => {
     this.setState(prevState => ({
@@ -1270,6 +1404,36 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }), () => {
       // Reload events to apply the privilege emulation
       this.loadEvents().catch(error => Logger.error('Failed to reload events after privilege toggle', error));
+    });
+  };
+
+  // Handle immediate UI updates for imported events (for fast user feedback)
+  private handleAddEventsToUI = (newEvents: ICalendarEvent[]): void => {
+    this.setState(prevState => ({
+      events: [...prevState.events, ...newEvents]
+    }), () => {
+      // Apply filters after adding events
+      this.applyFilters();
+
+      // Auto-navigate to the month of the first imported event for better UX
+      if (newEvents.length > 0) {
+        const firstEvent = newEvents[0];
+        if (firstEvent.start) {
+          const eventDate = firstEvent.start;
+          // Only navigate if the event is in a different month than currently displayed
+          const currentMonth = this.state.currentDate.getMonth();
+          const currentYear = this.state.currentDate.getFullYear();
+          const eventMonth = eventDate.getMonth();
+          const eventYear = eventDate.getFullYear();
+
+          if (currentMonth !== eventMonth || currentYear !== eventYear) {
+            Logger.info(`Auto-navigating to ${eventDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} to show imported events`);
+            // Create a new date with the event's year and month, but keep current day for navigation
+            const navigationDate = new Date(eventYear, eventMonth, 1);
+            this.setState({ currentDate: navigationDate });
+          }
+        }
+      }
     });
   };
 
@@ -1327,72 +1491,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
   };
 
-  private handleImportEvents = async (importedEvents: ICalendarEvent[]): Promise<void> => {
-    const startTime = performance.now();
 
-    try {
-      Logger.info(`Starting optimized import of ${importedEvents.length} events`);
-
-      // Ultra-optimized approach: Use SharePoint batch operations for maximum speed
-      const BATCH_SIZE = 50; // Larger batches for better throughput
-      const batches = [];
-
-      for (let i = 0; i < importedEvents.length; i += BATCH_SIZE) {
-        batches.push(importedEvents.slice(i, i + BATCH_SIZE));
-      }
-
-      Logger.info(`Processing ${batches.length} optimized batches of up to ${BATCH_SIZE} events each`);
-
-      // Update UI immediately with imported events for instant feedback
-      const currentEvents = [...this.state.events];
-      const tempCalendarEvents = importedEvents.map((event, index) => ({
-        ...event,
-        id: Date.now() + index // Temporary unique ID
-      }));
-
-      this.setState({
-        events: [...currentEvents, ...tempCalendarEvents]
-      }, () => {
-        this.applyFilters();
-      });
-
-      // Process all batches using SharePoint batch operations for maximum speed
-      const allBatchPromises = batches.map((batch, batchIndex) => {
-        Logger.debug(`Processing SharePoint batch ${batchIndex + 1}/${batches.length} (${batch.length} events)`);
-
-        // Convert to SharePoint batch format
-        const batchData = batch.map(event => ({
-          title: event.title,
-          start: event.start,
-          end: event.end,
-          swimlane: event.swimlane || 'FYSA',
-          status: event.status || 'Confirmed',
-          description: event.description || ''
-        }));
-
-        // Use SharePoint batch operation for this batch
-        return this.sharePointService.createEventsBatch(batchData);
-      });
-
-      // Wait for all batches to complete
-      await Promise.all(allBatchPromises);
-
-      // Background refresh to get proper SharePoint IDs (non-blocking)
-      setTimeout(() => {
-        this.loadEvents().catch(error => {
-          Logger.warn('Background refresh after import failed', error);
-        });
-      }, 500); // Reduced delay
-
-      const duration = Math.round(performance.now() - startTime);
-      Logger.bulkOperation('Optimized import completed', importedEvents.length, duration);
-
-    } catch (error) {
-      Logger.error('Error importing events', error);
-      // On error, do a full reload to ensure consistency
-      await this.loadEvents();
-    }
-  };
 
   private handleSaveEvent = async (eventData: Partial<ICalendarEvent>): Promise<void> => {
     try {
@@ -1709,6 +1808,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 onClick={this.openPrintDialog}
                 className={styles.navbarButton}
               />
+              <IconButton
+                iconProps={{ iconName: 'Color' }}
+                title="🎨 Color Palette Studio"
+                onClick={this.openColorPaletteStudio}
+                className={styles.navbarButton}
+              />
               {/* Impersonate Button - Conditionally visible based on webpart property */}
               {this.props.showImpersonateButton && (
                 <IconButton
@@ -1744,53 +1849,53 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         <div className={styles.mainContent}>
           {viewMode === 'calendar' ? (
             <>
-              {/* Left Column */}
+              {/* Left Column - Mini Calendars */}
               <div className={styles.leftColumn}>
-            <div className={styles.leftColumnContent}>
-              <div className={styles.miniCalendarContainer}>
-                <div className={styles.miniCalendarScrollArea}>
-                  {this.get18MonthRange().map((month, index) => {
-                    const monthEvents = this.getEventsForMonth(month);
-                    const isCurrentMonth = month.getFullYear() === currentDate.getFullYear() &&
-                                         month.getMonth() === currentDate.getMonth();
-                    return (
-                      <div key={index} className={styles.miniCalendarWrapper}>
-                        <div
-                          className={`${styles.miniCalendarCard} ${isCurrentMonth ? styles.currentMonth : ''}`}
-                          onClick={() => this.handleMonthNavigate(month)}
-                        >
-                          <div className={styles.miniCalendarTitle}>
-                            {this.formatMonthYear(month)} ({monthEvents})
+                <div className={styles.leftColumnContent}>
+                  <div className={styles.miniCalendarContainer}>
+                    <div className={styles.miniCalendarScrollArea}>
+                      {this.get18MonthRange().map((month, index) => {
+                        const monthEvents = this.getEventsForMonth(month);
+                        const isCurrentMonth = month.getFullYear() === currentDate.getFullYear() &&
+                                             month.getMonth() === currentDate.getMonth();
+                        return (
+                          <div key={index} className={styles.miniCalendarWrapper}>
+                            <div
+                              className={`${styles.miniCalendarCard} ${isCurrentMonth ? styles.currentMonth : ''}`}
+                              onClick={() => this.handleMonthNavigate(month)}
+                            >
+                              <div className={styles.miniCalendarTitle}>
+                                {this.formatMonthYear(month)} ({monthEvents})
+                              </div>
+                              <div className={styles.miniCalendarContent}>
+                                {/* Mini calendar will be rendered here */}
+                                <Calendar
+                                  localizer={localizer}
+                                  events={allFilteredEvents.filter(event =>
+                                    event.start.getFullYear() === month.getFullYear() &&
+                                    event.start.getMonth() === month.getMonth()
+                                  )}
+                                  startAccessor="start"
+                                  endAccessor="end"
+                                  style={{ height: '240px' }}
+                                  views={['month']}
+                                  view="month"
+                                  date={month}
+                                  toolbar={false}
+                                  eventPropGetter={this.eventStyleGetter}
+                                  components={{
+                                    event: this.MiniCalendarEvent
+                                  }}
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <div className={styles.miniCalendarContent}>
-                            {/* Mini calendar will be rendered here */}
-                            <Calendar
-                              localizer={localizer}
-                              events={allFilteredEvents.filter(event =>
-                                event.start.getFullYear() === month.getFullYear() &&
-                                event.start.getMonth() === month.getMonth()
-                              )}
-                              startAccessor="start"
-                              endAccessor="end"
-                              style={{ height: '240px' }}
-                              views={['month']}
-                              view="month"
-                              date={month}
-                              toolbar={false}
-                              eventPropGetter={this.eventStyleGetter}
-                              components={{
-                                event: this.MiniCalendarEvent
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
           {/* Right Column - Calendar */}
           <div className={styles.rightColumn}>
@@ -1798,6 +1903,18 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
               {error && (
                 <MessageBar messageBarType={MessageBarType.error} isMultiline>
                   {error}
+                </MessageBar>
+              )}
+
+              {this.state.listConfigurationIssues.length > 0 && (
+                <MessageBar messageBarType={MessageBarType.warning} isMultiline>
+                  <strong>Configuration Issues Found ({this.state.listConfigurationIssues.length}):</strong>
+                  <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                    {this.state.listConfigurationIssues.map((issue, index) => (
+                      <li key={index}>{issue}</li>
+                    ))}
+                  </ul>
+                  <strong>Solution:</strong> Open the webpart properties panel to create or fix the missing lists and fields.
                 </MessageBar>
               )}
 
@@ -1870,30 +1987,35 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           onClose={this.closeModal}
         />
 
-        {/* Excel Export Dialog */}
-        <ExcelExport
-          isOpen={isExportDialogOpen}
-          events={allFilteredEvents}
-          currentDate={currentDate}
-          onDismiss={this.closeExportDialog}
-          onImportEvents={this.handleImportEvents}
-        />
-
-        {/* Print Dialog */}
-        <PrintDialog
-          isOpen={isPrintDialogOpen}
-          events={allFilteredEvents}
-          currentDate={currentDate}
+        {/* Export Manager - Handles Excel Export and Print */}
+        <ExportManager
+          context={this.props.context}
+          events={events}
+          filteredEvents={allFilteredEvents}
           currentView={currentView}
-          colorPalette={this.props.colorPalette}
-          eventStyleGetter={this.eventStyleGetter}
-          onDismiss={this.closePrintDialog}
+          currentDate={currentDate}
+          isExcelExportOpen={isExportDialogOpen}
+          isPrintDialogOpen={isPrintDialogOpen}
+          onDismissExcelExport={this.closeExportDialog}
+          onDismissPrintDialog={this.closePrintDialog}
+          listName={this.props.listName}
+          onEventsImported={this.loadEvents}
+          onAddEventsToUI={this.handleAddEventsToUI}
         />
 
         {/* Icon Selector Modal */}
         <IconSelector
           isOpen={isIconSelectorOpen}
           onDismiss={this.closeIconSelector}
+        />
+
+        {/* Color Palette Studio Modal */}
+        <ColorPaletteManager
+          context={this.props.context}
+          listName={this.props.listName}
+          isOpen={this.state.isColorPaletteStudioOpen}
+          onDismiss={this.closeColorPaletteStudio}
+          onColorsChanged={this.handleColorPaletteChanged}
         />
 
         {/* Event Popover */}
