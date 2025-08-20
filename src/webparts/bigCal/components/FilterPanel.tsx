@@ -19,15 +19,12 @@ export interface IFilterPanelProps {
 export class FilterPanel extends React.Component<IFilterPanelProps> {
   
   private getEventCategoryDropdownOptions = (): IDropdownOption[] => {
-    const { filteredEvents, selectedEventCategories, eventRenderingMode } = this.props;
+    const { filteredEvents, selectedEventCategories } = this.props;
     const allCategories = [
-      'Away w/RON',
-      'Day Trip - NCR',
       'DCDC',
       'DISA',
       'DOD CIO / NSA / USCC',
       'Exec Time',
-      'Exercise',
       'Exercises',
       'FYSA',
       'Joint DISA & DCDC',
@@ -35,16 +32,11 @@ export class FilterPanel extends React.Component<IFilterPanelProps> {
       'Out of Office',
       'Speaking Event',
       'TDY Meetings/Congressional',
-      'Training Holiday',
-      'Transit',
-      'VIP/High Priority'
+      'Transit'
     ];
 
-    // Filter out categories that should be hidden in 7-color mode
-    const hiddenCategories = eventRenderingMode === '7-color' ? ['Away w/RON', 'Day Trip - NCR'] : [];
-    const categories = hiddenCategories.length > 0
-      ? allCategories.filter(cat => hiddenCategories.indexOf(cat) === -1)
-      : allCategories;
+    // All categories are now available since we removed the problematic ones
+    const categories = allCategories;
 
     const options = categories.map(eventCategory => {
       // Only count regular events, not holidays
@@ -245,8 +237,8 @@ export class FilterPanel extends React.Component<IFilterPanelProps> {
               onRenderTitle={this.renderEventCategoryTitle}
               styles={{
                 root: {
-                  width: '170px',
-                  minWidth: '170px'
+                  width: '280px',
+                  minWidth: '250px'
                 },
                 dropdown: {
                   fontSize: '13px'

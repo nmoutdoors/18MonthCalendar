@@ -16,6 +16,7 @@ import {
 import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
 import { ColorPaletteService } from '../services/ColorPaletteService';
 import { Logger } from '../services/LoggingService';
+import * as moment from 'moment';
 import styles from './EventModal.module.scss';
 
 export interface IEventModalProps {
@@ -46,31 +47,23 @@ interface IEventModalState {
 }
 
 const getAllSwimlaneOptions = (): IDropdownOption[] => [
-  { key: 'Away w/RON', text: 'Away w/RON', data: { icon: '✈️' } },
-  { key: 'Day Trip - NCR', text: 'Day Trip - NCR', data: { icon: '📍' } },
   { key: 'DCDC', text: 'DCDC', data: { icon: '🏛️' } },
   { key: 'DISA', text: 'DISA', data: { icon: '🔒' } },
   { key: 'DOD CIO / NSA / USCC', text: 'DOD CIO / NSA / USCC', data: { icon: '🛡️' } },
   { key: 'Exec Time', text: 'Exec Time', data: { icon: '👔' } },
-  { key: 'Exercise', text: 'Exercise', data: { icon: '🏃' } },
+  { key: 'Exercises', text: 'Exercises', data: { icon: '🏃' } },
   { key: 'FYSA', text: 'FYSA', data: { icon: 'ℹ️' } },
   { key: 'Joint DISA & DCDC', text: 'Joint DISA & DCDC', data: { icon: '🤝' } },
   { key: 'Mission Partner', text: 'Mission Partner', data: { icon: '🌐' } },
-  { key: 'Out of Office', text: 'Out of Office', data: { icon: '🚪' } },
-  { key: 'Speaking Engagement', text: 'Speaking Engagement', data: { icon: '🎤' } },
+  { key: 'Out of Office', text: 'Out of Office', data: { icon: '🏠' } },
+  { key: 'Speaking Event', text: 'Speaking Event', data: { icon: '🎤' } },
   { key: 'TDY Meetings/Congressional', text: 'TDY Meetings/Congressional', data: { icon: '🏛️' } },
-  { key: 'Training Holiday', text: 'Training Holiday', data: { icon: '🎓' } },
-  { key: 'Transit', text: 'Transit', data: { icon: '🚗' } },
-  { key: 'VIP/High Priority', text: 'VIP/High Priority', data: { icon: '⚠️' } }
+  { key: 'Transit', text: 'Transit', data: { icon: '🚌' } }
 ];
 
 const getFilteredSwimlaneOptions = (eventRenderingMode: string): IDropdownOption[] => {
-  const allOptions = getAllSwimlaneOptions();
-  const hiddenCategories = ['Away w/RON', 'Day Trip - NCR'];
-
-  return eventRenderingMode === 'typeAndStatusBased'
-    ? allOptions.filter(option => hiddenCategories.indexOf(option.key as string) === -1)
-    : allOptions;
+  // All options are now available in both rendering modes since we removed the problematic categories
+  return getAllSwimlaneOptions();
 };
 
 const amPmOptions: IDropdownOption[] = [
@@ -101,7 +94,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       startAmPm: startTimeData.amPm,
       endAmPm: endTimeData.amPm,
       swimlane: props.event?.swimlane || 'FYSA',
-      status: props.event?.status ? props.event.status : 'Not Set', // Convert blank/null to "Not Set" for dropdown
+      status: props.event?.status ? props.event.status : 'Not Set', // Show "Not Set" for empty/null status
       isPrivate: props.event?.isPrivate || false,
       isSaving: false,
       isDeleting: false
@@ -131,7 +124,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           startAmPm: startTimeData.amPm,
           endAmPm: endTimeData.amPm,
           swimlane: 'FYSA',
-          status: 'Confirmed',
+          status: '', // Default to blank status
           isPrivate: false,
           isSaving: false,
           isDeleting: false
@@ -151,7 +144,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           startAmPm: startTimeData.amPm,
           endAmPm: endTimeData.amPm,
           swimlane: this.props.event.swimlane || 'FYSA',
-          status: this.props.event.status ? this.props.event.status : 'Not Set', // Convert blank/null to "Not Set" for dropdown
+          status: this.props.event.status || '', // Keep blank status as empty string
           isPrivate: this.props.event.isPrivate || false,
           isSaving: false,
           isDeleting: false
@@ -162,12 +155,16 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
   private getStatusOptions = (): IDropdownOption[] => {
     const allStatuses = [
-      { key: 'Confirmed', text: 'Confirmed', data: { color: ColorPaletteService.getStatusColor('Confirmed', this.props.colorPalette) } },
-      { key: 'Tentative', text: 'Tentative', data: { color: ColorPaletteService.getStatusColor('Tentative', this.props.colorPalette) } },
-      { key: 'Not Set', text: 'Not Set', data: { color: '#6c757d' } } // Gray color for "Not Set"
+      { key: 'Not Set', text: 'Not Set', data: { color: 'transparent' } },
+      { key: 'Confirmed', text: 'Confirmed', data: { color: 'transparent' } },
+      { key: 'Tentative', text: 'Tentative', data: { color: ColorPaletteService.getStatusColor('Tentative', this.props.colorPalette) } }
     ];
 
-    // All statuses are available in both rendering modes now
+    // Add Cancel option only in 3-color mode (statusBased)
+    if (this.props.eventRenderingMode === 'statusBased') {
+      allStatuses.push({ key: 'Cancel', text: 'Cancel', data: { color: 'transparent' } });
+    }
+
     return allStatuses;
   };
 
@@ -215,7 +212,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
             backgroundColor: option?.data?.color
           }}
         />
-        <span>{option?.text}</span>
+        <span>{option?.text || '(blank)'}</span>
       </div>
     );
   };
@@ -232,7 +229,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
             backgroundColor: selectedOption?.data?.color
           }}
         />
-        <span>{selectedOption?.text}</span>
+        <span>{selectedOption?.text || '(blank)'}</span>
       </div>
     );
   };
@@ -256,9 +253,11 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
   };
 
   private parseTime = (timeString: string, date: Date, amPm?: 'AM' | 'PM'): Date => {
-    // Handle both 24-hour format (HH:MM) and 12-hour format with AM/PM
+    // Use moment.js for proper timezone-agnostic date handling
     const [hours, minutes] = timeString.split(':').map(Number);
-    const newDate = new Date(date.getTime());
+
+    // Create a moment object from the date, preserving the local date
+    const dateMoment = moment(date).startOf('day');
 
     if (amPm) {
       // 12-hour format with AM/PM
@@ -268,13 +267,14 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       } else if (amPm === 'PM' && hours !== 12) {
         adjustedHours = hours + 12; // PM hours (except 12 PM)
       }
-      newDate.setHours(adjustedHours, minutes, 0, 0);
+      dateMoment.hour(adjustedHours).minute(minutes).second(0).millisecond(0);
     } else {
       // 24-hour format (backward compatibility)
-      newDate.setHours(hours, minutes, 0, 0);
+      dateMoment.hour(hours).minute(minutes).second(0).millisecond(0);
     }
 
-    return newDate;
+    // Return as JavaScript Date - moment preserves the local timezone context
+    return dateMoment.toDate();
   };
 
 
@@ -300,7 +300,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         start,
         end,
         swimlane,
-        status: status === 'Not Set' ? '' : status, // Convert "Not Set" to empty string for saving
+        status: (status === 'Not Set' ? '' : status), // Convert "Not Set" to empty string for storage
         isPrivate
       };
 

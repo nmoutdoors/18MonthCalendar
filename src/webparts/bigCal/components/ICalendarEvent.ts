@@ -18,13 +18,23 @@ export interface ICalendarEvent {
   privateEventId?: string; // GUID linking to PrivateEvents list
 }
 
+/**
+ * Parse SharePoint date string to JavaScript Date
+ * Since we now store dates without timezone info, SharePoint returns them correctly
+ */
+const parseSharePointDate = (dateString: string): Date => {
+  // SharePoint now returns dates in the correct local time since we store them without timezone info
+  // We can parse them directly
+  return new Date(dateString);
+};
+
 // Helper function to convert SharePoint event to calendar event
 export const convertSharePointEventToCalendarEvent = (spEvent: {Id: number; Title: string; EventDate: string; EndDate: string; Swimlane: string; Status: string; Description: string}): ICalendarEvent => {
   return {
     id: spEvent.Id,
     title: spEvent.Title,
-    start: new Date(spEvent.EventDate),
-    end: new Date(spEvent.EndDate),
+    start: parseSharePointDate(spEvent.EventDate),
+    end: parseSharePointDate(spEvent.EndDate),
     allDay: false,
     swimlane: spEvent.Swimlane as SwimlaneType,
     status: spEvent.Status as StatusType,

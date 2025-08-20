@@ -15,6 +15,7 @@ import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
 import { ColorPaletteService } from '../services/ColorPaletteService';
 import { SPECIFIC_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
+import { ColorMappingService } from '../services/ColorMappingService';
 
 import { HolidayService } from '../services/HolidayService';
 import { Logger } from '../services/LoggingService';
@@ -25,6 +26,7 @@ import { ExportManager } from './ExportManager';
 import { IconSelector } from './IconSelector';
 import { ColorPaletteManager } from './ColorPaletteManager';
 import { GridView } from './GridView';
+import { formatMonthYear, getContrastColor, getEventCategoryIcon } from '../utils/BigCalUtilities';
 // import { FilterControls } from './FilterControls';
 // import { NavigationToolbar } from './NavigationToolbar';
 // import { DataGridView } from './DataGridView'; // For future Outlook sync editing
@@ -67,6 +69,8 @@ interface IBigCalState {
   publicEventsListAvailable: boolean;
   privateEventsListAvailable: boolean;
   listConfigurationIssues: string[];
+  // Dynamic color mappings from Color Palette Studio
+  dynamicColorMappings: Map<string, string>;
 }
 
 export default class BigCal extends React.Component<IBigCalProps, IBigCalState> {
@@ -124,7 +128,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       colorMappingsAvailable: true, // Will be checked on load
       publicEventsListAvailable: true, // Will be checked on load
       privateEventsListAvailable: true, // Will be checked on load
-      listConfigurationIssues: [] // Will be populated on load
+      listConfigurationIssues: [], // Will be populated on load
+      // Dynamic color mappings from Color Palette Studio
+      dynamicColorMappings: new Map()
     };
 
     this.sharePointService = new SharePointService(props.context, props.listName);
@@ -145,8 +151,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       this.enterFullscreen();
     }
 
-    // Check all list configurations
-    await this.checkListConfigurations();
+    // Check all list configurations and load color mappings
+    await Promise.all([
+      this.checkListConfigurations(),
+      this.loadDynamicColorMappings()
+    ]);
 
     // Inject dynamic color styles
     this.injectDynamicStyles();
@@ -186,6 +195,39 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       this.exitFullscreen();
     }
   }
+
+  private loadDynamicColorMappings = async (): Promise<void> => {
+    try {
+      const colorMappingService = new ColorMappingService(this.props.context);
+      const colorPaletteConfig = await colorMappingService.getColorPaletteConfig();
+
+      // Combine swimlane and status colors into a single map
+      const combinedMappings = new Map<string, string>();
+
+      // Add swimlane colors
+      colorPaletteConfig.swimlaneColors.forEach((color, swimlane) => {
+        combinedMappings.set(swimlane, color);
+      });
+
+      // Add status colors
+      colorPaletteConfig.statusColors.forEach((color, status) => {
+        combinedMappings.set(status, color);
+      });
+
+      this.setState({ dynamicColorMappings: combinedMappings });
+      Logger.debug('Loaded dynamic color mappings', combinedMappings);
+    } catch (error) {
+      Logger.error('Failed to load dynamic color mappings', error);
+      // Fall back to static mappings
+      const staticMappings = new Map<string, string>();
+      for (const key in SPECIFIC_COLOR_MAPPINGS) {
+        if (Object.prototype.hasOwnProperty.call(SPECIFIC_COLOR_MAPPINGS, key)) {
+          staticMappings.set(key, SPECIFIC_COLOR_MAPPINGS[key]);
+        }
+      }
+      this.setState({ dynamicColorMappings: staticMappings });
+    }
+  };
 
   private loadEvents = async (): Promise<void> => {
     try {
@@ -282,36 +324,27 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }).length;
   };
 
-  private formatMonthYear = (date: Date): string => {
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  };
+
 
   private getEventCategoryDropdownOptions = (): IDropdownOption[] => {
     const { filteredEvents, selectedEventCategories } = this.state;
     const allCategories = [
-      'Away w/RON',
-      'Day Trip - NCR',
       'DCDC',
       'DISA',
       'DOD CIO / NSA / USCC',
       'Exec Time',
-      'Exercise',
+      'Exercises',
       'FYSA',
       'Joint DISA & DCDC',
       'Mission Partner',
       'Out of Office',
-      'Speaking Engagement',
+      'Speaking Event',
       'TDY Meetings/Congressional',
-      'Training Holiday',
-      'Transit',
-      'VIP/High Priority'
+      'Transit'
     ];
 
-    // Filter categories based on rendering mode
-    const hiddenCategories = ['Away w/RON', 'Day Trip - NCR'];
-    const categories = this.props.eventRenderingMode === 'typeAndStatusBased'
-      ? allCategories.filter(cat => hiddenCategories.indexOf(cat) === -1)
-      : allCategories;
+    // All categories are now available since we removed the problematic ones
+    const categories = allCategories;
 
     const options = categories.map(eventCategory => {
       // Only count regular events, not holidays
@@ -319,7 +352,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       return {
         key: eventCategory,
         text: `${eventCategory} (${count})`,
-        data: { icon: this.getEventCategoryIcon(eventCategory), count }
+        data: { icon: getEventCategoryIcon(eventCategory), count }
       };
     });
 
@@ -547,7 +580,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         .rbc-event.status-tentative {
           background-color: ${palette.atRisk} !important;
           border-color: ${ColorPaletteService.getBorderColor('Tentative', this.props.colorPalette)} !important;
-          color: ${this.getContrastColor(palette.atRisk)} !important;
+          color: ${getContrastColor(palette.atRisk)} !important;
         }
 
         .rbc-event.status-canceled {
@@ -579,19 +612,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     `;
   };
 
-  private getContrastColor = (hexColor: string): string => {
-    // Convert hex to RGB
-    const hex = hexColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
 
-    // Calculate luminance
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-    // Return black or white based on luminance
-    return luminance > 0.5 ? '#323130' : '#ffffff';
-  };
 
   private injectDynamicStyles = (): void => {
     // Remove existing dynamic styles
@@ -998,8 +1019,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // Private events always get grey styling regardless of status
     if (event.isPrivate) {
-      const statusClass = `status-${event.status!.toLowerCase().replace(/\s+/g, '')}`;
-      const swimlaneClass = `swimlane-${event.swimlane!.toLowerCase().replace(' ', '')}`;
+      const statusClass = event.status ? `status-${event.status.toLowerCase().replace(/\s+/g, '')}` : 'status-none';
+      const swimlaneClass = event.swimlane ? `swimlane-${event.swimlane.toLowerCase().replace(' ', '')}` : 'swimlane-none';
 
       return {
         className: `private-event ${statusClass} ${swimlaneClass}`,
@@ -1013,8 +1034,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // For agenda view, use minimal styling to avoid colorful backgrounds
     if (this.state.currentView === 'agenda') {
-      const statusClass = `status-${event.status!.toLowerCase().replace(/\s+/g, '')}`;
-      const swimlaneClass = `swimlane-${event.swimlane!.toLowerCase().replace(' ', '')}`;
+      const statusClass = event.status ? `status-${event.status.toLowerCase().replace(/\s+/g, '')}` : 'status-none';
+      const swimlaneClass = event.swimlane ? `swimlane-${event.swimlane.toLowerCase().replace(' ', '')}` : 'swimlane-none';
 
       return {
         className: `${statusClass} ${swimlaneClass}`,
@@ -1065,11 +1086,15 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   private getEventColorFromMapping = (swimlane: string, status: string): string => {
     // New color strategy: Confirmed and blank/null use swimlane color, Tentative uses its own color
     if (status === 'Tentative') {
-      return SPECIFIC_COLOR_MAPPINGS.Tentative || '#ff00ff'; // Magenta for Tentative
+      return this.state.dynamicColorMappings.get('Tentative') ||
+             SPECIFIC_COLOR_MAPPINGS.Tentative ||
+             ColorPaletteService.getStatusColor('Tentative', this.props.colorPalette);
     }
 
     // For Confirmed and blank/null status, use swimlane color
-    return SPECIFIC_COLOR_MAPPINGS[swimlane] || '#6c757d'; // Gray fallback
+    return this.state.dynamicColorMappings.get(swimlane) ||
+           SPECIFIC_COLOR_MAPPINGS[swimlane] ||
+           '#6c757d'; // Gray fallback
   };
 
   private checkListConfigurations = async (): Promise<void> => {
@@ -1166,27 +1191,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
 
 
-  private getEventCategoryIcon = (eventCategory: string): string => {
-    // Return Unicode emoji symbols for consistent display across all views
-    switch (eventCategory) {
-      case 'Away w/RON':
-        return '✈️'; // Airplane
-      case 'Day Trip - NCR':
-        return '📍'; // Map pin
-      case 'Exercise':
-        return '🏃'; // Running person
-      case 'FYSA':
-        return 'ℹ️'; // Information
-      case 'Out of Office':
-        return '🚪'; // Door (leave)
-      case 'Training Holiday':
-        return '🎓'; // Graduation cap (education)
-      case 'VIP/High Priority':
-        return '⚠️'; // Warning (important)
-      default:
-        return 'ℹ️'; // Information
-    }
-  };
+
 
 
 
@@ -1210,7 +1215,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
 
     // Private events get locked icon, regular events get category icon
-    const iconEmoji = event.isPrivate ? '🔒' : this.getEventCategoryIcon(event.swimlane!);
+    const iconEmoji = event.isPrivate ? '🔒' : getEventCategoryIcon(event.swimlane!);
 
     return (
       <div
@@ -1281,7 +1286,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
 
     // Private events get locked icon, regular events get category icon
-    const iconEmoji = event.isPrivate ? '🔒' : this.getEventCategoryIcon(event.swimlane!);
+    const iconEmoji = event.isPrivate ? '🔒' : getEventCategoryIcon(event.swimlane!);
 
     return (
       <div
@@ -1393,8 +1398,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   // Color palette changes callback - refresh calendar when colors change
   private handleColorPaletteChanged = (): void => {
-    // Reload events to apply new colors
-    this.loadEvents().catch(error => console.error('Failed to reload events after color change:', error));
+    // Reload color mappings and events to apply new colors
+    Promise.all([
+      this.loadDynamicColorMappings(),
+      this.loadEvents()
+    ]).catch(error => console.error('Failed to reload after color change:', error));
   };
 
   // Testing method - remove after testing
@@ -1640,10 +1648,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 onRenderTitle={this.renderEventCategoryTitle}
                 styles={{
                   root: {
-                    width: '200px',
-                    minWidth: '150px',
-                    maxWidth: '220px',
-                    flex: '1 1 200px'
+                    width: '280px',
+                    minWidth: '250px',
+                    maxWidth: '320px',
+                    flex: '1 1 280px'
                   },
                   title: { fontSize: '13px' }
                 }}
@@ -1865,7 +1873,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                               onClick={() => this.handleMonthNavigate(month)}
                             >
                               <div className={styles.miniCalendarTitle}>
-                                {this.formatMonthYear(month)} ({monthEvents})
+                                {formatMonthYear(month)} ({monthEvents})
                               </div>
                               <div className={styles.miniCalendarContent}>
                                 {/* Mini calendar will be rendered here */}

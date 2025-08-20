@@ -414,8 +414,8 @@ export class HybridEventsService {
     return {
       id: event.Id,
       title: event.Title,
-      start: new Date(event.EventDate),
-      end: new Date(event.EndDate),
+      start: this.parseSharePointDate(event.EventDate),
+      end: this.parseSharePointDate(event.EndDate),
       swimlane: event.Swimlane as SwimlaneType,
       status: event.Status as StatusType,
       description: event.Description,
@@ -431,8 +431,8 @@ export class HybridEventsService {
     return {
       id: placeholder.Id, // Use placeholder ID for UI operations
       title: privateEvent.Title, // Real title from private list
-      start: new Date(privateEvent.EventDate),
-      end: new Date(privateEvent.EndDate),
+      start: this.parseSharePointDate(privateEvent.EventDate),
+      end: this.parseSharePointDate(privateEvent.EndDate),
       swimlane: privateEvent.Swimlane as SwimlaneType,
       status: privateEvent.Status as StatusType,
       description: privateEvent.Description,
@@ -448,14 +448,24 @@ export class HybridEventsService {
     return {
       id: placeholder.Id,
       title: 'Unavailable',
-      start: new Date(placeholder.EventDate),
-      end: new Date(placeholder.EndDate),
+      start: this.parseSharePointDate(placeholder.EventDate),
+      end: this.parseSharePointDate(placeholder.EndDate),
       swimlane: placeholder.Swimlane as SwimlaneType,
       status: placeholder.Status as StatusType,
       description: '',
       isPrivate: true,
       privateEventId: placeholder.PrivateEventId
     };
+  }
+
+  /**
+   * Parse SharePoint date string to JavaScript Date
+   * Since we now store dates without timezone info, SharePoint returns them correctly
+   */
+  private parseSharePointDate(dateString: string): Date {
+    // SharePoint now returns dates in the correct local time since we store them without timezone info
+    // We can parse them directly
+    return new Date(dateString);
   }
 
   /**

@@ -1,27 +1,27 @@
 # BigCal Test Cases Checklist
 
 ## 🎯 **Pre-Test Setup**
-- [ ] **Clean SharePoint Environment**: Delete existing Events, PrivateEvents, BigCalConfig lists
-- [ ] **Fresh Webpart**: Add BigCal webpart to clean SharePoint page
-- [ ] **Browser Console**: Open developer tools to monitor for errors
+- [ x] **Clean SharePoint Environment**: Delete existing Events, PrivateEvents, BigCalConfig lists
+- [x ] **Fresh Webpart**: Add BigCal webpart to clean SharePoint page
+- [x ] **Browser Console**: Open developer tools to monitor for errors
 
 ---
 
 ## 📋 **1. List Configuration & Warnings**
 
 ### **Initial State (No Lists)**
-- [ ] **Warning Display**: Shows comprehensive warning with all missing lists
-- [ ] **Warning Content**: Lists specific issues (Public Events, PrivateEvents, BigCalConfig)
-- [ ] **Warning Solution**: Directs to webpart properties panel
-- [ ] **Gray Events**: All events display in gray when configuration issues exist
+- [x ] **Warning Display**: Shows comprehensive warning with all missing lists
+- [x ] **Warning Content**: Lists specific issues (Public Events, PrivateEvents, BigCalConfig)
+- [x ] **Warning Solution**: Directs to webpart properties panel
+- [ x] **Gray Events**: All events display in gray when configuration issues exist
 
 ### **List Creation via Webpart Properties**
-- [ ] **Open Properties**: Click gear icon → Edit web part
-- [ ] **Public Events**: Create main Events list with all required fields
-- [ ] **PrivateEvents**: Create PrivateEvents list (Events type, not custom)
-- [ ] **BigCalConfig**: Create configuration list for color mappings
-- [ ] **Validation Success**: All lists show green checkmarks after creation
-- [ ] **Warning Disappears**: No configuration warnings after all lists created
+- [x ] **Open Properties**: Click gear icon → Edit web part
+- [x ] **Public Events**: Create main Events list with all required fields
+- [x ] **PrivateEvents**: Create PrivateEvents list (Events type, not custom)
+- [ x] **BigCalConfig**: Create configuration list for color mappings
+- [x ] **Validation Success**: All lists show green checkmarks after creation
+- [x ] **Warning Disappears**: No configuration warnings after all lists created
 
 ---
 

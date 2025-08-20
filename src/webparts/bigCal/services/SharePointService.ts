@@ -148,6 +148,23 @@ export class SharePointService {
   }
 
   /**
+   * Convert Date to SharePoint-compatible string without timezone conversion
+   * SharePoint treats strings without timezone info as local time to the site
+   */
+  private toSharePointDateString(date: Date): string {
+    // Format as ISO string without timezone info (no 'Z' suffix)
+    // This prevents SharePoint from doing timezone conversion
+    const year = date.getFullYear();
+    const month = ('0' + (date.getMonth() + 1)).slice(-2);
+    const day = ('0' + date.getDate()).slice(-2);
+    const hours = ('0' + date.getHours()).slice(-2);
+    const minutes = ('0' + date.getMinutes()).slice(-2);
+    const seconds = ('0' + date.getSeconds()).slice(-2);
+
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  }
+
+  /**
    * Check if the list has the Private and PrivateEventId fields
    * Enhanced for production environment compatibility
    */
@@ -332,8 +349,8 @@ export class SharePointService {
       const promises = events.map(async event => {
         const itemData: Record<string, unknown> = {
           Title: event.title,
-          EventDate: event.start.toISOString(), // Standard SharePoint Events field
-          EndDate: event.end.toISOString(),     // Standard SharePoint Events field
+          EventDate: this.toSharePointDateString(event.start), // Store without timezone conversion
+          EndDate: this.toSharePointDateString(event.end),     // Store without timezone conversion
           Swimlane: event.swimlane,
           Description: event.description
         };
@@ -402,8 +419,8 @@ export class SharePointService {
       // Use PnP.js to create a new item in the Events list
       const itemData: Record<string, unknown> = {
         Title: title,
-        EventDate: start.toISOString(), // Standard SharePoint Events field
-        EndDate: end.toISOString(),     // Standard SharePoint Events field
+        EventDate: this.toSharePointDateString(start), // Store without timezone conversion
+        EndDate: this.toSharePointDateString(end),     // Store without timezone conversion
         Swimlane: swimlane,
         Status: status,
         Description: description
@@ -450,8 +467,8 @@ export class SharePointService {
 
       const updateData: Record<string, unknown> = {
         Title: title,
-        EventDate: start.toISOString(), // Standard SharePoint Events field
-        EndDate: end.toISOString()      // Standard SharePoint Events field
+        EventDate: this.toSharePointDateString(start), // Store without timezone conversion
+        EndDate: this.toSharePointDateString(end)      // Store without timezone conversion
       };
 
       if (swimlane) updateData.Swimlane = swimlane;
