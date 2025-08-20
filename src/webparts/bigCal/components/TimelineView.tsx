@@ -29,6 +29,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
   private items: DataSet<any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private groups: DataSet<any>;
+  private isUpdating: boolean = false;
 
   constructor(props: ITimelineViewProps) {
     super(props);
@@ -46,6 +47,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
   }
 
   public componentDidMount(): void {
+    console.log('Timeline componentDidMount - events:', this.props.events.length, 'selected categories:', this.props.selectedEventCategories.size);
     this.initializeTimeline();
 
     // Add custom mouse wheel handling
@@ -71,17 +73,25 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
   }
 
   public componentDidUpdate(prevProps: ITimelineViewProps): void {
+    console.log('Timeline componentDidUpdate - events changed:', prevProps.events.length, '->', this.props.events.length);
+    console.log('Timeline componentDidUpdate - categories changed:', prevProps.selectedEventCategories.size, '->', this.props.selectedEventCategories.size);
+
     if (prevProps.events !== this.props.events ||
         prevProps.searchText !== this.props.searchText ||
         prevProps.selectedStatuses !== this.props.selectedStatuses) {
+      console.log('Timeline updating due to events/search/status change - setting loading to true');
       // Show loading when events or filters change
       this.setState({ isLoading: true }, () => {
+        // When events change, we need to update groups first (they're discovered from events)
+        // then update the timeline data
+        this.updateGroupsVisibility();
         this.updateTimelineData();
       });
     }
 
     // Update groups visibility when selected event categories change
     if (prevProps.selectedEventCategories !== this.props.selectedEventCategories) {
+      console.log('Timeline updating due to category selection change');
       this.updateGroupsVisibility();
     }
   }
@@ -89,20 +99,9 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
   private initializeTimeline = (): void => {
     if (!this.timelineRef.current) return;
 
-    // Create groups for event categories (including Private Events)
-    const groups = [
-      { id: 'Away w/RON', content: 'Away w/RON', className: 'eventcategory-away' },
-      { id: 'Day Trip - NCR', content: 'Day Trip - NCR', className: 'eventcategory-daytrip' },
-      { id: 'Exercise', content: 'Exercise', className: 'eventcategory-exercise' },
-      { id: 'FYSA', content: 'FYSA', className: 'eventcategory-fysa' },
-      { id: 'Out of Office', content: 'Out of Office', className: 'eventcategory-ooo' },
-      { id: 'Training Holiday', content: 'Training Holiday', className: 'eventcategory-training' },
-      { id: 'VIP/High Priority', content: 'VIP/High Priority', className: 'eventcategory-vip' },
-      { id: 'Private Events', content: 'Private Events', className: 'eventcategory-private' }
-    ];
-
+    // Groups will be dynamically created based on actual event data
+    // Initialize with empty groups - they'll be populated in updateGroupsVisibility
     this.groups.clear();
-    this.groups.add(groups);
 
     // Set initial date range (ProgramTracker approach)
     const today = new Date();
@@ -110,6 +109,11 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     startDate.setDate(today.getDate() - 5);  // 5 days before today
     const endDate = new Date();
     endDate.setDate(today.getDate() + 20);   // 20 days after today
+
+    console.log('Timeline date range calculation:');
+    console.log('Today:', today);
+    console.log('Start date:', startDate);
+    console.log('End date:', endDate);
 
     // Timeline options
     const options = {
@@ -185,7 +189,9 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     };
 
     // Create timeline
+    console.log('Creating new Timeline instance');
     const timeline = new Timeline(this.timelineRef.current, this.items, this.groups, options);
+    console.log('Timeline instance created');
 
     // Add event listeners
     timeline.on('select', (properties: { items: number[] }) => {
@@ -273,6 +279,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     }, 3000);
 
     this.setState({ timeline }, () => {
+      console.log('Timeline setState callback - initializing with events:', this.props.events.length);
       // Initialize with proper height and groups
       this.updateGroupsVisibility();
       this.updateTimelineData();
@@ -318,28 +325,45 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
   };
 
   private updateGroupsVisibility = (): void => {
+    console.log('updateGroupsVisibility called - timeline exists:', !!this.state.timeline);
     if (!this.state.timeline) return;
 
-    // Get all possible event categories (including Private Events)
-    const allEventCategories = [
-      'Away w/RON',
-      'Day Trip - NCR',
-      'Exercise',
-      'FYSA',
-      'Out of Office',
-      'Training Holiday',
-      'VIP/High Priority',
-      'Private Events'
-    ];
+    // Dynamically discover all unique swimlanes from events data
+    const discoveredSwimlanes = new Set<string>();
+
+    // Add swimlanes from actual events
+    this.props.events.forEach(event => {
+      if (event.isPrivate) {
+        discoveredSwimlanes.add('Private Events');
+      } else if (event.swimlane) {
+        discoveredSwimlanes.add(event.swimlane);
+      }
+    });
+
+    // Convert to sorted array for consistent ordering
+    const allEventCategories: string[] = [];
+    discoveredSwimlanes.forEach(swimlane => allEventCategories.push(swimlane));
+    allEventCategories.sort();
+
+    console.log('Discovered swimlanes:', allEventCategories);
+    console.log('Selected categories size:', this.props.selectedEventCategories.size);
+    const selectedArray: string[] = [];
+    this.props.selectedEventCategories.forEach(cat => selectedArray.push(cat));
+    console.log('Selected categories:', selectedArray);
+
+
 
     // Create groups array with only selected categories
     const visibleGroups = allEventCategories
-      .filter(category => this.props.selectedEventCategories.has(category))
-      .map(category => ({
+      .filter((category: string) => this.props.selectedEventCategories.has(category))
+      .map((category: string) => ({
         id: category,
         content: category,
         className: `eventcategory-${category.toLowerCase().replace(/[^a-z0-9]/g, '')}`
       }));
+
+    console.log('Visible groups count:', visibleGroups.length);
+    console.log('Visible groups:', visibleGroups.map(g => g.id));
 
     // Update the groups dataset
     this.groups.clear();
@@ -452,7 +476,10 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
   };
 
   private updateTimelineData = (): void => {
-    if (!this.state.timeline) return;
+    console.log('updateTimelineData called - timeline exists:', !!this.state.timeline, 'isUpdating:', this.isUpdating);
+    if (!this.state.timeline || this.isUpdating) return;
+
+    this.isUpdating = true;
 
     // Apply search and status filters (event category filtering is handled by group visibility)
     const filteredEvents = this.props.events.filter(event => {
@@ -466,19 +493,49 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
       return matchesSearch && matchesStatus;
     });
 
-    // Convert calendar events to timeline items
-    const timelineItems = filteredEvents.map(event => ({
-      id: event.id,
-      content: this.generateEventContent(event), // HTML content with icon and title
-      start: event.start,
-      group: event.isPrivate ? 'Private Events' : event.swimlane, // Private events go to dedicated lane
-      className: `status-${(event.status || 'confirmed').toLowerCase().replace(/\s+/g, '')}`,
-      title: `${event.title}\nEvent Category: ${event.isPrivate ? 'Private Events' : event.swimlane}\nStatus: ${event.status}\nStart: ${event.start.toLocaleDateString()}\nEnd: ${event.end.toLocaleDateString()}`,
-      type: 'point' // This is crucial for icon + text layout
-    }));
+    console.log('Filtered events for timeline:', filteredEvents.length);
 
+
+
+    // Convert calendar events to timeline items
+    const timelineItems = filteredEvents.map(event => {
+      // Check if event spans multiple days
+      const startDate = new Date(event.start.getFullYear(), event.start.getMonth(), event.start.getDate());
+      const endDate = new Date(event.end.getFullYear(), event.end.getMonth(), event.end.getDate());
+      const isMultiDay = startDate.getTime() !== endDate.getTime();
+
+      const item: any = {
+        id: event.id,
+        content: this.generateEventContent(event), // HTML content with icon and title
+        start: event.start,
+        group: event.isPrivate ? 'Private Events' : event.swimlane, // Private events go to dedicated lane
+        className: `status-${(event.status || 'confirmed').toLowerCase().replace(/\s+/g, '')}`,
+        title: `${event.title}\nEvent Category: ${event.isPrivate ? 'Private Events' : event.swimlane}\nStatus: ${event.status}\nStart: ${event.start.toLocaleDateString()}\nEnd: ${event.end.toLocaleDateString()}`,
+        type: isMultiDay ? 'range' : 'point' // Use range for multi-day, point for single-day
+      };
+
+      // Add end date for multi-day events
+      if (isMultiDay) {
+        item.end = event.end;
+      }
+
+      return item;
+    });
+
+    console.log('Timeline items created:', timelineItems.length);
+    const itemGroups = new Set<string>();
+    timelineItems.forEach(item => {
+      if (item.group) itemGroups.add(item.group);
+    });
+    const itemGroupsArray: string[] = [];
+    itemGroups.forEach(group => itemGroupsArray.push(group));
+    console.log('Timeline items groups:', itemGroupsArray);
+
+    console.log('Clearing timeline items - current count:', this.items.length);
     this.items.clear();
+    console.log('Adding timeline items - new count:', timelineItems.length);
     this.items.add(timelineItems);
+    console.log('Timeline items after add:', this.items.length);
 
     // Use default range from options (ProgramTracker approach)
     // The timeline will use the start/end dates set in options above
@@ -488,8 +545,70 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     // Force a redraw to ensure everything is positioned correctly
     this.state.timeline.redraw();
 
+    // Debug: Check timeline's internal state
+    console.log('Timeline window:', this.state.timeline.getWindow());
+    console.log('Timeline items count:', this.items.length);
+    console.log('Timeline groups count:', this.groups.length);
+
     // Recalculate height after data update to optimize space usage
     this.recalculateTimelineHeight();
+
+    // Force the timeline to fit all items in the view - this might fix the empty display
+    setTimeout(() => {
+      if (this.state.timeline && this.items.length > 0) {
+        console.log('Forcing timeline fit after data load');
+        this.state.timeline.fit();
+
+        // Debug: Check if timeline container and items exist
+        const timelineElement = this.timelineRef.current;
+        console.log('Timeline container exists:', !!timelineElement);
+        if (timelineElement) {
+          console.log('Timeline container innerHTML length:', timelineElement.innerHTML.length);
+          const visItems = timelineElement.querySelectorAll('.vis-item');
+          const visItemPoints = timelineElement.querySelectorAll('.vis-item.vis-point');
+          const visItemRanges = timelineElement.querySelectorAll('.vis-item.vis-range');
+          console.log('Timeline vis-items found:', visItems.length);
+          console.log('Timeline vis-item-points found:', visItemPoints.length);
+          console.log('Timeline vis-item-ranges found:', visItemRanges.length);
+
+          // Check timeline visibility - the timeline div is the container itself
+          const timelineDiv = this.timelineRef.current;
+          if (timelineDiv) {
+            const computedStyle = window.getComputedStyle(timelineDiv);
+            console.log('Timeline div opacity:', computedStyle.opacity);
+            console.log('Timeline div display:', computedStyle.display);
+            console.log('Timeline div visibility:', computedStyle.visibility);
+            console.log('Timeline div has timelineHidden class:', timelineDiv.classList.contains(styles.timelineHidden));
+            console.log('Timeline div classes:', timelineDiv.className);
+          } else {
+            console.log('Timeline div not found!');
+          }
+
+          // Check for duplicate IDs
+          const itemIds: string[] = [];
+          visItems.forEach(item => {
+            const id = item.getAttribute('data-id') || item.id;
+            if (id) itemIds.push(id);
+          });
+          const uniqueIds = new Set(itemIds);
+          console.log('Timeline unique item IDs:', uniqueIds.size, 'vs total items:', itemIds.length);
+        }
+
+        // Force loading state to clear after a reasonable delay
+        setTimeout(() => {
+          console.log('Force clearing loading state - current state:', this.state.isLoading);
+          this.setState({ isLoading: false }, () => {
+            console.log('Loading state cleared - new state:', this.state.isLoading);
+          });
+        }, 500);
+      }
+    }, 100);
+
+    // Clear the updating flag
+    setTimeout(() => {
+      this.isUpdating = false;
+      console.log('Timeline update complete - isUpdating cleared');
+    }, 600);
 
     // The timeline events will handle hiding the loading spinner
     // No need for setTimeout here as the events will fire when ready

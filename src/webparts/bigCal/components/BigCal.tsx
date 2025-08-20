@@ -23,12 +23,8 @@ import { EventPopover } from './EventPopover';
 import { TimelineView } from './TimelineView';
 import { ExportManager } from './ExportManager';
 import { IconSelector } from './IconSelector';
-import { ColorPaletteManager } from './ColorPaletteManager';
 import { GridView } from './GridView';
 import { formatMonthYear, getEventCategoryIcon } from '../utils/BigCalUtilities';
-// import { FilterControls } from './FilterControls';
-// import { NavigationToolbar } from './NavigationToolbar';
-// import { DataGridView } from './DataGridView'; // For future Outlook sync editing
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Setup the localizer for react-big-calendar
@@ -488,7 +484,21 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (option) {
       // Handle Select All/Unselect All toggle
       if (option.key === '__toggle_all_categories__') {
-        const allCategories = ['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority'];
+        // Use the actual swimlanes from the data instead of hardcoded legacy categories
+        const allCategories = [
+          'DCDC',
+          'DISA',
+          'DOD CIO / NSA / USCC',
+          'Exec Time',
+          'Exercises',
+          'FYSA',
+          'Joint DISA & DCDC',
+          'Mission Partner',
+          'Out of Office',
+          'Speaking Event',
+          'TDY Meetings/Congressional',
+          'Transit'
+        ];
         // Include Private Events in toggle logic for all views now that they have their own dedicated lane
         const allAvailableCategories = [...allCategories, 'Private Events'];
         const allSelected = option.data?.allSelected;
@@ -1171,18 +1181,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     this.setState({ isColorPaletteStudioOpen: true });
   };
 
-  private closeColorPaletteStudio = (): void => {
-    this.setState({ isColorPaletteStudioOpen: false });
-  };
 
-  // Color palette changes callback - refresh calendar when colors change
-  private handleColorPaletteChanged = (): void => {
-    // Reload color mappings and events to apply new colors
-    Promise.all([
-      this.loadDynamicColorMappings(),
-      this.loadEvents()
-    ]).catch(error => console.error('Failed to reload after color change:', error));
-  };
 
   // Testing method - remove after testing
   private togglePrivilegeEmulation = (): void => {
@@ -1757,14 +1756,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           onDismiss={this.closeIconSelector}
         />
 
-        {/* Color Palette Studio Modal */}
-        <ColorPaletteManager
-          context={this.props.context}
-          listName={this.props.listName}
-          isOpen={this.state.isColorPaletteStudioOpen}
-          onDismiss={this.closeColorPaletteStudio}
-          onColorsChanged={this.handleColorPaletteChanged}
-        />
+
 
         {/* Event Popover */}
         {this.state.popoverEvent && (
