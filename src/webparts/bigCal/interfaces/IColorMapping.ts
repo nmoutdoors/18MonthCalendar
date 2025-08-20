@@ -94,7 +94,7 @@ export const DEFAULT_COLOR_THEMES: IColorTheme[] = [
     colors: [
       '#17a2b8', // DISA - Teal/Cyan
       '#28a745', // DCDC - Green
-      '#20c997', // Joint DISA & DCDC - Teal Green
+      '#B39DDB', // Joint DISA & DCDC - Light purple/lavender
       '#ffc107', // Speaking Engagement - Yellow
       '#fd7e14', // DOD CIO / NSA / USCC - Orange
       '#e83e8c', // Mission Partner - Pink
@@ -183,7 +183,7 @@ export const SPECIFIC_COLOR_MAPPINGS: { [key: string]: string } = {
   'Exec Time': '#7f7f7f',               // Gray (from image)
   'Exercises': '#7030a0',               // Purple (user provided)
   'FYSA': '#00b050',                    // Green (user provided)
-  'Joint DISA & DCDC': '#5b9bd5',       // Light blue (same as DISA)
+  'Joint DISA & DCDC': '#B39DDB',       // Light purple/lavender (from reference image)
   'Mission Partner': '#ff5050',          // Red/Pink (user provided)
   'Out of Office': '#2f5597',           // Blue (user provided)
   'Speaking Event': '#ffff00',          // Yellow (user provided)

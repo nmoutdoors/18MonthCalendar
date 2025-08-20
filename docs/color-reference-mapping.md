@@ -25,7 +25,7 @@ Based on the exact hex codes visible in the reference image:
 |----------|------------|----------|---------|---------|
 | DISA | Blue | `#4f81bd` | 🔵 | Out of Office/Leave color |
 | DCDC | Green | `#008050` | 🟢 | FYSA color |
-| Joint DISA & DCDC | Blue | `#4f81bd` | 🔵 | Same as DISA |
+| Joint DISA & DCDC | Light Purple | `#B39DDB` | 🟣 | Light purple/lavender from reference image |
 | Speaking Engagement | Yellow | `#ffff00` | 🟡 | Speaking Event hex |
 | DOD CIO / NSA / USCC | Red | `#ff283c` | 🔴 | DOD CIO hex value |
 | Mission Partner | Pink/Red | `#ff5050` | 🩷 | Mission Partner hex |
@@ -45,7 +45,8 @@ For any unmapped options:
 
 ### Primary Colors Used (Exact Hex Values)
 - **Green**: `#008050` (FYSA, Confirmed, DCDC, Away w/RON)
-- **Blue**: `#4f81bd` (Out of Office/Leave, DISA, Joint DISA & DCDC, TDY)
+- **Blue**: `#4f81bd` (Out of Office/Leave, DISA, TDY)
+- **Light Purple**: `#B39DDB` (Joint DISA & DCDC)
 - **Orange**: `#ff9900` (Tentative, Day Trip - NCR)
 - **Purple**: `#7030a0` (Exercises, Fed/Trng Holiday)
 - **Red**: `#ff283c` (DOD CIO/NSA/USCC, VIP/High Priority)
