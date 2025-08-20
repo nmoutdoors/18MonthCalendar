@@ -13,7 +13,6 @@ import type { ICalendarEvent } from './ICalendarEvent';
 
 import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
-import { ColorPaletteService } from '../services/ColorPaletteService';
 import { SPECIFIC_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
 import { ColorMappingService } from '../services/ColorMappingService';
 
@@ -26,7 +25,7 @@ import { ExportManager } from './ExportManager';
 import { IconSelector } from './IconSelector';
 import { ColorPaletteManager } from './ColorPaletteManager';
 import { GridView } from './GridView';
-import { formatMonthYear, getContrastColor, getEventCategoryIcon } from '../utils/BigCalUtilities';
+import { formatMonthYear, getEventCategoryIcon } from '../utils/BigCalUtilities';
 // import { FilterControls } from './FilterControls';
 // import { NavigationToolbar } from './NavigationToolbar';
 // import { DataGridView } from './DataGridView'; // For future Outlook sync editing
@@ -180,10 +179,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       });
     }
 
-    // Check if color palette has changed
-    if (prevProps.colorPalette !== this.props.colorPalette) {
-      this.injectDynamicStyles();
-    }
+    // Dynamic styles are handled by Color Palette Studio changes
   }
 
   /**
@@ -393,7 +389,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         key: status,
         text: `${status} (${count})`,
         data: {
-          color: ColorPaletteService.getStatusColor(status, this.props.colorPalette),
+          color: this.state.dynamicColorMappings.get(status) || '#6c757d',
           count
         }
       };
@@ -410,222 +406,21 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     return options;
   };
 
-  private getPaletteDropdownOptions = (): IDropdownOption[] => {
-    const palettes = ColorPaletteService.getAllPalettes();
-
-    return [
-      {
-        key: 'classic',
-        text: 'Classic',
-        data: {
-          colors: [palettes.classic.onTrack, palettes.classic.atRisk, palettes.classic.offTrack],
-          name: 'Classic'
-        }
-      },
-      {
-        key: 'nature',
-        text: 'Nature',
-        data: {
-          colors: [palettes.nature.onTrack, palettes.nature.atRisk, palettes.nature.offTrack],
-          name: 'Nature'
-        }
-      },
-      {
-        key: 'professional',
-        text: 'Professional',
-        data: {
-          colors: [palettes.professional.onTrack, palettes.professional.atRisk, palettes.professional.offTrack],
-          name: 'Professional'
-        }
-      },
-      {
-        key: 'forest',
-        text: 'Forest',
-        data: {
-          colors: [palettes.forest.onTrack, palettes.forest.atRisk, palettes.forest.offTrack],
-          name: 'Forest'
-        }
-      },
-      {
-        key: 'emerald',
-        text: 'Emerald',
-        data: {
-          colors: [palettes.emerald.onTrack, palettes.emerald.atRisk, palettes.emerald.offTrack],
-          name: 'Emerald'
-        }
-      },
-      {
-        key: 'disa1',
-        text: 'DISA Standard',
-        data: {
-          colors: [palettes.disa1.onTrack, palettes.disa1.atRisk, palettes.disa1.offTrack],
-          name: 'DISA Standard'
-        }
-      },
-      {
-        key: 'disa1Deep',
-        text: 'DISA Std Deep',
-        data: {
-          colors: [palettes.disa1Deep.onTrack, palettes.disa1Deep.atRisk, palettes.disa1Deep.offTrack],
-          name: 'DISA Std Deep'
-        }
-      },
-      {
-        key: 'disa2',
-        text: 'DISA Authority',
-        data: {
-          colors: [palettes.disa2.onTrack, palettes.disa2.atRisk, palettes.disa2.offTrack],
-          name: 'DISA Authority'
-        }
-      },
-      {
-        key: 'disa2Deep',
-        text: 'DISA Auth Deep',
-        data: {
-          colors: [palettes.disa2Deep.onTrack, palettes.disa2Deep.atRisk, palettes.disa2Deep.offTrack],
-          name: 'DISA Auth Deep'
-        }
-      },
-      {
-        key: 'disa4',
-        text: 'DISA Tactical',
-        data: {
-          colors: [palettes.disa4.onTrack, palettes.disa4.atRisk, palettes.disa4.offTrack],
-          name: 'DISA Tactical'
-        }
-      }
-    ];
-  };
-
-  private handlePaletteChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
-    if (option && this.props.onPaletteChange) {
-      this.props.onPaletteChange(option.key as string);
-    }
-  };
-
-  private renderPaletteTitle = (options?: IDropdownOption[]): JSX.Element => {
-    if (options && options.length > 0) {
-      const selectedOption = options[0];
-      const colors = selectedOption.data?.colors || [];
-
-      return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ display: 'flex', gap: '2px' }}>
-            {colors.map((color: string, index: number) => (
-              <div
-                key={index}
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  backgroundColor: color,
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '2px'
-                }}
-              />
-            ))}
-          </div>
-          <span style={{ color: 'white', fontSize: '13px' }}>Theme</span>
-        </div>
-      );
-    }
-    return <span style={{ color: 'white' }}>Theme</span>;
-  };
-
-  private renderPaletteOption = (option?: IDropdownOption): JSX.Element => {
-    if (!option) return <div />;
-
-    const colors = option.data?.colors || [];
-    const name = option.data?.name || option.text;
-
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '6px 8px',
-        minHeight: '32px'
-      }}>
-        <div style={{ display: 'flex', gap: '3px' }}>
-          {colors.map((color: string, index: number) => (
-            <div
-              key={index}
-              style={{
-                width: '16px',
-                height: '16px',
-                backgroundColor: color,
-                border: '1px solid #ccc',
-                borderRadius: '3px',
-                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
-              }}
-            />
-          ))}
-        </div>
-        <span style={{ fontSize: '14px' }}>{name}</span>
-      </div>
-    );
-  };
 
 
 
-  private generateDynamicStyles = (): string => {
-    const palette = ColorPaletteService.getPalette(this.props.colorPalette);
 
-    return `
-      <style id="bigcal-dynamic-colors">
-        .rbc-event.status-confirmed {
-          background-color: ${palette.onTrack} !important;
-          border-color: ${ColorPaletteService.getBorderColor('Confirmed', this.props.colorPalette)} !important;
-        }
 
-        .rbc-event.status-tentative {
-          background-color: ${palette.atRisk} !important;
-          border-color: ${ColorPaletteService.getBorderColor('Tentative', this.props.colorPalette)} !important;
-          color: ${getContrastColor(palette.atRisk)} !important;
-        }
 
-        .rbc-event.status-canceled {
-          background-color: ${palette.offTrack} !important;
-          border-color: ${ColorPaletteService.getBorderColor('Canceled', this.props.colorPalette)} !important;
-        }
 
-        .rbc-event.private-event {
-          background-color: #8a8886 !important;
-          border-color: #605e5c !important;
-          color: white !important;
-        }
 
-        .vis-item.status-confirmed .vis-dot {
-          background: ${ColorPaletteService.generateGradient('Confirmed', 'classic')} !important;
-          border: 1px solid ${ColorPaletteService.getBorderColor('Confirmed', 'classic')} !important;
-        }
 
-        .vis-item.status-tentative .vis-dot {
-          background: ${ColorPaletteService.generateGradient('Tentative', 'classic')} !important;
-          border: 1px solid ${ColorPaletteService.getBorderColor('Tentative', 'classic')} !important;
-        }
-
-        .vis-item.status-canceled .vis-dot {
-          background: ${ColorPaletteService.generateGradient('Canceled', 'classic')} !important;
-          border: 1px solid ${ColorPaletteService.getBorderColor('Canceled', 'classic')} !important;
-        }
-      </style>
-    `;
-  };
 
 
 
   private injectDynamicStyles = (): void => {
-    // Remove existing dynamic styles
-    const existingStyle = document.getElementById('bigcal-dynamic-colors');
-    if (existingStyle) {
-      existingStyle.remove();
-    }
-
-    // Create and inject new styles
-    const styleElement = document.createElement('style');
-    styleElement.id = 'bigcal-dynamic-colors';
-    styleElement.innerHTML = this.generateDynamicStyles().replace(/<\/?style[^>]*>/g, '');
-    document.head.appendChild(styleElement);
+    // Dynamic styles are now handled by the Color Palette Studio system
+    // This method is kept for compatibility but does nothing
   };
 
   // Remove getStatusIcon since we're using colored circles instead
@@ -1088,7 +883,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (status === 'Tentative') {
       return this.state.dynamicColorMappings.get('Tentative') ||
              SPECIFIC_COLOR_MAPPINGS.Tentative ||
-             ColorPaletteService.getStatusColor('Tentative', this.props.colorPalette);
+             '#ffc107'; // Yellow fallback for Tentative
     }
 
     // For Confirmed and blank/null status, use swimlane color
@@ -1700,40 +1495,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                     }}
                   />
                 )}
-                {/* Theme Palette Picker */}
-                {this.props.showPalettePicker && (
-                  <Dropdown
-                    placeholder="Theme"
-                    options={this.getPaletteDropdownOptions()}
-                    selectedKey={this.props.colorPalette}
-                    onChange={this.handlePaletteChange}
-                    onRenderTitle={this.renderPaletteTitle}
-                    onRenderOption={this.renderPaletteOption}
-                    styles={{
-                      root: {
-                        width: '200px',
-                        minWidth: '180px',
-                        maxWidth: '220px',
-                        marginRight: '12px' // Add more right margin to theme selector
-                      },
-                      title: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        padding: '4px 8px'
-                      },
-                      dropdown: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)'
-                      },
-                      caretDown: {
-                        color: 'white'
-                      },
-                      callout: {
-                        minWidth: '240px' // Wider callout for better color square visibility
-                      }
-                    }}
-                  />
-                )}
+
               </div>
             )}
 
@@ -1973,7 +1735,6 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           ) : (
             <TimelineView
               events={events}
-              colorPalette="classic"
               selectedEventCategories={selectedEventCategories}
               searchText={searchText}
               selectedStatuses={selectedStatuses}
@@ -1988,7 +1749,6 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           isOpen={isModalOpen}
           event={selectedEvent}
           selectedDate={selectedDate}
-          colorPalette={this.props.colorPalette}
           eventRenderingMode={this.props.eventRenderingMode}
           onSave={this.handleSaveEvent}
           onDelete={selectedEvent ? this.handleDeleteEvent : undefined}
@@ -2034,7 +1794,6 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
             isVisible={this.state.isPopoverVisible}
             onDismiss={this.hidePopover}
             onEdit={this.handlePopoverEdit}
-            colorPalette={this.props.colorPalette}
           />
         )}
       </div>

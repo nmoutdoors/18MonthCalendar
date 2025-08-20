@@ -6,7 +6,7 @@ import {
   PropertyPaneTextField,
   PropertyPaneToggle,
   PropertyPaneDropdown,
-  IPropertyPaneDropdownOption,
+
   PropertyPaneButton,
   PropertyPaneButtonType,
   PropertyPaneLabel,
@@ -26,7 +26,6 @@ import { Logger } from './services/LoggingService';
 export interface IBigCalWebPartProps {
   description: string;
   startInFullscreen: boolean;
-  colorPalette: string;
   listName: string;
   showImpersonateButton: boolean;
   showPalettePicker: boolean;
@@ -45,21 +44,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
   private _isCreatingPrivateList: boolean = false;
   private _isCreatingConfigList: boolean = false;
 
-  // Color palette options
-  private getColorPaletteOptions(): IPropertyPaneDropdownOption[] {
-    return [
-      { key: 'classic', text: 'Classic (Blue/Yellow/Red)' },
-      { key: 'nature', text: 'Nature (Forest Green/Amber/Red)' },
-      { key: 'professional', text: 'Professional (Teal/Gold/Red)' },
-      { key: 'forest', text: 'Forest (Web Forest Green/Fluorescent Orange/Amaranth Red)' },
-      { key: 'emerald', text: 'Emerald (Pakistan Green/Fluorescent Orange/Amaranth Red)' },
-      { key: 'disa1', text: 'DISA Standard (Medium Blue/Gold/Shield Red)' },
-      { key: 'disa1Deep', text: 'DISA Standard Deep (Medium Blue/Gold/Deep Red)' },
-      { key: 'disa2', text: 'DISA Authority (Crest Blue/Gold/Shield Red)' },
-      { key: 'disa2Deep', text: 'DISA Authority Deep (Crest Blue/Gold/Deep Red)' },
-      { key: 'disa4', text: 'DISA Tactical (Crest Blue/Brown/Deep Red)' }
-    ];
-  }
+
 
   public render(): void {
     const element: React.ReactElement<IBigCalProps> = React.createElement(
@@ -72,7 +57,6 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         startInFullscreen: this.properties.startInFullscreen !== false, // Default to true
         isUserAdmin: this._checkUserPermissions(),
         context: this.context,
-        colorPalette: this.properties.colorPalette || 'disa2Deep',
         listName: this.properties.listName || 'Events',
         showImpersonateButton: this.properties.showImpersonateButton || false, // Default to false
         showPalettePicker: this.properties.showPalettePicker || false, // Default to false
@@ -80,10 +64,6 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         eventRenderingMode: this.properties.eventRenderingMode || 'statusBased', // Default to current behavior
         onConfigureProperties: () => {
           this.context.propertyPane.open();
-        },
-        onPaletteChange: (palette: string) => {
-          this.properties.colorPalette = palette;
-          this.render(); // Re-render with new palette
         }
       }
     );
@@ -97,10 +77,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       this.properties.startInFullscreen = true;  // Default to fullscreen
     }
 
-    // Set default color palette if not already set
-    if (this.properties.colorPalette === undefined) {
-      this.properties.colorPalette = 'disa2Deep';  // Default to DISA Authority Deep
-    }
+
 
     // Set default list name if not already set
     if (this.properties.listName === undefined) {
@@ -524,11 +501,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         onText: 'Visible',
         offText: 'Hidden'
       }),
-      PropertyPaneDropdown('colorPalette', {
-        label: 'Color Palette',
-        options: this.getColorPaletteOptions(),
-        selectedKey: this.properties.colorPalette || 'disa2Deep'
-      }),
+
       PropertyPaneDropdown('eventRenderingMode', {
         label: 'Event Rendering Mode',
         options: [

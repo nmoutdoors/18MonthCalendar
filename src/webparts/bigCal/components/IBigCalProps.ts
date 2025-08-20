@@ -8,12 +8,10 @@ export interface IBigCalProps {
   startInFullscreen: boolean;
   isUserAdmin: boolean;
   context: WebPartContext;
-  colorPalette: string;
   listName: string;
   showImpersonateButton: boolean;
   showPalettePicker: boolean;
   showIconSelector: boolean;
   eventRenderingMode: string;
   onConfigureProperties?: () => void;
-  onPaletteChange?: (palette: string) => void;
 }

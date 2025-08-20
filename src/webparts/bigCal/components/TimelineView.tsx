@@ -8,7 +8,6 @@ import styles from './TimelineView.module.scss';
 
 export interface ITimelineViewProps {
   events: ICalendarEvent[];
-  colorPalette: string;
   selectedEventCategories: Set<string>;
   searchText?: string;
   selectedStatuses?: Set<string>;
@@ -576,7 +575,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
             target={hoveredElement}
             isVisible={true}
             onDismiss={this.handleItemMouseOut}
-            colorPalette={this.props.colorPalette}
+
           />
         )}
       </div>

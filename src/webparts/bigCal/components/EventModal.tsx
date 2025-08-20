@@ -14,7 +14,6 @@ import {
   Checkbox
 } from '@fluentui/react';
 import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
-import { ColorPaletteService } from '../services/ColorPaletteService';
 import { Logger } from '../services/LoggingService';
 import * as moment from 'moment';
 import styles from './EventModal.module.scss';
@@ -23,7 +22,6 @@ export interface IEventModalProps {
   isOpen: boolean;
   event?: ICalendarEvent;
   selectedDate?: Date;
-  colorPalette: string;
   eventRenderingMode: string;
   onSave: (event: Partial<ICalendarEvent>) => Promise<void>;
   onDelete?: (eventId: number) => Promise<void>;
@@ -157,7 +155,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     const allStatuses = [
       { key: 'Not Set', text: 'Not Set', data: { color: 'transparent' } },
       { key: 'Confirmed', text: 'Confirmed', data: { color: 'transparent' } },
-      { key: 'Tentative', text: 'Tentative', data: { color: ColorPaletteService.getStatusColor('Tentative', this.props.colorPalette) } }
+      { key: 'Tentative', text: 'Tentative', data: { color: 'transparent' } }
     ];
 
     // Add Cancel option only in 3-color mode (statusBased)
