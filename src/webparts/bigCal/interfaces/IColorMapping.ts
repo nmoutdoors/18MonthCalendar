@@ -7,6 +7,7 @@ export interface IColorMapping {
   fieldName: 'Swimlanes' | 'Status';
   optionValue: string;
   colorHex: string;
+  iconName?: string; // Optional icon for swimlanes/status
   isActive: boolean;
   sortOrder: number;
   created?: Date;

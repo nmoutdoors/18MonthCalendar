@@ -16,6 +16,7 @@ interface ISharePointConfigItem {
   FieldName: string;
   OptionValue: string;
   ColorHex: string;
+  IconName?: string; // Optional icon name
   IsActive: boolean;
   SortOrder: number;
   Created: string;
@@ -143,7 +144,7 @@ export class ColorMappingService {
       console.log('Fetching color mappings from BigCalConfig list');
 
       const items = await this.sp.web.lists.getByTitle(this.configListName).items
-        .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IsActive', 'SortOrder', 'Created', 'Modified')
+        .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'IsActive', 'SortOrder', 'Created', 'Modified')
         .filter("ConfigType eq 'ColorMapping'")
         .orderBy('FieldName', true)
         .orderBy('SortOrder', true)();
@@ -154,6 +155,7 @@ export class ColorMappingService {
         fieldName: item.FieldName as 'Swimlanes' | 'Status',
         optionValue: item.OptionValue,
         colorHex: item.ColorHex,
+        iconName: item.IconName || undefined, // Handle null/empty icon names
         isActive: item.IsActive,
         sortOrder: item.SortOrder || 0,
         created: item.Created ? new Date(item.Created) : undefined,
@@ -211,6 +213,7 @@ export class ColorMappingService {
         FieldName: mapping.fieldName,
         OptionValue: mapping.optionValue,
         ColorHex: mapping.colorHex,
+        IconName: mapping.iconName || null, // Store null if no icon selected
         IsActive: mapping.isActive,
         SortOrder: mapping.sortOrder
       };
@@ -220,7 +223,7 @@ export class ColorMappingService {
         // Update existing mapping
         await this.sp.web.lists.getByTitle(this.configListName).items.getById(mapping.id).update(itemData);
         savedItem = await this.sp.web.lists.getByTitle(this.configListName).items.getById(mapping.id)
-          .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IsActive', 'SortOrder', 'Created', 'Modified')();
+          .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'IsActive', 'SortOrder', 'Created', 'Modified')();
       } else {
         // Create new mapping
         const addResult = await this.sp.web.lists.getByTitle(this.configListName).items.add(itemData);
@@ -238,7 +241,7 @@ export class ColorMappingService {
           // Fallback: fetch the item by querying for it
           console.log('Add result format unexpected, fetching item by title:', addResult);
           const items = await this.sp.web.lists.getByTitle(this.configListName).items
-            .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IsActive', 'SortOrder', 'Created', 'Modified')
+            .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'IsActive', 'SortOrder', 'Created', 'Modified')
             .filter(`Title eq '${itemData.Title}'`)
             .top(1)();
 
@@ -262,6 +265,7 @@ export class ColorMappingService {
         fieldName: savedItem.FieldName,
         optionValue: savedItem.OptionValue,
         colorHex: savedItem.ColorHex,
+        iconName: savedItem.IconName || undefined, // Handle null/empty icon names
         isActive: savedItem.IsActive,
         sortOrder: savedItem.SortOrder || 0,
         created: savedItem.Created ? new Date(savedItem.Created) : undefined,

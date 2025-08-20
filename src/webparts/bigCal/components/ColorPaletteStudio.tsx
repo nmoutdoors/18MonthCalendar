@@ -9,13 +9,14 @@ import {
   SpinnerSize,
   MessageBar,
   MessageBarType,
-  Pivot,
-  PivotItem,
   ColorPicker,
   IColor,
   getColorFromString,
+  Icon,
+  IconButton,
 } from '@fluentui/react';
 import { IColorMapping, IFieldOption, ORIGINAL_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
+import { getContextualIcons, IIconOption } from '../utils/IconMappings';
 import styles from './BigCal.module.scss';
 
 export interface IColorPaletteStudioProps {
@@ -34,7 +35,9 @@ export interface IColorPaletteStudioState {
   selectedColorOption?: IFieldOption;
   showColorPicker: boolean;
   selectedColor: IColor;
-  activeTab: string;
+  showIconPicker: boolean;
+  selectedIconOption?: IFieldOption;
+  availableIcons: IIconOption[];
   errorMessage?: string;
   successMessage?: string;
 }
@@ -49,7 +52,9 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
       selectedColorOption: undefined,
       showColorPicker: false,
       selectedColor: getColorFromString('#0078d4')!,
-      activeTab: 'swimlanes',
+      showIconPicker: false,
+      selectedIconOption: undefined,
+      availableIcons: [],
       errorMessage: undefined,
       successMessage: undefined
     };
@@ -124,6 +129,87 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     }
   };
 
+  private handleIconChange = async (option: IFieldOption, iconName: string): Promise<void> => {
+    const { localMappings } = this.state;
+
+    // Find existing mapping or create new one
+    let existingIndex = -1;
+    for (let i = 0; i < localMappings.length; i++) {
+      if (localMappings[i].fieldName === option.fieldName && localMappings[i].optionValue === option.optionValue) {
+        existingIndex = i;
+        break;
+      }
+    }
+
+    let updatedMappings: IColorMapping[];
+
+    if (existingIndex >= 0) {
+      // Update existing mapping
+      updatedMappings = [...localMappings];
+      updatedMappings[existingIndex] = {
+        ...updatedMappings[existingIndex],
+        iconName: iconName || undefined, // Store undefined for empty icon
+        isActive: true
+      };
+    } else {
+      // Create new mapping
+      const newMapping: IColorMapping = {
+        configType: 'ColorMapping',
+        fieldName: option.fieldName,
+        optionValue: option.optionValue,
+        colorHex: this.getCurrentColor(option),
+        iconName: iconName || undefined,
+        isActive: true,
+        sortOrder: localMappings.length + 1
+      };
+      updatedMappings = [...localMappings, newMapping];
+    }
+
+    // Update state immediately for real-time UI feedback
+    this.setState({
+      localMappings: updatedMappings,
+      showIconPicker: false,
+      errorMessage: undefined
+    });
+
+    // Trigger real-time UI update in calendar
+    this.props.onColorsChanged();
+
+    // Silent auto-save in background
+    try {
+      await this.props.onSaveColorMappings(updatedMappings);
+    } catch (error) {
+      // Show error but don't block UI
+      this.setState({
+        errorMessage: `Auto-save failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+      // Clear error after 5 seconds
+      setTimeout(() => {
+        this.setState({ errorMessage: undefined });
+      }, 5000);
+    }
+  };
+
+  private openIconPicker = (option: IFieldOption): void => {
+    const availableIcons = getContextualIcons(option.optionValue);
+    this.setState({
+      selectedIconOption: option,
+      showIconPicker: true,
+      availableIcons
+    });
+  };
+
+  private getCurrentIcon = (option: IFieldOption): string => {
+    let mapping: IColorMapping | undefined;
+    for (let i = 0; i < this.state.localMappings.length; i++) {
+      if (this.state.localMappings[i].fieldName === option.fieldName && this.state.localMappings[i].optionValue === option.optionValue) {
+        mapping = this.state.localMappings[i];
+        break;
+      }
+    }
+    return mapping?.iconName || '';
+  };
+
   private handleRestoreOriginal = async (): Promise<void> => {
     try {
       const { discoveredOptions } = this.props;
@@ -182,64 +268,104 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     return mapping ? mapping.colorHex : '#0078d4';
   };
 
-  private renderColorAssignmentTab = (fieldName: 'Swimlanes' | 'Status'): React.ReactElement => {
-    const options = this.props.discoveredOptions.filter(o => o.fieldName === fieldName);
-    const newOptions = options.filter(o => o.isNewlyDiscovered);
-    
+  private renderOptionRow = (option: IFieldOption): React.ReactElement => {
+    const currentIcon = this.getCurrentIcon(option);
+
+    return (
+      <Stack key={`${option.fieldName}-${option.optionValue}`} horizontal verticalAlign="center" tokens={{ childrenGap: 12 }}>
+        {/* Color Square */}
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            backgroundColor: this.getCurrentColor(option),
+            border: '2px solid #edebe9',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: option.isNewlyDiscovered ? '0 0 8px rgba(255, 193, 7, 0.6)' : 'none'
+          }}
+          onClick={() => this.setState({
+            selectedColorOption: option,
+            showColorPicker: true,
+            selectedColor: getColorFromString(this.getCurrentColor(option))!
+          })}
+          title={`Click to change color for ${option.optionValue}`}
+        >
+          {option.isNewlyDiscovered && (
+            <Text style={{ color: 'white', fontSize: '10px', fontWeight: 'bold' }}>NEW</Text>
+          )}
+        </div>
+
+        {/* Option Info */}
+        <Stack style={{ flex: 1 }}>
+          <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+            <Text variant="medium" style={{ fontWeight: option.isNewlyDiscovered ? 'bold' : 'normal' }}>
+              {option.optionValue}
+            </Text>
+            {currentIcon && (
+              <Icon iconName={currentIcon} style={{ fontSize: '16px', color: '#605e5c' }} />
+            )}
+          </Stack>
+          <Text variant="small" style={{ color: '#605e5c' }}>
+            {this.getCurrentColor(option)} {currentIcon && `• ${currentIcon}`}
+          </Text>
+        </Stack>
+
+        {/* Icon Button */}
+        <IconButton
+          iconProps={{ iconName: 'Edit' }}
+          title="Choose icon"
+          onClick={() => this.openIconPicker(option)}
+          styles={{
+            root: {
+              width: '32px',
+              height: '32px',
+              backgroundColor: '#f3f2f1',
+              border: '1px solid #edebe9'
+            }
+          }}
+        />
+      </Stack>
+    );
+  };
+
+  private renderTwoColumnLayout = (): React.ReactElement => {
+    const allOptions = [...this.props.discoveredOptions];
+    const newOptions = allOptions.filter(o => o.isNewlyDiscovered);
+
+    // Split options into two columns
+    const midpoint = Math.ceil(allOptions.length / 2);
+    const leftColumn = allOptions.slice(0, midpoint);
+    const rightColumn = allOptions.slice(midpoint);
+
     return (
       <Stack tokens={{ childrenGap: 16 }}>
         {newOptions.length > 0 && (
           <MessageBar messageBarType={MessageBarType.warning}>
             <Text>
-              {newOptions.length} new {fieldName.toLowerCase()} option(s) discovered!
-              Assign colors below or use &quot;Generate Defaults&quot; to auto-assign.
+              {newOptions.length} new option(s) discovered! Assign colors and icons below.
             </Text>
           </MessageBar>
         )}
-        
-        <Stack tokens={{ childrenGap: 12 }}>
-          {options.map((option, index) => (
-            <Stack key={`${option.fieldName}-${option.optionValue}`} horizontal verticalAlign="center" tokens={{ childrenGap: 12 }}>
-              <div
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  backgroundColor: this.getCurrentColor(option),
-                  border: '2px solid #edebe9',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: option.isNewlyDiscovered ? '0 0 8px rgba(255, 193, 7, 0.6)' : 'none'
-                }}
-                onClick={() => this.setState({
-                  selectedColorOption: option,
-                  showColorPicker: true,
-                  selectedColor: getColorFromString(this.getCurrentColor(option))!
-                })}
-                title={`Click to change color for ${option.optionValue}`}
-              >
-                {option.isNewlyDiscovered && (
-                  <Text style={{ color: 'white', fontSize: '10px', fontWeight: 'bold' }}>NEW</Text>
-                )}
-              </div>
-              
-              <Stack>
-                <Text variant="medium" style={{ fontWeight: option.isNewlyDiscovered ? 'bold' : 'normal' }}>
-                  {option.optionValue}
-                </Text>
-                <Text variant="small" style={{ color: '#605e5c' }}>
-                  {this.getCurrentColor(option)}
-                </Text>
-              </Stack>
-            </Stack>
-          ))}
+
+        <Stack horizontal tokens={{ childrenGap: 24 }}>
+          {/* Left Column */}
+          <Stack style={{ flex: 1 }} tokens={{ childrenGap: 12 }}>
+            {leftColumn.map(option => this.renderOptionRow(option))}
+          </Stack>
+
+          {/* Right Column */}
+          <Stack style={{ flex: 1 }} tokens={{ childrenGap: 12 }}>
+            {rightColumn.map(option => this.renderOptionRow(option))}
+          </Stack>
         </Stack>
-        
-        {options.length === 0 && (
+
+        {allOptions.length === 0 && (
           <MessageBar messageBarType={MessageBarType.info}>
-            <Text>No {fieldName.toLowerCase()} options found in your Events list.</Text>
+            <Text>No options found in your Events list.</Text>
           </MessageBar>
         )}
       </Stack>
@@ -250,7 +376,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
 
   public render(): React.ReactElement {
     const { isOpen, onDismiss, isLoading, error } = this.props;
-    const { showColorPicker, selectedColorOption, selectedColor, activeTab, errorMessage, successMessage } = this.state;
+    const { showColorPicker, selectedColorOption, selectedColor, showIconPicker, selectedIconOption, availableIcons, errorMessage, successMessage } = this.state;
 
     return (
       <Modal
@@ -317,17 +443,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
                 </Text>
               </Stack>
             ) : (
-              <Pivot
-                selectedKey={activeTab}
-                onLinkClick={(item) => item && this.setState({ activeTab: item.props.itemKey! })}
-              >
-                <PivotItem headerText="Swimlanes" itemKey="swimlanes">
-                  {this.renderColorAssignmentTab('Swimlanes')}
-                </PivotItem>
-                <PivotItem headerText="Status" itemKey="status">
-                  {this.renderColorAssignmentTab('Status')}
-                </PivotItem>
-              </Pivot>
+              this.renderTwoColumnLayout()
             )}
 
             {/* Action buttons */}
@@ -376,6 +492,69 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
                     onClick={() => {
                       this.handleColorChange(selectedColorOption, selectedColor).catch(console.error);
                     }}
+                  />
+                </Stack>
+              </Stack>
+            </div>
+          </Modal>
+        )}
+
+        {/* Icon Picker Modal */}
+        {showIconPicker && selectedIconOption && (
+          <Modal
+            isOpen={showIconPicker}
+            onDismiss={() => this.setState({ showIconPicker: false })}
+            containerClassName={styles.colorPickerModal}
+          >
+            <div className={styles.colorPickerContent}>
+              <Stack tokens={{ childrenGap: 16 }}>
+                <Text variant="large">Choose Icon for {selectedIconOption.optionValue}</Text>
+
+                {/* Icon Grid */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '8px',
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  padding: '8px',
+                  border: '1px solid #edebe9',
+                  borderRadius: '4px'
+                }}>
+                  {availableIcons.map((iconOption, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        padding: '8px',
+                        cursor: 'pointer',
+                        border: '1px solid #edebe9',
+                        borderRadius: '4px',
+                        backgroundColor: '#fafafa',
+                        minHeight: '60px',
+                        justifyContent: 'center'
+                      }}
+                      onClick={() => this.handleIconChange(selectedIconOption, iconOption.iconName)}
+                      title={iconOption.description || iconOption.displayName}
+                    >
+                      {iconOption.iconName ? (
+                        <Icon iconName={iconOption.iconName} style={{ fontSize: '20px', marginBottom: '4px' }} />
+                      ) : (
+                        <div style={{ width: '20px', height: '20px', marginBottom: '4px' }} />
+                      )}
+                      <Text variant="tiny" style={{ textAlign: 'center', fontSize: '10px' }}>
+                        {iconOption.displayName}
+                      </Text>
+                    </div>
+                  ))}
+                </div>
+
+                <Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 12 }}>
+                  <DefaultButton
+                    text="Cancel"
+                    onClick={() => this.setState({ showIconPicker: false })}
                   />
                 </Stack>
               </Stack>
