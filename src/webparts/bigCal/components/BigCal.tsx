@@ -13,7 +13,7 @@ import type { ICalendarEvent } from './ICalendarEvent';
 
 import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
-import { SPECIFIC_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
+import { SPECIFIC_COLOR_MAPPINGS, IColorMapping, IFieldOption } from '../interfaces/IColorMapping';
 import { ColorMappingService } from '../services/ColorMappingService';
 
 import { HolidayService } from '../services/HolidayService';
@@ -23,6 +23,7 @@ import { EventPopover } from './EventPopover';
 import { TimelineView } from './TimelineView';
 import { ExportManager } from './ExportManager';
 import { IconSelector } from './IconSelector';
+import { ColorPaletteStudio } from './ColorPaletteStudio';
 import { GridView } from './GridView';
 import { formatMonthYear, getEventCategoryIcon } from '../utils/BigCalUtilities';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -59,6 +60,9 @@ interface IBigCalState {
   isIconSelectorOpen: boolean;
   // Color Palette Studio state
   isColorPaletteStudioOpen: boolean;
+  colorPaletteDiscoveredOptions: IFieldOption[];
+  colorPaletteMappings: IColorMapping[];
+  isColorPaletteLoading: boolean;
   // List configuration status
   colorMappingsAvailable: boolean;
   publicEventsListAvailable: boolean;
@@ -119,6 +123,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       isIconSelectorOpen: false,
       // Color Palette Studio state
       isColorPaletteStudioOpen: false,
+      colorPaletteDiscoveredOptions: [],
+      colorPaletteMappings: [],
+      isColorPaletteLoading: false,
       // List configuration status
       colorMappingsAvailable: true, // Will be checked on load
       publicEventsListAvailable: true, // Will be checked on load
@@ -1177,8 +1184,41 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   // Color Palette Studio Methods
-  private openColorPaletteStudio = (): void => {
-    this.setState({ isColorPaletteStudioOpen: true });
+  private openColorPaletteStudio = async (): Promise<void> => {
+    this.setState({ isColorPaletteStudioOpen: true, isColorPaletteLoading: true });
+
+    try {
+      const colorMappingService = new ColorMappingService(this.props.context);
+      const [discoveredOptions, colorMappings] = await Promise.all([
+        colorMappingService.discoverFieldOptions(this.props.listName),
+        colorMappingService.getColorMappings()
+      ]);
+
+      this.setState({
+        colorPaletteDiscoveredOptions: discoveredOptions,
+        colorPaletteMappings: colorMappings,
+        isColorPaletteLoading: false
+      });
+    } catch (error) {
+      Logger.error('Failed to load Color Palette Studio data', error);
+      this.setState({ isColorPaletteLoading: false });
+    }
+  };
+
+  private saveColorMappings = async (mappings: IColorMapping[]): Promise<void> => {
+    try {
+      const colorMappingService = new ColorMappingService(this.props.context);
+      await colorMappingService.saveBulkColorMappings(mappings);
+
+      // Update local state
+      this.setState({ colorPaletteMappings: mappings });
+
+      // Reload dynamic color mappings for immediate UI update
+      await this.loadDynamicColorMappings();
+    } catch (error) {
+      Logger.error('Failed to save color mappings', error);
+      throw error; // Re-throw so ColorPaletteStudio can handle the error
+    }
   };
 
 
@@ -1350,7 +1390,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   public render(): React.ReactElement<IBigCalProps> {
     const { hasTeamsContext } = this.props;
-    const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedEventCategories, selectedStatuses, viewMode, isExportDialogOpen, isPrintDialogOpen, isIconSelectorOpen } = this.state;
+    const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedEventCategories, selectedStatuses, viewMode, isExportDialogOpen, isPrintDialogOpen, isIconSelectorOpen, isColorPaletteStudioOpen } = this.state;
 
     // Combine regular events with holiday events and apply filters
     const allEventsWithHolidays = this.getAllEventsWithHolidays();
@@ -1757,7 +1797,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           onDismiss={this.closeIconSelector}
         />
 
-
+        {/* Color Palette Studio Modal */}
+        <ColorPaletteStudio
+          isOpen={isColorPaletteStudioOpen}
+          onDismiss={() => this.setState({ isColorPaletteStudioOpen: false })}
+          discoveredOptions={this.state.colorPaletteDiscoveredOptions}
+          colorMappings={this.state.colorPaletteMappings}
+          isLoading={this.state.isColorPaletteLoading}
+          onSaveColorMappings={this.saveColorMappings}
+          onColorsChanged={() => this.loadDynamicColorMappings()} // Reload colors when changed
+        />
 
         {/* Event Popover */}
         {this.state.popoverEvent && (
