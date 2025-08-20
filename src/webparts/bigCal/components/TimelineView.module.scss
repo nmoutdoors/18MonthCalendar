@@ -6,15 +6,7 @@
   height: 100%;
   width: 100%;
   position: relative;
-  overflow: hidden; // Let vis.js handle internal scrolling
-
-  /* Smooth height transitions when groups are added/removed */
-  transition: height 0.3s ease-in-out;
-
-  /* Ensure timeline adjusts to container changes */
-  :global(.vis-timeline) {
-    transition: height 0.3s ease-in-out;
-  }
+  overflow: hidden;
 }
 
 .timelineHeader {
@@ -34,15 +26,7 @@
   flex: 1;
   width: 100%;
   height: 100%;
-  min-height: 500px;
-  border: 1px solid $ms-color-neutralLight;
-  background-color: $ms-color-white;
   transition: opacity 0.3s ease-in-out;
-
-  &.timelineHidden {
-    opacity: 0;
-    pointer-events: none;
-  }
 }
 
 .loadingOverlay {
@@ -59,23 +43,11 @@
   backdrop-filter: blur(1px);
 }
 
-/* Timeline item styling based on status */
+/* Timeline styling based on working implementation */
 :global {
   .vis-timeline {
     font-family: $ms-font-family-fallbacks;
     font-size: 14px;
-  }
-
-  // Remove default vis.js scrollbars for custom control
-  .vis-panel.vis-center,
-  .vis-panel.vis-left,
-  .vis-panel.vis-right {
-    overflow: hidden !important;
-  }
-
-  .vis-panel.vis-center,
-  .vis-panel {
-    overflow: hidden !important;
   }
 
   // Replace vis-dot with custom status indicator
@@ -84,6 +56,22 @@
     width: 4px !important;
     height: 32px !important;
     border-width: 0 !important;
+  }
+
+  // Status-specific colors matching BigCal system
+  .vis-item.status-confirmed .vis-dot {
+    background: #0078d4 !important; // Blue for confirmed
+    border: 1px solid #106ebe !important;
+  }
+
+  .vis-item.status-tentative .vis-dot {
+    background: #ffb900 !important; // Yellow for tentative
+    border: 1px solid #f29e00 !important;
+  }
+
+  .vis-item.status-canceled .vis-dot {
+    background: #d13438 !important; // Red for canceled
+    border: 1px solid #a4262c !important;
   }
 
   // Style the text content (appears to the right of the dot)
@@ -95,74 +83,11 @@
   // Add cursor pointer and hover effects
   .vis-item {
     cursor: pointer !important;
-
-    &:hover {
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
-      z-index: 10 !important;
-    }
   }
 
-  .vis-item.vis-range {
-    border-radius: 4px;
-  }
-
-  .vis-item.vis-box {
-    border-radius: 4px;
-  }
-
-  /* Status-specific dot colors */
-  .vis-item.status-confirmed .vis-dot {
-    background: linear-gradient(to bottom, #107C10, #0B5A0B 50%, #107C10) !important;
-    border: 1px solid #0B5A0B !important;
-  }
-
-  .vis-item.status-tentative .vis-dot {
-    background: linear-gradient(to bottom, #ff9800, #f57c00) !important;
-    border: 1px solid #e65100 !important;
-  }
-
-  .vis-item.status-canceled .vis-dot {
-    background: linear-gradient(to bottom, #f44336, #d32f2f) !important;
-    border: 1px solid #b71c1c !important;
-  }
-
-  /* Timeline event content styling */
-  .timeline-event-content {
-    display: inline-flex;
-    align-items: center;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 13px;
-  }
-
-  .event-category-tag {
-    white-space: nowrap;
-  }
-
-  /* Ensure FluentUI icons display properly in timeline */
-  .vis-item-content .ms-Icon {
-    font-family: 'FabricMDL2Icons' !important;
-    display: inline-block;
-    vertical-align: middle;
-  }
-
-  /* Global timeline event content styling */
-  :global(.vis-item-content) {
-    .timeline-event-content {
-      display: inline-flex !important;
-      align-items: center !important;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-      font-size: 13px !important;
-    }
-
-    .event-category-tag {
-      white-space: nowrap !important;
-    }
-
-    .ms-Icon {
-      font-family: 'FabricMDL2Icons' !important;
-      display: inline-block !important;
-      vertical-align: middle !important;
-    }
+  .vis-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    z-index: 10 !important;
   }
 
   // Group labels styling
@@ -175,97 +100,5 @@
   .vis-time-axis .vis-text {
     font-weight: 600 !important;
     font-size: 16px !important;
-  }
-
-  /* Swimlane-based styling (subtle variations) */
-  .vis-item.swimlane-category1 {
-    border-left-width: 4px;
-  }
-
-  .vis-item.swimlane-category2 {
-    border-left-width: 4px;
-    border-left-style: dashed;
-  }
-
-  .vis-item.swimlane-category3 {
-    border-left-width: 4px;
-    border-left-style: dotted;
-  }
-
-  /* Group styling */
-  .vis-labelset .vis-label {
-    background-color: $ms-color-neutralLighterAlt;
-    border-right: 1px solid $ms-color-neutralLight;
-    color: $ms-color-neutralPrimary;
-    font-weight: 600;
-    padding: 8px 12px;
-  }
-
-  .vis-labelset .vis-label.swimlane-category1 {
-    border-left: 4px solid #4caf50;
-  }
-
-  .vis-labelset .vis-label.swimlane-category2 {
-    border-left: 4px solid #2196f3;
-  }
-
-  .vis-labelset .vis-label.swimlane-category3 {
-    border-left: 4px solid #ff9800;
-  }
-
-  /* Private Events group styling */
-  .vis-labelset .vis-label.eventcategory-private {
-    border-left: 4px solid #9c27b0;
-    background-color: #f3e5f5;
-    font-style: italic;
-  }
-
-  /* Timeline background */
-  .vis-panel.vis-background {
-    background-color: $ms-color-white;
-  }
-
-  .vis-panel.vis-center {
-    border-left: 1px solid $ms-color-neutralLight;
-    border-right: 1px solid $ms-color-neutralLight;
-  }
-
-  /* Current time line */
-  .vis-current-time {
-    background-color: #f44336;
-    width: 2px;
-  }
-
-  /* Time axis */
-  .vis-time-axis {
-    .vis-text {
-      color: $ms-color-neutralSecondary;
-      font-size: 12px;
-    }
-
-    .vis-text.vis-major {
-      font-weight: 600;
-      color: $ms-color-neutralPrimary;
-    }
-
-    .vis-grid.vis-minor {
-      border-color: $ms-color-neutralLighter;
-    }
-
-    .vis-grid.vis-major {
-      border-color: $ms-color-neutralLight;
-    }
-  }
-
-  /* Tooltip styling */
-  .vis-tooltip {
-    background-color: $ms-color-neutralDark;
-    color: $ms-color-white;
-    border: none;
-    border-radius: 4px;
-    padding: 8px 12px;
-    font-size: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    white-space: pre-line;
   }
 }
