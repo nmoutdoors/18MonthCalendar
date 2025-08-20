@@ -1719,6 +1719,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
               selectedStatuses={selectedStatuses}
               onEventClick={this.openEditModal}
               onEventDoubleClick={this.openEditModal}
+              dynamicColorMappings={this.state.dynamicColorMappings}
             />
           )}
         </div>

@@ -13,6 +13,7 @@ export interface ITimelineViewProps {
   selectedStatuses?: Set<string>;
   onEventClick?: (event: ICalendarEvent) => void;
   onEventDoubleClick?: (event: ICalendarEvent) => void;
+  dynamicColorMappings: Map<string, string>; // Add color mappings from BigCal
 }
 
 export interface ITimelineViewState {
@@ -56,6 +57,11 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
         prevProps.selectedStatuses !== this.props.selectedStatuses) {
       console.log('Timeline updating - events:', this.props.events.length);
       this.updateTimelineData();
+    }
+
+    // Update dynamic styles if color mappings changed
+    if (prevProps.dynamicColorMappings !== this.props.dynamicColorMappings) {
+      this.injectTimelineDynamicStyles();
     }
   }
 
@@ -162,6 +168,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     this.setState({ timeline, isLoading: false }, () => {
       console.log('Timeline initialized, updating data');
       this.updateTimelineData();
+      this.injectTimelineDynamicStyles();
     });
   };
 
@@ -204,13 +211,13 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     this.groups.clear();
     this.groups.add(visibleGroups);
 
-    // Create timeline items
+    // Create timeline items - colors applied via CSS classes
     const timelineItems = filteredEvents.map(event => ({
       id: event.id,
       content: event.title,
       start: event.start,
       group: event.isPrivate ? 'Private Events' : event.swimlane,
-      className: `status-${(event.status || 'confirmed').toLowerCase().replace(/\s+/g, '')}`,
+      className: `dynamic-color-${event.swimlane || 'FYSA'}-${event.status || 'Confirmed'}`.replace(/\s+/g, ''),
       type: 'point'
     }));
 
@@ -224,6 +231,51 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
         this.state.timeline.fit();
       }
     }, 100);
+  };
+
+  private getEventColorFromMapping = (swimlane: string, status: string): string => {
+    // New color strategy: Confirmed and blank/null use swimlane color, Tentative uses its own color
+    if (status === 'Tentative') {
+      return this.props.dynamicColorMappings.get('Tentative') || '#ffc107'; // Yellow fallback for Tentative
+    }
+
+    // For Confirmed and blank/null status, use swimlane color
+    return this.props.dynamicColorMappings.get(swimlane) || '#6c757d'; // Gray fallback
+  };
+
+  private injectTimelineDynamicStyles = (): void => {
+    // Remove existing dynamic styles
+    const existingStyle = document.getElementById('timeline-dynamic-colors');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+
+    // Generate CSS for each swimlane and status combination
+    let css = '';
+
+    // Generate styles for all possible combinations
+    const swimlanes = ['DCDC', 'DISA', 'DOD CIO / NSA / USCC', 'Exec Time', 'Exercises', 'FYSA', 'Joint DISA & DCDC', 'Mission Partner', 'Out of Office', 'Private Events', 'Speaking Event', 'TDY Meetings/Congressional', 'Transit'];
+    const statuses = ['Confirmed', 'Tentative', 'Canceled'];
+
+    swimlanes.forEach(swimlane => {
+      statuses.forEach(status => {
+        const color = this.getEventColorFromMapping(swimlane, status);
+        const className = `dynamic-color-${swimlane}-${status}`.replace(/\s+/g, '');
+
+        css += `
+          .vis-item.${className} .vis-dot {
+            background-color: ${color} !important;
+            border-color: ${color} !important;
+          }
+        `;
+      });
+    });
+
+    // Inject the styles
+    const styleElement = document.createElement('style');
+    styleElement.id = 'timeline-dynamic-colors';
+    styleElement.innerHTML = css;
+    document.head.appendChild(styleElement);
   };
 
   public render(): React.ReactElement<ITimelineViewProps> {

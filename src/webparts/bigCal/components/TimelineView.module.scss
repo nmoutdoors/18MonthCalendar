@@ -58,21 +58,8 @@
     border-width: 0 !important;
   }
 
-  // Status-specific colors matching BigCal system
-  .vis-item.status-confirmed .vis-dot {
-    background: #0078d4 !important; // Blue for confirmed
-    border: 1px solid #106ebe !important;
-  }
-
-  .vis-item.status-tentative .vis-dot {
-    background: #ffb900 !important; // Yellow for tentative
-    border: 1px solid #f29e00 !important;
-  }
-
-  .vis-item.status-canceled .vis-dot {
-    background: #d13438 !important; // Red for canceled
-    border: 1px solid #a4262c !important;
-  }
+  // Dynamic colors are now applied via inline styles from Color Palette Studio
+  // No static color rules needed - colors come from BigCalConfig SharePoint list
 
   // Style the text content (appears to the right of the dot)
   .vis-item .vis-item-content {
