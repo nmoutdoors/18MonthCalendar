@@ -22,6 +22,7 @@ export interface IEventModalProps {
   isOpen: boolean;
   event?: ICalendarEvent;
   selectedDate?: Date;
+  dynamicColorMappings?: Map<string, string>;
   onSave: (event: Partial<ICalendarEvent>) => Promise<void>;
   onDelete?: (eventId: number) => Promise<void>;
   onClose: () => void;
@@ -151,10 +152,13 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
   }
 
   private getStatusOptions = (): IDropdownOption[] => {
+    // Get Tentative color from Color Palette Studio, fallback to yellow
+    const tentativeColor = this.props.dynamicColorMappings?.get('Tentative') || '#ffc107';
+
     const allStatuses = [
       { key: 'Not Set', text: 'Not Set', data: { color: 'transparent' } },
       { key: 'Confirmed', text: 'Confirmed', data: { color: 'transparent' } },
-      { key: 'Tentative', text: 'Tentative', data: { color: 'transparent' } }
+      { key: 'Tentative', text: 'Tentative', data: { color: tentativeColor } }
     ];
 
     // Cancel option is always available now

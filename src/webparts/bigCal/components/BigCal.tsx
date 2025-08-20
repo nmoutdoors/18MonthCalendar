@@ -389,7 +389,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         key: status,
         text: `${status} (${count})`,
         data: {
-          color: this.state.dynamicColorMappings.get(status) || '#6c757d',
+          color: status === 'Tentative'
+            ? (this.state.dynamicColorMappings.get('Tentative') || '#ffc107')
+            : 'transparent',
           count
         }
       };
@@ -1727,7 +1729,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           isOpen={isModalOpen}
           event={selectedEvent}
           selectedDate={selectedDate}
-
+          dynamicColorMappings={this.state.dynamicColorMappings}
           onSave={this.handleSaveEvent}
           onDelete={selectedEvent ? this.handleDeleteEvent : undefined}
           onClose={this.closeModal}
