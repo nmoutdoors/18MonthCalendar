@@ -450,14 +450,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         return true;
       }
 
-      // In 7-color mode, filter out events with hidden categories
-      if (this.props.eventRenderingMode === 'typeAndStatusBased') {
-        const hiddenCategories = ['Away w/RON', 'Day Trip - NCR'];
-
-        if (hiddenCategories.indexOf(event.swimlane!) !== -1) {
-          return false; // Hide these events completely in 7-color mode
-        }
-      }
+      // All events are now visible - no category filtering needed
 
       // Regular event filters
       // Fix: When no categories are selected, show no events (not all events)
@@ -494,12 +487,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       // Handle Select All/Unselect All toggle
       if (option.key === '__toggle_all_categories__') {
         const allCategories = ['Away w/RON', 'Day Trip - NCR', 'Exercise', 'FYSA', 'Out of Office', 'Training Holiday', 'VIP/High Priority'];
-        const hiddenCategories = ['Away w/RON', 'Day Trip - NCR'];
-        const availableCategories = this.props.eventRenderingMode === 'typeAndStatusBased'
-          ? allCategories.filter(cat => hiddenCategories.indexOf(cat) === -1)
-          : allCategories;
         // Include Private Events in toggle logic for all views now that they have their own dedicated lane
-        const allAvailableCategories = [...availableCategories, 'Private Events'];
+        const allAvailableCategories = [...allCategories, 'Private Events'];
         const allSelected = option.data?.allSelected;
         const newSelected = allSelected ? new Set<string>() : new Set<string>(allAvailableCategories);
 
@@ -858,15 +847,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       };
     }
 
-    // Choose coloring strategy based on rendering mode
-    let backgroundColor: string;
-    if (this.props.eventRenderingMode === 'typeAndStatusBased') {
-      // New 7-color system: color by event type + status
-      backgroundColor = this.getEventColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
-    } else {
-      // Current system: color by swimlane and status
-      backgroundColor = this.getEventColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
-    }
+    // Use Color Palette Studio system for all events
+    const backgroundColor = this.getEventColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
 
     return {
       className: `${statusClass} ${swimlaneClass}`,
@@ -1476,26 +1458,22 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
               />
             </div>
 
-            {/* Center section for icon selector and palette picker */}
-            {(this.props.showIconSelector || this.props.showPalettePicker) && (
+            {/* Center section for icon selector */}
+            {this.props.showIconSelector && (
               <div className={styles.navbarCenter}>
                 {/* Icon Selector Button */}
-                {this.props.showIconSelector && (
-                  <IconButton
-                    iconProps={{ iconName: 'Emoji2' }}
-                    title="Icon Selection Helper"
-                    onClick={this.openIconSelector}
-                    className={styles.navbarButton}
-                    styles={{
-                      root: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        marginRight: this.props.showPalettePicker ? '8px' : '0'
-                      }
-                    }}
-                  />
-                )}
-
+                <IconButton
+                  iconProps={{ iconName: 'Emoji2' }}
+                  title="Icon Selection Helper"
+                  onClick={this.openIconSelector}
+                  className={styles.navbarButton}
+                  styles={{
+                    root: {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)'
+                    }
+                  }}
+                />
               </div>
             )}
 
@@ -1749,7 +1727,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           isOpen={isModalOpen}
           event={selectedEvent}
           selectedDate={selectedDate}
-          eventRenderingMode={this.props.eventRenderingMode}
+
           onSave={this.handleSaveEvent}
           onDelete={selectedEvent ? this.handleDeleteEvent : undefined}
           onClose={this.closeModal}

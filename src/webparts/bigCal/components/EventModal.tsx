@@ -22,7 +22,6 @@ export interface IEventModalProps {
   isOpen: boolean;
   event?: ICalendarEvent;
   selectedDate?: Date;
-  eventRenderingMode: string;
   onSave: (event: Partial<ICalendarEvent>) => Promise<void>;
   onDelete?: (eventId: number) => Promise<void>;
   onClose: () => void;
@@ -59,8 +58,8 @@ const getAllSwimlaneOptions = (): IDropdownOption[] => [
   { key: 'Transit', text: 'Transit', data: { icon: '🚌' } }
 ];
 
-const getFilteredSwimlaneOptions = (eventRenderingMode: string): IDropdownOption[] => {
-  // All options are now available in both rendering modes since we removed the problematic categories
+const getFilteredSwimlaneOptions = (): IDropdownOption[] => {
+  // All options are now available since we only use Color Palette Studio
   return getAllSwimlaneOptions();
 };
 
@@ -158,10 +157,8 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       { key: 'Tentative', text: 'Tentative', data: { color: 'transparent' } }
     ];
 
-    // Add Cancel option only in 3-color mode (statusBased)
-    if (this.props.eventRenderingMode === 'statusBased') {
-      allStatuses.push({ key: 'Cancel', text: 'Cancel', data: { color: 'transparent' } });
-    }
+    // Cancel option is always available now
+    allStatuses.push({ key: 'Cancel', text: 'Cancel', data: { color: 'transparent' } });
 
     return allStatuses;
   };
@@ -475,7 +472,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                 <Dropdown
                   label="Event Category"
                   selectedKey={swimlane}
-                  options={getFilteredSwimlaneOptions(this.props.eventRenderingMode)}
+                  options={getFilteredSwimlaneOptions()}
                   onChange={(_, option) => this.setState({ swimlane: option?.key as SwimlaneType })}
                   onRenderOption={this.onRenderSwimlaneOption}
                   onRenderTitle={this.onRenderSwimlaneTitle}
