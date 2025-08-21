@@ -19,6 +19,7 @@ export interface IExcelExportProps {
   onDismiss: () => void;
   currentDate?: Date;
   onImportEvents?: (events: ICalendarEvent[]) => Promise<void>;
+  onImportError?: (error: string) => void;
 }
 
 export interface IExcelExportState {
@@ -33,6 +34,7 @@ export interface IExcelExportState {
   importMessage: string;
   importMessageType: MessageBarType;
   dragActive: boolean;
+  backgroundImportInProgress: boolean;
 }
 
 export class ExcelExport extends React.Component<IExcelExportProps, IExcelExportState> {
@@ -84,7 +86,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       isImporting: false,
       importMessage: '',
       importMessageType: MessageBarType.info,
-      dragActive: false
+      dragActive: false,
+      backgroundImportInProgress: false
     };
   };
 
@@ -199,16 +202,32 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         return;
       }
 
-      // Call the import callback if provided and wait for it to complete
-      if (this.props.onImportEvents) {
-        await this.props.onImportEvents(events);
-      }
-
+      // Show immediate success message and allow user to close modal
       this.setState({
-        importMessage: `Successfully imported ${events.length} events from ${file.name}`,
+        importMessage: `${events.length} events added to calendar. Saving to SharePoint in background...`,
         importMessageType: MessageBarType.success,
-        isImporting: false
+        isImporting: false,
+        backgroundImportInProgress: true
       });
+
+      // Start background save (non-blocking)
+      if (this.props.onImportEvents) {
+        this.props.onImportEvents(events).then(() => {
+          // Silent success - no notification needed
+          this.setState({ backgroundImportInProgress: false });
+          Logger.info(`Successfully saved ${events.length} events to SharePoint`);
+        }).catch((error) => {
+          // Only notify on error
+          this.setState({ backgroundImportInProgress: false });
+          const errorMessage = `Failed to save events to SharePoint: ${error.message || 'Unknown error'}`;
+          Logger.error('Background import failed', error);
+
+          // Notify parent of error if callback provided
+          if (this.props.onImportError) {
+            this.props.onImportError(errorMessage);
+          }
+        });
+      }
 
     } catch (error) {
       Logger.error('Error importing Excel file', error);
@@ -231,6 +250,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     let endIndex = -1;
     let swimlaneIndex = -1;
     let statusIndex = -1;
+    let privateIndex = -1;
 
     for (let i = 0; i < headers.length; i++) {
       const header = headers[i];
@@ -243,6 +263,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
                     header.toLowerCase().indexOf('event category') !== -1 ||
                     header.toLowerCase().indexOf('category') !== -1)) swimlaneIndex = i;
       if (header && header.toLowerCase().indexOf('status') !== -1) statusIndex = i;
+      if (header && header.toLowerCase().indexOf('private') !== -1) privateIndex = i;
     }
 
     // Debug logging for header detection
@@ -255,6 +276,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       endIndex,
       swimlaneIndex,
       statusIndex,
+      privateIndex,
       totalRows: rawData.length
     });
 
@@ -289,6 +311,10 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         const statusRaw = statusIndex !== -1 && row[statusIndex] ? row[statusIndex].toString().trim() : '';
         const status = statusRaw ? statusRaw as StatusType : undefined;
 
+        // Parse private field
+        const privateRaw = privateIndex !== -1 && row[privateIndex] ? row[privateIndex].toString().trim().toLowerCase() : '';
+        const isPrivate = privateRaw === 'true' || privateRaw === '1' || privateRaw === 'yes';
+
         // Create event
         const event: ICalendarEvent = {
           id: Date.now() + i, // Generate a numeric ID
@@ -299,7 +325,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
           end: endDate || startDate,
           swimlane: (swimlaneIndex !== -1 && row[swimlaneIndex] ?
             row[swimlaneIndex].toString().trim() : 'FYSA') as SwimlaneType,
-          status: status
+          status: status,
+          isPrivate: isPrivate
         };
 
         events.push(event);
@@ -592,8 +619,9 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         { width: 40 }, // Description column
         { width: 20 }, // Start column
         { width: 20 }, // End column
-        { width: 15 }, // Swimlane column
-        { width: 15 }  // Status column
+        { width: 15 }, // Event Category column
+        { width: 15 }, // Status column
+        { width: 10 }  // Private column
       ];
       XLSX.utils.book_append_sheet(workbook, dataWorksheet, 'Data');
 
@@ -689,7 +717,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     const data: string[][] = [];
 
     // Add header row matching SharePoint list structure
-    data.push(['Title', 'Description', 'Start', 'End', 'Swimlane', 'Status']);
+    data.push(['Title', 'Description', 'Start', 'End', 'Event Category', 'Status', 'Private']);
 
     events.forEach(event => {
       // Use MM/DD/YYYY HH:MM AM/PM format for better readability while maintaining precision
@@ -726,7 +754,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         startFormatted,
         endFormatted,
         event.swimlane || '',
-        event.status || ''
+        event.status || '',
+        event.isPrivate ? 'TRUE' : 'FALSE'
       ]);
     });
 

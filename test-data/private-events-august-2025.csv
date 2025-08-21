@@ -1,0 +1,6 @@
+Title,Description,Start,End,Event Category,Status,Private
+Medical Appointment,Personal medical appointment,8/3/2025 10:00,8/3/2025 11:00,Out of Office,Confirmed,TRUE
+Family Emergency,Family emergency requiring immediate attention,8/8/2025 14:00,8/8/2025 17:00,Out of Office,,TRUE
+Personal Meeting,Confidential personal meeting,8/15/2025 13:00,8/15/2025 14:30,Exec Time,Tentative,TRUE
+Private Consultation,Private consultation with external advisor,8/22/2025 9:00,8/22/2025 10:00,Mission Partner,Confirmed,TRUE
+Confidential Review,Confidential performance review session,8/28/2025 15:00,8/28/2025 16:00,Exec Time,,TRUE

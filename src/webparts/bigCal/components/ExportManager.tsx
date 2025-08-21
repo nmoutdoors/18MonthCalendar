@@ -5,6 +5,7 @@ import { ICalendarEvent } from './ICalendarEvent';
 import { ExcelExport } from './ExcelExport';
 import { PrintDialog } from './PrintDialog';
 import { SharePointService } from '../services/SharePointService';
+import { HybridEventsService } from '../services/HybridEventsService';
 import { Logger } from '../services/LoggingService';
 
 export interface IExportManagerProps {
@@ -20,6 +21,7 @@ export interface IExportManagerProps {
   listName: string;
   onEventsImported?: () => void;
   onAddEventsToUI?: (events: ICalendarEvent[]) => void;
+  onImportError?: (error: string) => void;
 }
 
 export interface IExportManagerState {
@@ -35,6 +37,7 @@ export interface IExportManagerState {
  */
 export class ExportManager extends React.Component<IExportManagerProps, IExportManagerState> {
   private sharePointService: SharePointService;
+  private hybridEventsService: HybridEventsService;
 
   constructor(props: IExportManagerProps) {
     super(props);
@@ -47,6 +50,7 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
     };
 
     this.sharePointService = new SharePointService(props.context, props.listName);
+    this.hybridEventsService = new HybridEventsService(props.context, props.listName);
   }
 
   /**
@@ -61,20 +65,35 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
         this.props.onAddEventsToUI(importedEvents);
       }
 
-      // Convert ICalendarEvent to the format expected by SharePointService
-      const eventsToCreate = importedEvents.map(event => ({
-        title: event.title,
-        start: event.start,
-        end: event.end,
-        swimlane: event.swimlane || 'FYSA',
-        status: event.status, // Don't apply default - let SharePoint handle it
-        description: event.description || '',
-        isPrivate: event.isPrivate || false,
-        privateEventId: event.privateEventId
-      }));
+      // Process events individually to handle private events correctly
+      const creationPromises = importedEvents.map(async (event) => {
+        if (event.isPrivate) {
+          // Use HybridEventsService for private events
+          return await this.hybridEventsService.createEvent(
+            event.title,
+            event.start,
+            event.end,
+            event.swimlane || 'FYSA',
+            event.status || '',
+            event.description || '',
+            true // isPrivate
+          );
+        } else {
+          // Use SharePointService for regular events
+          return await this.sharePointService.createEvent(
+            event.title,
+            event.start,
+            event.end,
+            event.swimlane || 'FYSA',
+            event.status || '',
+            event.description || '',
+            false // isPrivate
+          );
+        }
+      });
 
-      // Use batch creation for better performance (background operation)
-      await this.sharePointService.createEventsBatch(eventsToCreate);
+      // Execute all creations in parallel
+      await Promise.all(creationPromises);
 
       Logger.info(`Successfully imported ${importedEvents.length} events to SharePoint`);
 
@@ -124,6 +143,7 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
           events={events}
           currentDate={currentDate}
           onImportEvents={this.handleImportEvents}
+          onImportError={this.props.onImportError}
         />
 
         {/* Print Dialog Modal */}

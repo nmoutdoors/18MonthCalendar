@@ -515,7 +515,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
         <div className={styles.colorPaletteStudioContent}>
           <Stack tokens={{ childrenGap: 20 }}>
             <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-              <Text variant="xLarge">🎨 Color Palette Studio</Text>
+              <Text variant="xLarge">📊 Legend Studio</Text>
               <DefaultButton
                 iconProps={{ iconName: 'Cancel' }}
                 onClick={onDismiss}

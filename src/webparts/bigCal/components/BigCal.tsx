@@ -25,7 +25,7 @@ import { ExportManager } from './ExportManager';
 import { IconSelector } from './IconSelector';
 import { ColorPaletteStudio } from './ColorPaletteStudio';
 import { GridView } from './GridView';
-import { formatMonthYear, getEventCategoryIcon } from '../utils/BigCalUtilities';
+import { formatMonthYear } from '../utils/BigCalUtilities';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Setup the localizer for react-big-calendar
@@ -368,19 +368,21 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     const options = categories.map(eventCategory => {
       // Only count regular events, not holidays
       const count = filteredEvents.filter(e => !e.isHoliday && e.swimlane === eventCategory).length;
+      const icon = this.state.dynamicIconMappings.get(eventCategory) || '';
       return {
         key: eventCategory,
         text: `${eventCategory} (${count})`,
-        data: { icon: getEventCategoryIcon(eventCategory), count }
+        data: { icon, count }
       };
     });
 
     // Add Private Events option
     const privateCount = filteredEvents.filter(e => !e.isHoliday && e.isPrivate).length;
+    const privateIcon = this.state.dynamicIconMappings.get('Private Events') || '';
     options.push({
       key: 'Private Events',
       text: `Private Events (${privateCount})`,
-      data: { icon: '🔒', count: privateCount }
+      data: { icon: privateIcon, count: privateCount }
     });
 
     // Add Select All/Unselect All toggle option
@@ -842,8 +844,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // Private events always get grey styling regardless of status
     if (event.isPrivate) {
-      const statusClass = event.status ? `status-${event.status.toLowerCase().replace(/\s+/g, '')}` : 'status-none';
-      const swimlaneClass = event.swimlane ? `swimlane-${event.swimlane.toLowerCase().replace(/\s+/g, '')}` : 'swimlane-none';
+      const statusClass = (event.status && event.status !== null) ? `status-${event.status.toLowerCase().replace(/\s+/g, '')}` : 'status-none';
+      const swimlaneClass = (event.swimlane && event.swimlane !== null) ? `swimlane-${event.swimlane.toLowerCase().replace(/\s+/g, '')}` : 'swimlane-none';
 
       return {
         className: `private-event ${statusClass} ${swimlaneClass}`,
@@ -857,8 +859,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // For agenda view, use minimal styling to avoid colorful backgrounds
     if (this.state.currentView === 'agenda') {
-      const statusClass = event.status ? `status-${event.status.toLowerCase().replace(/\s+/g, '')}` : 'status-none';
-      const swimlaneClass = event.swimlane ? `swimlane-${event.swimlane.toLowerCase().replace(/\s+/g, '')}` : 'swimlane-none';
+      const statusClass = (event.status && event.status !== null) ? `status-${event.status.toLowerCase().replace(/\s+/g, '')}` : 'status-none';
+      const swimlaneClass = (event.swimlane && event.swimlane !== null) ? `swimlane-${event.swimlane.toLowerCase().replace(/\s+/g, '')}` : 'swimlane-none';
 
       return {
         className: `${statusClass} ${swimlaneClass}`,
@@ -871,8 +873,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
 
     // Regular events for other views (month, week, day)
-    const statusClass = `status-${(event.status || 'notset').toLowerCase().replace(/\s+/g, '')}`;
-    const swimlaneClass = `swimlane-${(event.swimlane || 'fysa').toLowerCase().replace(/\s+/g, '')}`;
+    const statusClass = `status-${((event.status && event.status !== null) ? event.status : 'notset').toLowerCase().replace(/\s+/g, '')}`;
+    const swimlaneClass = `swimlane-${((event.swimlane && event.swimlane !== null) ? event.swimlane : 'fysa').toLowerCase().replace(/\s+/g, '')}`;
 
     // Check if there are any configuration issues - if so, show all events as gray
     if (this.state.listConfigurationIssues.length > 0 || !this.state.colorMappingsAvailable) {
@@ -929,8 +931,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       return swimlaneIcon;
     }
 
-    // Fall back to static icon mapping
-    return getEventCategoryIcon(swimlane);
+    // No fallback - only use Color Palette Studio icons
+    return '';
   };
 
   private checkListConfigurations = async (): Promise<void> => {
@@ -1300,6 +1302,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           }
         }
       }
+    });
+  };
+
+  // Handle import errors (only show errors, not successes)
+  private handleImportError = (errorMessage: string): void => {
+    Logger.error('Import error occurred', errorMessage);
+    this.setState({
+      error: `Import Error: ${errorMessage}`
     });
   };
 
@@ -1810,6 +1820,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           event={selectedEvent}
           selectedDate={selectedDate}
           dynamicColorMappings={this.state.dynamicColorMappings}
+          dynamicIconMappings={this.state.dynamicIconMappings}
           onSave={this.handleSaveEvent}
           onDelete={selectedEvent ? this.handleDeleteEvent : undefined}
           onClose={this.closeModal}
@@ -1829,6 +1840,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           listName={this.props.listName}
           onEventsImported={this.loadEvents}
           onAddEventsToUI={this.handleAddEventsToUI}
+          onImportError={this.handleImportError}
         />
 
         {/* Icon Selector Modal */}
@@ -1856,6 +1868,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
             isVisible={this.state.isPopoverVisible}
             onDismiss={this.hidePopover}
             onEdit={this.handlePopoverEdit}
+            dynamicIconMappings={this.state.dynamicIconMappings}
           />
         )}
       </div>

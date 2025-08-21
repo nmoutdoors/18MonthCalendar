@@ -27,37 +27,4 @@ export const getContrastColor = (hexColor: string): string => {
   return luminance > 0.5 ? '#000000' : '#ffffff';
 };
 
-/**
- * Get emoji icon for event category/swimlane
- */
-export const getEventCategoryIcon = (eventCategory: string): string => {
-  // Return Unicode emoji symbols for consistent display across all views
-  switch (eventCategory) {
-    case 'DCDC':
-      return '🏢'; // Office building
-    case 'DISA':
-      return '🔒'; // Lock (security)
-    case 'DOD CIO / NSA / USCC':
-      return '🛡️'; // Shield
-    case 'Exec Time':
-      return '👔'; // Necktie (executive)
-    case 'Exercises':
-      return '🎯'; // Direct hit (training)
-    case 'FYSA':
-      return '📋'; // Clipboard
-    case 'Joint DISA & DCDC':
-      return '🤝'; // Handshake
-    case 'Mission Partner':
-      return '🌐'; // Globe with meridians
-    case 'Out of Office':
-      return '🏠'; // House
-    case 'Speaking Event':
-      return '🎤'; // Microphone
-    case 'TDY Meetings/Congressional':
-      return '🏛️'; // Classical building
-    case 'Transit':
-      return '🚌'; // Bus
-    default:
-      return '📅'; // Calendar (default)
-  }
-};
+// Legacy getEventCategoryIcon function removed - all icons now come from Color Palette Studio

@@ -14,20 +14,12 @@ export interface IEventPopoverProps {
   isVisible: boolean;
   onDismiss: () => void;
   onEdit?: () => void;
+  dynamicIconMappings?: Map<string, string>;
 }
 
 export class EventPopover extends React.Component<IEventPopoverProps> {
   private getEventCategoryIcon = (swimlane: string): string => {
-    switch (swimlane) {
-      case 'Away w/RON': return '✈️';
-      case 'Day Trip - NCR': return '📍';
-      case 'Exercise': return '🏃';
-      case 'FYSA': return '📋';
-      case 'Out of Office': return '🏠';
-      case 'Training Holiday': return '🎓';
-      case 'VIP/High Priority': return '⭐';
-      default: return '📅';
-    }
+    return this.props.dynamicIconMappings?.get(swimlane) || '';
   };
 
   private formatDateTime = (date: Date): string => {

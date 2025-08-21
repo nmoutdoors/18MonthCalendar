@@ -23,6 +23,7 @@ export interface IEventModalProps {
   event?: ICalendarEvent;
   selectedDate?: Date;
   dynamicColorMappings?: Map<string, string>;
+  dynamicIconMappings?: Map<string, string>;
   onSave: (event: Partial<ICalendarEvent>) => Promise<void>;
   onDelete?: (eventId: number) => Promise<void>;
   onClose: () => void;
@@ -45,18 +46,18 @@ interface IEventModalState {
 }
 
 const getAllSwimlaneOptions = (): IDropdownOption[] => [
-  { key: 'DCDC', text: 'DCDC', data: { icon: '🏛️' } },
-  { key: 'DISA', text: 'DISA', data: { icon: '🔒' } },
-  { key: 'DOD CIO / NSA / USCC', text: 'DOD CIO / NSA / USCC', data: { icon: '🛡️' } },
-  { key: 'Exec Time', text: 'Exec Time', data: { icon: '👔' } },
-  { key: 'Exercises', text: 'Exercises', data: { icon: '🏃' } },
-  { key: 'FYSA', text: 'FYSA', data: { icon: 'ℹ️' } },
-  { key: 'Joint DISA & DCDC', text: 'Joint DISA & DCDC', data: { icon: '🤝' } },
-  { key: 'Mission Partner', text: 'Mission Partner', data: { icon: '🌐' } },
-  { key: 'Out of Office', text: 'Out of Office', data: { icon: '🏠' } },
-  { key: 'Speaking Event', text: 'Speaking Event', data: { icon: '🎤' } },
-  { key: 'TDY Meetings/Congressional', text: 'TDY Meetings/Congressional', data: { icon: '🏛️' } },
-  { key: 'Transit', text: 'Transit', data: { icon: '🚌' } }
+  { key: 'DCDC', text: 'DCDC' },
+  { key: 'DISA', text: 'DISA' },
+  { key: 'DOD CIO / NSA / USCC', text: 'DOD CIO / NSA / USCC' },
+  { key: 'Exec Time', text: 'Exec Time' },
+  { key: 'Exercises', text: 'Exercises' },
+  { key: 'FYSA', text: 'FYSA' },
+  { key: 'Joint DISA & DCDC', text: 'Joint DISA & DCDC' },
+  { key: 'Mission Partner', text: 'Mission Partner' },
+  { key: 'Out of Office', text: 'Out of Office' },
+  { key: 'Speaking Event', text: 'Speaking Event' },
+  { key: 'TDY Meetings/Congressional', text: 'TDY Meetings/Congressional' },
+  { key: 'Transit', text: 'Transit' }
 ];
 
 const getFilteredSwimlaneOptions = (): IDropdownOption[] => {
@@ -168,6 +169,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
   };
 
   private onRenderSwimlaneOption = (option?: IDropdownOption): JSX.Element => {
+    const icon = this.props.dynamicIconMappings?.get(option?.key as string) || '';
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{
@@ -176,7 +178,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           textAlign: 'center',
           display: 'inline-block'
         }}>
-          {option?.data?.icon}
+          {icon}
         </span>
         <span>{option?.text}</span>
       </div>
@@ -185,6 +187,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
   private onRenderSwimlaneTitle = (options?: IDropdownOption[]): JSX.Element => {
     const selectedOption = options?.[0];
+    const icon = this.props.dynamicIconMappings?.get(selectedOption?.key as string) || '';
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{
@@ -193,7 +196,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           textAlign: 'center',
           display: 'inline-block'
         }}>
-          {selectedOption?.data?.icon}
+          {icon}
         </span>
         <span>{selectedOption?.text}</span>
       </div>

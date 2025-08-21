@@ -1,0 +1,4 @@
+Title,Description,Start,End,Event Category,Status,Private
+Test Private Event 1,This is a test private event,8/1/2025 10:00,8/1/2025 11:00,Exec Time,Confirmed,TRUE
+Test Private Event 2,Another test private event,8/2/2025 14:00,8/2/2025 15:00,DISA,Tentative,TRUE
+Test Regular Event 1,This is a regular public event,8/3/2025 9:00,8/3/2025 10:00,DCDC,Confirmed,FALSE
