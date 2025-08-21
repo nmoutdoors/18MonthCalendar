@@ -823,7 +823,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     // Private events always get grey styling regardless of status
     if (event.isPrivate) {
       const statusClass = event.status ? `status-${event.status.toLowerCase().replace(/\s+/g, '')}` : 'status-none';
-      const swimlaneClass = event.swimlane ? `swimlane-${event.swimlane.toLowerCase().replace(' ', '')}` : 'swimlane-none';
+      const swimlaneClass = event.swimlane ? `swimlane-${event.swimlane.toLowerCase().replace(/\s+/g, '')}` : 'swimlane-none';
 
       return {
         className: `private-event ${statusClass} ${swimlaneClass}`,
@@ -838,7 +838,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     // For agenda view, use minimal styling to avoid colorful backgrounds
     if (this.state.currentView === 'agenda') {
       const statusClass = event.status ? `status-${event.status.toLowerCase().replace(/\s+/g, '')}` : 'status-none';
-      const swimlaneClass = event.swimlane ? `swimlane-${event.swimlane.toLowerCase().replace(' ', '')}` : 'swimlane-none';
+      const swimlaneClass = event.swimlane ? `swimlane-${event.swimlane.toLowerCase().replace(/\s+/g, '')}` : 'swimlane-none';
 
       return {
         className: `${statusClass} ${swimlaneClass}`,
@@ -852,7 +852,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // Regular events for other views (month, week, day)
     const statusClass = `status-${(event.status || 'notset').toLowerCase().replace(/\s+/g, '')}`;
-    const swimlaneClass = `swimlane-${(event.swimlane || 'fysa').toLowerCase().replace(' ', '')}`;
+    const swimlaneClass = `swimlane-${(event.swimlane || 'fysa').toLowerCase().replace(/\s+/g, '')}`;
 
     // Check if there are any configuration issues - if so, show all events as gray
     if (this.state.listConfigurationIssues.length > 0 || !this.state.colorMappingsAvailable) {

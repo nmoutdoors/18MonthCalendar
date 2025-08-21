@@ -622,7 +622,7 @@ export class SharePointService {
   }
 
   public async validateConfigList(listName: string): Promise<IListValidationResult> {
-    const requiredFields = ['ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IsActive', 'SortOrder'];
+    const requiredFields = ['ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'IsActive', 'SortOrder'];
 
     try {
       // Check if list exists
@@ -667,6 +667,7 @@ export class SharePointService {
           '• FieldName (Single line of text) - SharePoint field name (e.g., "Swimlanes", "Status")\n' +
           '• OptionValue (Single line of text) - The choice value from SharePoint field\n' +
           '• ColorHex (Single line of text) - Hex color code (e.g., "#FF5733")\n' +
+          '• IconName (Single line of text) - Icon name for display (optional)\n' +
           '• IsActive (Yes/No field) - Enable/disable this color mapping\n' +
           '• SortOrder (Number field) - Display order in UI';
       }
@@ -989,6 +990,12 @@ export class SharePointService {
           description: 'Hex color code (e.g., #FF5733)'
         },
         {
+          internalName: 'IconName',
+          displayName: 'Icon Name',
+          fieldType: 'Text',
+          description: 'Icon name for display (optional)'
+        },
+        {
           internalName: 'IsActive',
           displayName: 'Is Active',
           fieldType: 'Boolean',
@@ -1033,7 +1040,7 @@ export class SharePointService {
       }
 
       // Note: Custom view creation will be handled manually in SharePoint
-      // The list will have all required fields: Title, ConfigType, FieldName, OptionValue, ColorHex, IsActive, SortOrder
+      // The list will have all required fields: Title, ConfigType, FieldName, OptionValue, ColorHex, IconName, IsActive, SortOrder
       Logger.info('BigCalConfig list created with all required fields');
 
       // Verify the list was created successfully
