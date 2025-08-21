@@ -1,0 +1,142 @@
+@import '~@fluentui/react/dist/sass/References.scss';
+
+.dataSheetView {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: $ms-color-white;
+  
+  .loadingContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    flex-direction: column;
+  }
+
+  .emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    min-height: 300px;
+  }
+
+  .headerInfo {
+    padding: 16px 20px;
+    background-color: #f3f2f1;
+    border-bottom: 1px solid #edebe9;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .detailsList {
+    width: 100%;
+    
+    // SharePoint-like styling
+    :global(.ms-DetailsHeader) {
+      background-color: #f3f2f1;
+      border-bottom: 1px solid #edebe9;
+      
+      :global(.ms-DetailsHeader-cell) {
+        background-color: #f3f2f1;
+        border-right: 1px solid #edebe9;
+        font-weight: 600;
+        color: #323130;
+        
+        &:hover {
+          background-color: #e1dfdd;
+        }
+      }
+    }
+    
+    :global(.ms-DetailsRow) {
+      border-bottom: 1px solid #edebe9;
+      
+      &:hover {
+        background-color: #f3f2f1;
+      }
+      
+      :global(.ms-DetailsRow-cell) {
+        border-right: 1px solid #edebe9;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        min-height: 42px;
+      }
+    }
+  }
+
+  .editableCell {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    
+    // Remove default dropdown borders for inline editing look
+    :global(.ms-Dropdown) {
+      width: 100%;
+      
+      :global(.ms-Dropdown-title) {
+        border: none !important;
+        background-color: transparent !important;
+        padding: 0 !important;
+        height: auto !important;
+        line-height: normal !important;
+        
+        &:hover {
+          border: 1px solid #0078d4 !important;
+          background-color: #f3f2f1 !important;
+        }
+        
+        &:focus {
+          border: 1px solid #0078d4 !important;
+          background-color: #ffffff !important;
+        }
+      }
+      
+      :global(.ms-Dropdown-caretDown) {
+        color: #605e5c;
+        opacity: 0.7;
+        
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+    
+    // Checkbox styling
+    :global(.ms-Checkbox) {
+      :global(.ms-Checkbox-checkbox) {
+        border-radius: 2px;
+        
+        &:hover {
+          border-color: #0078d4;
+        }
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .dataSheetView {
+    .detailsList {
+      :global(.ms-DetailsRow-cell) {
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .dataSheetView {
+    .editableCell {
+      :global(.ms-Dropdown-caretDown) {
+        display: none;
+      }
+    }
+  }
+}

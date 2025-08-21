@@ -273,12 +273,31 @@ export class SharePointService {
         }
       }
 
+      // Debug: Try to get ALL items first to see if Datasheet events exist
+      console.log('SharePoint Debug - Attempting to load all events...');
+      const allItems = await this.sp.web.lists.getByTitle(this.listName).items
+        .select('Id,Title,EventDate,EndDate,Swimlane,Status,Description')
+        .top(5000)();
+
+      console.log('SharePoint Debug - Raw query returned:', allItems.length, 'items');
+      const datasheetCheck = allItems.filter(item => item.Title && item.Title.toLowerCase().indexOf('datasheet') !== -1);
+      console.log('SharePoint Debug - Datasheet events in raw query:', datasheetCheck);
+
       const items = await this.sp.web.lists.getByTitle(this.listName).items
         .select(selectFields)
         .orderBy('EventDate', true)
         .top(5000)(); // Increase limit to 5000 events
 
       Logger.info(`Loaded ${items.length} events from SharePoint`);
+
+      // Debug: Check for Datasheet Test events specifically
+      const datasheetItems = items.filter(item => item.Title && item.Title.toLowerCase().indexOf('datasheet') !== -1);
+      console.log('SharePoint Debug - Found Datasheet events in raw data:', datasheetItems.map(item => ({
+        Title: item.Title,
+        EventDate: item.EventDate,
+        Swimlane: item.Swimlane,
+        Status: item.Status
+      })));
 
       return items.map((item: {
         Id: number;

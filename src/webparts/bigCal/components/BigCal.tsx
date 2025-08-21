@@ -22,7 +22,9 @@ import { EventModal } from './EventModal';
 import { EventPopover } from './EventPopover';
 import { TimelineView } from './TimelineView';
 import { ExportManager } from './ExportManager';
+import { LazyComponentErrorBoundary } from './LazyComponentErrorBoundary';
 import { IconSelector } from './IconSelector';
+import { Suspense } from 'react';
 import { ColorPaletteStudio } from './ColorPaletteStudio';
 import { GridView } from './GridView';
 import { formatMonthYear } from '../utils/BigCalUtilities';
@@ -30,6 +32,9 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Setup the localizer for react-big-calendar
 const localizer = momentLocalizer(moment);
+
+// Lazy load DataSheetView component
+const LazyDataSheetView = React.lazy(() => import(/* webpackChunkName: 'datasheet-view' */ './DataSheetView').then(module => ({ default: module.DataSheetView })));
 
 interface IBigCalState {
   isFullscreen: boolean;
@@ -50,6 +55,7 @@ interface IBigCalState {
   viewMode: 'calendar' | 'grid' | 'timeline';
   isExportDialogOpen: boolean;
   isPrintDialogOpen: boolean;
+  isDataSheetModalOpen: boolean;
   // Popover state
   popoverEvent?: ICalendarEvent;
   popoverTarget?: HTMLElement;
@@ -115,6 +121,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       viewMode: 'calendar',
       isExportDialogOpen: false,
       isPrintDialogOpen: false,
+      isDataSheetModalOpen: false,
       // Popover state
       popoverEvent: undefined,
       popoverTarget: undefined,
@@ -303,6 +310,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
   };
 
+  private openDataSheetModal = (): void => {
+    this.setState({ isDataSheetModalOpen: true });
+  };
+
+  private closeDataSheetModal = (): void => {
+    this.setState({ isDataSheetModalOpen: false });
+  };
+
   private handleTimelineReset = (): void => {
     // Reset timeline to default zoom and current date
     this.setState({ currentDate: new Date() });
@@ -336,8 +351,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   private getEventsForMonth = (month: Date): number => {
-    const { events } = this.state;
-    return events.filter(event => {
+    // Use filtered events to match what's displayed in mini calendars
+    const allEventsWithHolidays = this.getAllEventsWithHolidays();
+    const allFilteredEvents = this.applyFiltersToEvents(allEventsWithHolidays);
+    return allFilteredEvents.filter(event => {
       return event.start.getFullYear() === month.getFullYear() &&
              event.start.getMonth() === month.getMonth();
     }).length;
@@ -467,7 +484,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   private applyFiltersToEvents = (events: ICalendarEvent[]): ICalendarEvent[] => {
     const { searchText, selectedEventCategories, selectedStatuses } = this.state;
 
-    return events.filter(event => {
+    // Debug: Check for Datasheet events before filtering
+    const datasheetEvents = events.filter(e => e.title && e.title.toLowerCase().indexOf('datasheet') !== -1);
+    console.log('BigCal Debug - Datasheet events before filtering:', datasheetEvents.length);
+
+    const filteredEvents = events.filter(event => {
       // Holiday events are always shown (they don't have swimlane/status filters)
       if (event.isHoliday) {
         // Apply search filter to holidays
@@ -489,7 +510,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       if (selectedEventCategories.size > 0) {
         if (event.isPrivate && selectedEventCategories.has('Private Events')) {
           matchesCategory = true;
-        } else if (!event.isPrivate && selectedEventCategories.has(event.swimlane!)) {
+        } else if (!event.isPrivate && event.swimlane && selectedEventCategories.has(event.swimlane)) {
+          matchesCategory = true;
+        } else if (!event.isPrivate && !event.swimlane) {
+          // Events with null swimlane (need configuration) always pass category filter
           matchesCategory = true;
         }
       }
@@ -501,12 +525,42 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           matchesStatus = true;
         } else if (event.status && selectedStatuses.has(event.status)) {
           matchesStatus = true;
+        } else if (!event.status) {
+          // Events with null status (need configuration) always pass status filter
+          matchesStatus = true;
         }
       }
       const matchesSearch = !searchText || event.title.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
 
       return matchesCategory && matchesStatus && matchesSearch;
     });
+
+    // Debug: Check for Datasheet events after filtering
+    const datasheetFiltered = filteredEvents.filter(e => e.title && e.title.toLowerCase().indexOf('datasheet') !== -1);
+    console.log('BigCal Debug - Datasheet events after filtering:', datasheetFiltered.length);
+    if (datasheetEvents.length > 0 && datasheetFiltered.length === 0) {
+      console.log('BigCal Debug - Datasheet events were filtered out! Checking why...');
+      datasheetEvents.forEach(event => {
+        const matchesCategory = selectedEventCategories.size === 0 ||
+          (event.isPrivate && selectedEventCategories.has('Private Events')) ||
+          (!event.isPrivate && selectedEventCategories.has(event.swimlane!));
+        const matchesStatus = selectedStatuses.size === 0 ||
+          (event.status && selectedStatuses.has(event.status));
+        const matchesSearch = !searchText || event.title.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
+
+        console.log(`  ${event.title}:`, {
+          swimlane: event.swimlane,
+          status: event.status,
+          matchesCategory,
+          matchesStatus,
+          matchesSearch,
+          selectedCategoriesSize: selectedEventCategories.size,
+          selectedStatusesSize: selectedStatuses.size
+        });
+      });
+    }
+
+    return filteredEvents;
   };
 
   private handleEventCategoryDropdownChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
@@ -1157,16 +1211,25 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       ? (event.title.length > 6 ? `${event.title.substring(0, 6)}...` : event.title)
       : (event.title.length > 8 ? `${event.title.substring(0, 8)}...` : event.title);
 
-    // Determine CSS classes based on event type
+    // Determine CSS classes and inline styles based on event type
     let eventClasses = styles.miniEvent;
+    let inlineStyles: React.CSSProperties = {};
+
     if (event.isHoliday) {
       eventClasses += ` ${styles.miniHolidayEvent}`;
     } else if (event.isPrivate) {
       eventClasses += ` ${styles.miniPrivateEvent}`;
+    } else {
+      // Regular events - apply dynamic color system
+      const backgroundColor = this.getEventColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
+      inlineStyles = {
+        backgroundColor,
+        color: 'white'
+      };
     }
 
     return (
-      <div className={eventClasses} title={event.title}>
+      <div className={eventClasses} style={inlineStyles} title={event.title}>
         <span className={styles.miniEventText}>
           {event.isHoliday && '🏛️ '}
           {event.isPrivate && '🔒 '}
@@ -1653,6 +1716,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 onClick={this.openColorPaletteStudio}
                 className={styles.navbarButton}
               />
+              <IconButton
+                iconProps={{ iconName: 'Table' }}
+                title="DataSheet View"
+                onClick={this.openDataSheetModal}
+                className={styles.navbarButton}
+              />
               {/* Impersonate Button - Conditionally visible based on webpart property */}
               {this.props.showImpersonateButton && (
                 <IconButton
@@ -1826,6 +1895,23 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           onClose={this.closeModal}
         />
 
+        {/* DataSheet Modal */}
+        {this.state.isDataSheetModalOpen && (
+          <LazyComponentErrorBoundary componentName="DataSheetView">
+            <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}><Spinner size={SpinnerSize.large} label="Loading DataSheet view..." /></div>}>
+              <LazyDataSheetView
+                context={this.props.context}
+                listName={this.props.listName}
+                events={allFilteredEvents}
+                isLoading={isLoading}
+                onEventsUpdated={this.loadEvents}
+                isModal={true}
+                onClose={this.closeDataSheetModal}
+              />
+            </Suspense>
+          </LazyComponentErrorBoundary>
+        )}
+
         {/* Export Manager - Handles Excel Export and Print */}
         <ExportManager
           context={this.props.context}
@@ -1841,6 +1927,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           onEventsImported={this.loadEvents}
           onAddEventsToUI={this.handleAddEventsToUI}
           onImportError={this.handleImportError}
+          dynamicColorMappings={this.state.dynamicColorMappings}
         />
 
         {/* Icon Selector Modal */}

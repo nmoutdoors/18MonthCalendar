@@ -3,7 +3,7 @@ import { PrimaryButton, DefaultButton } from '@fluentui/react/lib/Button';
 import { DatePicker } from '@fluentui/react/lib/DatePicker';
 import { Dialog, DialogType, DialogFooter } from '@fluentui/react/lib/Dialog';
 import { Stack } from '@fluentui/react/lib/Stack';
-import { Text } from '@fluentui/react/lib/Text';
+
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 
 import { ChoiceGroup, IChoiceGroupOption } from '@fluentui/react/lib/ChoiceGroup';
@@ -206,13 +206,13 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
               }
               .print-header {
                 text-align: center;
-                margin-bottom: 30px;
+                margin-bottom: 20px;
                 border-bottom: 2px solid #333;
-                padding-bottom: 15px;
+                padding-bottom: 10px;
               }
               .print-header h1 {
                 margin: 0;
-                font-size: 28px;
+                font-size: 24px;
                 color: #333;
                 font-weight: 600;
               }
@@ -273,7 +273,6 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
         <body>
           <div class="print-header">
             <h1>${title}</h1>
-            <p class="print-date">${events.length} events</p>
           </div>
           <div id="calendar-content">
             ${calendarHtml}
@@ -413,7 +412,7 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
           <style>
             @media print {
               body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 12px; }
-              .print-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+              .print-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
               .print-header h1 { margin: 0; font-size: 24px; color: #333; }
               .date-header { font-weight: bold; font-size: 16px; margin: 20px 0 10px 0; color: #0078d4; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
               .event-row { display: flex; margin-bottom: 12px; page-break-inside: avoid; }
@@ -429,7 +428,6 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
         <body>
           <div class="print-header">
             <h1>${title}</h1>
-            <p>${events.length} events</p>
           </div>
           <div class="agenda-content">
             ${agendaHtml || '<p>No events found in the selected date range.</p>'}
@@ -448,7 +446,7 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
         <div className={styles.printPreview}>
           <div className={styles.previewHeader}>
             <h3>Month View Preview</h3>
-            <p>{startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} - {filteredEvents.length} events</p>
+            <p>{startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
             <small>This preview shows how your calendar will appear when printed</small>
           </div>
           <div className={styles.previewCalendar}>
@@ -510,7 +508,6 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
           <div className={styles.previewHeader}>
             <h3>Agenda View Preview</h3>
             <p>Calendar Agenda - {startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} to {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-            <p>{filteredEvents.length} events</p>
             <small>This preview shows how your agenda will appear when printed</small>
           </div>
           <div className={styles.agendaPreview}>
@@ -518,7 +515,7 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
               <div className={styles.printTitle}>
                 Calendar Agenda - {startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} to {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </div>
-              <div className={styles.printSubtitle}>{filteredEvents.length} events</div>
+
 
               {eventsByDate.size === 0 ? (
                 <div className={styles.noEvents}>No events found in the selected date range.</div>
@@ -588,8 +585,6 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
       { key: 'agenda', text: 'Agenda List', iconProps: { iconName: 'BulletedList' } }
     ];
 
-    const filteredEvents = this.getFilteredEvents();
-
     return (
       <Dialog
         hidden={!this.props.isOpen}
@@ -599,8 +594,8 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
           isBlocking: false,
           isDarkOverlay: true
         }}
-        minWidth={this.state.showPreview ? 800 : 500}
-        maxWidth={this.state.showPreview ? 1000 : 600}
+        minWidth={this.state.showPreview ? 900 : 650}
+        maxWidth={this.state.showPreview ? 1200 : 800}
       >
         <div className={styles.printDialog}>
           <Stack tokens={{ childrenGap: 15 }} styles={{ root: { paddingTop: 20 } }}>
@@ -636,9 +631,7 @@ export class PrintDialog extends React.Component<IPrintDialogProps, IPrintDialog
               </Stack.Item>
             </Stack>
 
-            <Text variant="medium">
-              <strong>{filteredEvents.length}</strong> events will be included in the print
-            </Text>
+
 
             {this.state.showPreview && this.renderPreview()}
           </Stack>

@@ -7,6 +7,7 @@ import { PrintDialog } from './PrintDialog';
 import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
 import { Logger } from '../services/LoggingService';
+import { SPECIFIC_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
 
 export interface IExportManagerProps {
   context: WebPartContext;
@@ -22,6 +23,7 @@ export interface IExportManagerProps {
   onEventsImported?: () => void;
   onAddEventsToUI?: (events: ICalendarEvent[]) => void;
   onImportError?: (error: string) => void;
+  dynamicColorMappings?: Map<string, string>;
 }
 
 export interface IExportManagerState {
@@ -123,6 +125,55 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
     };
   };
 
+  private eventStyleGetter = (event: ICalendarEvent): { style: React.CSSProperties } => {
+    // Holiday events get special styling
+    if (event.isHoliday) {
+      return {
+        style: {
+          backgroundColor: '#ff9800',
+          color: 'white',
+          border: 'none'
+        }
+      };
+    }
+
+    // Private events always get grey styling regardless of status
+    if (event.isPrivate) {
+      return {
+        style: {
+          backgroundColor: '#8a8886', // Neutral grey color
+          color: 'white',
+          border: 'none'
+        }
+      };
+    }
+
+    // Use Color Palette Studio system for all events
+    const backgroundColor = this.getEventColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
+
+    return {
+      style: {
+        backgroundColor,
+        color: 'white',
+        border: 'none'
+      }
+    };
+  };
+
+  private getEventColorFromMapping = (swimlane: string, status: string): string => {
+    // New color strategy: Confirmed and blank/null use swimlane color, Tentative uses its own color
+    if (status === 'Tentative') {
+      return this.props.dynamicColorMappings?.get('Tentative') ||
+             SPECIFIC_COLOR_MAPPINGS.Tentative ||
+             '#ffc107'; // Yellow fallback for Tentative
+    }
+
+    // For Confirmed and blank/null status, use swimlane color
+    return this.props.dynamicColorMappings?.get(swimlane) ||
+           SPECIFIC_COLOR_MAPPINGS[swimlane] ||
+           '#6c757d'; // Gray fallback
+  };
+
   public render(): React.ReactElement {
     const {
       isExcelExportOpen,
@@ -154,7 +205,7 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
           currentDate={currentDate}
           currentView={currentView}
           colorPalette="DISA Standard"
-          eventStyleGetter={() => ({ style: {} })}
+          eventStyleGetter={this.eventStyleGetter}
         />
       </>
     );

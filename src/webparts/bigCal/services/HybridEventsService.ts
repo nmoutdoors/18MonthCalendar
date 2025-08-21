@@ -381,6 +381,15 @@ export class HybridEventsService {
     publicEvents: ISharePointEvent[],
     privateEvents: IPrivateEventData[]
   ): ICalendarEvent[] {
+    // Debug: Check for Datasheet events in the conversion process
+    const datasheetPublicEvents = publicEvents.filter(e => e.Title && e.Title.toLowerCase().indexOf('datasheet') !== -1);
+    console.log('HybridEventsService Debug - Datasheet events in publicEvents:', datasheetPublicEvents.map(e => ({
+      Title: e.Title,
+      Swimlane: e.Swimlane,
+      Status: e.Status,
+      Private: e.Private
+    })));
+
     const privateEventMap = new Map<string, IPrivateEventData>();
 
     // Create lookup map for private events by their numeric ID (converted to string)
@@ -388,7 +397,7 @@ export class HybridEventsService {
       privateEventMap.set(pe.Id.toString(), pe);
     });
 
-    return publicEvents.map(event => {
+    const convertedEvents = publicEvents.map(event => {
       if (event.Private && event.PrivateEventId) {
         // This is a private event placeholder
         const privateData = privateEventMap.get(event.PrivateEventId);
@@ -405,6 +414,24 @@ export class HybridEventsService {
       // Regular public event
       return this.sharePointEventToCalendarEvent(event);
     });
+
+    // Debug: Check what Datasheet events look like after conversion
+    const datasheetConverted = convertedEvents.filter(e => e.title && e.title.toLowerCase().indexOf('datasheet') !== -1);
+    console.log('HybridEventsService Debug - Datasheet events after conversion:');
+    datasheetConverted.forEach((e, index) => {
+      console.log(`  Event ${index + 1}:`, {
+        title: e.title,
+        swimlane: e.swimlane,
+        swimlaneType: typeof e.swimlane,
+        swimlaneIsNull: e.swimlane === null,
+        swimlaneIsUndefined: e.swimlane === undefined,
+        swimlaneValue: JSON.stringify(e.swimlane),
+        status: e.status,
+        isPrivate: e.isPrivate
+      });
+    });
+
+    return convertedEvents;
   }
 
   /**

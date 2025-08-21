@@ -1,0 +1,260 @@
+@import '~@fluentui/react/dist/sass/References.scss';
+
+.modalContainer {
+  // Force consistent modal width - much wider than EventModal for table data
+  :global(.ms-Modal-main),
+  :global(.ms-Modal-main *),
+  :global(.ms-Modal-scrollableContent) {
+    width: 1200px !important;
+    max-width: 1200px !important;
+    min-width: 1200px !important;
+  }
+
+  :global(.ms-Modal-main) {
+    border-radius: 0; // Remove rounded corners to avoid white tips
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    background: white;
+    border: 1px solid "[theme:neutralLight, default: #edebe9]";
+    border: 1px solid var(--neutralLight, #edebe9);
+    overflow: hidden;
+
+    // Force positioning
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+  }
+
+  :global(.ms-Modal-scrollableContent) {
+    border-radius: 0;
+    overflow: hidden;
+    width: 1200px !important;
+    max-width: 1200px !important;
+    min-width: 1200px !important;
+  }
+}
+
+// Additional overrides to ensure consistent modal width
+.modalContent {
+  width: 1200px !important;
+  max-width: 1200px !important;
+  min-width: 1200px !important;
+  box-sizing: border-box;
+}
+
+// Global overrides for all modal elements
+:global {
+  .ms-Modal-main {
+    width: 1200px !important;
+    max-width: 1200px !important;
+    min-width: 1200px !important;
+  }
+
+  .ms-Modal-scrollableContent {
+    width: 1200px !important;
+    max-width: 1200px !important;
+    min-width: 1200px !important;
+  }
+
+  // Override any responsive behavior
+  @media (max-width: 1400px) {
+    .ms-Modal-main {
+      width: 1200px !important;
+      max-width: 1200px !important;
+      min-width: 1200px !important;
+    }
+  }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32px 40px 24px 40px;
+  background: linear-gradient(90deg, "[theme:themePrimary, default: #0078d4]" 0%, "[theme:themeDark, default: #106ebe]" 100%);
+  background: linear-gradient(90deg, var(--themePrimary, #0078d4) 0%, var(--themeDark, #106ebe) 100%);
+  color: white;
+  margin-bottom: 0;
+  position: relative;
+  border-radius: 0; // Remove rounded corners for clean square design
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, "[theme:themeSecondary, default: #2b88d8]" 0%, "[theme:themePrimary, default: #0078d4]" 100%);
+    background: linear-gradient(90deg, var(--themeSecondary, #2b88d8) 0%, var(--themePrimary, #0078d4) 100%);
+  }
+
+  h2 {
+    margin: 0;
+    color: white;
+    font-weight: 600;
+    font-size: 24px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.closeButton {
+  color: rgba(255, 255, 255, 0.9) !important;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    transform: scale(1.05);
+  }
+
+  &:active {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    transform: scale(0.95);
+  }
+
+  i {
+    font-size: 16px;
+  }
+}
+
+.modalBody {
+  padding: 20px;
+  max-height: 70vh;
+  overflow: auto; // Enable both horizontal and vertical scrolling
+  background: white;
+
+  // Clean table styling - much lighter than the original DataSheetView
+  .detailsList {
+    width: 100%;
+
+    :global(.ms-DetailsHeader) {
+      background-color: "[theme:neutralLighterAlt, default: #faf9f8]";
+      background-color: var(--neutralLighterAlt, #faf9f8);
+      border-bottom: 1px solid "[theme:neutralLight, default: #edebe9]";
+      border-bottom: 1px solid var(--neutralLight, #edebe9);
+
+      :global(.ms-DetailsHeader-cell) {
+        background-color: "[theme:neutralLighterAlt, default: #faf9f8]";
+        background-color: var(--neutralLighterAlt, #faf9f8);
+        border-right: 1px solid "[theme:neutralLighter, default: #f3f2f1]";
+        border-right: 1px solid var(--neutralLighter, #f3f2f1);
+        font-weight: 600;
+        color: "[theme:neutralPrimary, default: #323130]";
+        color: var(--neutralPrimary, #323130);
+        padding: 8px 6px; // Reduced padding for more compact headers
+
+        &:hover {
+          background-color: "[theme:neutralLighter, default: #f3f2f1]";
+          background-color: var(--neutralLighter, #f3f2f1);
+        }
+      }
+    }
+
+    :global(.ms-DetailsRow) {
+      border-bottom: 1px solid "[theme:neutralLighter, default: #f3f2f1]";
+      border-bottom: 1px solid var(--neutralLighter, #f3f2f1);
+
+      &:hover {
+        background-color: "[theme:neutralLighterAlt, default: #faf9f8]";
+        background-color: var(--neutralLighterAlt, #faf9f8);
+      }
+
+      :global(.ms-DetailsRow-cell) {
+        border-right: 1px solid "[theme:neutralLighter, default: #f3f2f1]";
+        border-right: 1px solid var(--neutralLighter, #f3f2f1);
+        padding: 6px 8px; // Reduced padding for more compact cells
+        display: flex;
+        align-items: center;
+        min-height: 36px; // Reduced row height
+      }
+    }
+  }
+}
+
+.modalFooter {
+  padding: 24px 40px;
+  border-top: 2px solid "[theme:neutralLight, default: #edebe9]";
+  border-top: 2px solid var(--neutralLight, #edebe9);
+  margin-top: 0;
+  background: linear-gradient(135deg, "[theme:neutralLighterAlt, default: #faf9f8]" 0%, "[theme:neutralLighter, default: #f3f2f1]" 100%);
+  background: linear-gradient(135deg, var(--neutralLighterAlt, #faf9f8) 0%, var(--neutralLighter, #f3f2f1) 100%);
+
+  .footerText {
+    color: "[theme:neutralSecondary, default: #605e5c]";
+    color: var(--neutralSecondary, #605e5c);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  // Enhanced button styling to match EventModal
+  :global(.ms-Button) {
+    border-radius: 6px;
+    font-weight: 600;
+    padding: 12px 24px;
+    height: auto;
+    min-height: 44px;
+    transition: all 0.2s ease;
+
+    &.ms-Button--primary {
+      background: linear-gradient(135deg, "[theme:themePrimary, default: #0078d4]" 0%, "[theme:themeDark, default: #106ebe]" 100%);
+      background: linear-gradient(135deg, var(--themePrimary, #0078d4) 0%, var(--themeDark, #106ebe) 100%);
+      border: none;
+      box-shadow: 0 4px 12px rgba(0, 120, 212, 0.3);
+
+      &:hover {
+        background: linear-gradient(135deg, "[theme:themeDark, default: #106ebe]" 0%, "[theme:themeDarker, default: #005a9e]" 100%);
+        background: linear-gradient(135deg, var(--themeDark, #106ebe) 0%, var(--themeDarker, #005a9e) 100%);
+        box-shadow: 0 6px 16px rgba(0, 120, 212, 0.4);
+        transform: translateY(-1px);
+      }
+
+      &:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(0, 120, 212, 0.3);
+      }
+
+      &:disabled {
+        background: "[theme:neutralLighter, default: #f3f2f1]";
+        background: var(--neutralLighter, #f3f2f1);
+        color: "[theme:neutralTertiary, default: #a19f9d]";
+        color: var(--neutralTertiary, #a19f9d);
+        box-shadow: none;
+        transform: none;
+      }
+    }
+  }
+}
+
+// Loading and empty states
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  flex-direction: column;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  min-height: 300px;
+}
+
+.headerInfo {
+  padding: 16px 20px;
+  background-color: "[theme:neutralLighterAlt, default: #faf9f8]";
+  background-color: var(--neutralLighterAlt, #faf9f8);
+  border-bottom: 1px solid "[theme:neutralLight, default: #edebe9]";
+  border-bottom: 1px solid var(--neutralLight, #edebe9);
+  border-radius: 4px 4px 0 0;
+  margin-bottom: 16px;
+}

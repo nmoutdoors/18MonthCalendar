@@ -225,12 +225,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     this.items.clear();
     this.items.add(timelineItems);
 
-    // Auto-fit timeline
-    setTimeout(() => {
-      if (this.state.timeline && timelineItems.length > 0) {
-        this.state.timeline.fit();
-      }
-    }, 100);
+    // Don't auto-fit - respect the initial zoom range (today -5 to +20)
   };
 
   private getEventColorFromMapping = (swimlane: string, status: string): string => {
