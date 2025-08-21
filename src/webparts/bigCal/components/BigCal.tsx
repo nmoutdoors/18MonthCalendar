@@ -13,7 +13,7 @@ import type { ICalendarEvent } from './ICalendarEvent';
 
 import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
-import { SPECIFIC_COLOR_MAPPINGS, DEFAULT_ICON_MAPPINGS, IColorMapping, IFieldOption } from '../interfaces/IColorMapping';
+import { SPECIFIC_COLOR_MAPPINGS, DEFAULT_ICON_MAPPINGS, IColorMapping, IFieldOption, ORIGINAL_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
 import { ColorMappingService } from '../services/ColorMappingService';
 
 import { HolidayService } from '../services/HolidayService';
@@ -1270,6 +1270,74 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     this.setState({ isIconSelectorOpen: false });
   };
 
+  /**
+   * Generate fallback field options when network operations fail
+   * This ensures Legend Studio always shows complete data
+   */
+  private generateFallbackFieldOptions = (): IFieldOption[] => {
+    const fallbackOptions: IFieldOption[] = [];
+
+    // Standard swimlanes that should always be available
+    const standardSwimlanes = [
+      'DCDC', 'DISA', 'DOD CIO / NSA / USCG', 'Exec Time', 'Exercises', 'FYSA',
+      'Joint DISA & DCDC', 'Mission Partner', 'Out of Office', 'Speaking Event',
+      'TDY Meetings/Congressional', 'Transit'
+    ];
+
+    // Standard status options
+    const standardStatuses = ['Confirmed', 'Tentative'];
+
+    // Add swimlane options
+    standardSwimlanes.forEach(swimlane => {
+      fallbackOptions.push({
+        fieldName: 'Swimlanes',
+        optionValue: swimlane,
+        isNewlyDiscovered: false,
+        hasColorMapping: true,
+        currentColor: undefined // Will be filled by fallback mappings
+      });
+    });
+
+    // Add status options
+    standardStatuses.forEach(status => {
+      fallbackOptions.push({
+        fieldName: 'Status',
+        optionValue: status,
+        isNewlyDiscovered: false,
+        hasColorMapping: true,
+        currentColor: undefined // Will be filled by fallback mappings
+      });
+    });
+
+    return fallbackOptions;
+  };
+
+  /**
+   * Generate fallback color mappings when network operations fail
+   * Uses the original color mappings as fallback
+   */
+  private generateFallbackColorMappings = (options: IFieldOption[]): IColorMapping[] => {
+    const fallbackMappings: IColorMapping[] = [];
+
+    options.forEach((option, index) => {
+      // Use original color mappings as fallback
+      const originalColor = ORIGINAL_COLOR_MAPPINGS[option.optionValue];
+      if (originalColor) {
+        fallbackMappings.push({
+          configType: 'ColorMapping',
+          fieldName: option.fieldName,
+          optionValue: option.optionValue,
+          colorHex: originalColor,
+          iconName: '', // No icons in fallback mode
+          isActive: true,
+          sortOrder: index + 1
+        });
+      }
+    });
+
+    return fallbackMappings;
+  };
+
   // Color Palette Studio Methods
   private openColorPaletteStudio = async (): Promise<void> => {
     this.setState({ isColorPaletteStudioOpen: true, isColorPaletteLoading: true });
@@ -1296,7 +1364,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       });
     } catch (error) {
       Logger.error('Failed to load Color Palette Studio data', error);
-      this.setState({ isColorPaletteLoading: false });
+
+      // Provide fallback data so Legend Studio shows something useful instead of being empty
+      const fallbackOptions = this.generateFallbackFieldOptions();
+      const fallbackMappings = this.generateFallbackColorMappings(fallbackOptions);
+
+      this.setState({
+        colorPaletteDiscoveredOptions: fallbackOptions,
+        colorPaletteMappings: fallbackMappings,
+        isColorPaletteLoading: false
+      });
     }
   };
 

@@ -11,6 +11,7 @@ import { Icon } from '@fluentui/react/lib/Icon';
 import * as XLSX from 'xlsx';
 import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
 import { Logger } from '../services/LoggingService';
+import { withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
 import styles from './ExcelExport.module.scss';
 
 export interface IExcelExportProps {
@@ -36,21 +37,33 @@ export interface IExcelExportState {
   dragActive: boolean;
   backgroundImportInProgress: boolean;
   isComponentReady: boolean;
+  isStylesLoaded: boolean;
+  renderAttempts: number;
 }
 
 export class ExcelExport extends React.Component<IExcelExportProps, IExcelExportState> {
+  private modalRef = React.createRef<HTMLDivElement>();
+  private styleCheckInterval: number | null = null;
+
   constructor(props: IExcelExportProps) {
     super(props);
 
     const defaultState = this.getDefaultStateForDate(props.currentDate);
-    this.state = defaultState;
+    this.state = {
+      ...defaultState,
+      isStylesLoaded: false,
+      renderAttempts: 0
+    };
   }
 
   public componentDidMount(): void {
-    // Add small delay to ensure all components are ready for slow networks
-    setTimeout(() => {
-      this.setState({ isComponentReady: true });
-    }, 100);
+    this.checkStylesAndRender();
+  }
+
+  public componentWillUnmount(): void {
+    if (this.styleCheckInterval) {
+      clearTimeout(this.styleCheckInterval);
+    }
   }
 
   public componentDidUpdate(prevProps: IExcelExportProps): void {
@@ -65,15 +78,103 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         exportMessage: '',
         importMessage: '',
         selectedTab: 'export',
-        isComponentReady: false
+        isComponentReady: false,
+        isStylesLoaded: false,
+        renderAttempts: 0
       });
 
-      // Re-enable component after brief delay for slow networks
-      setTimeout(() => {
-        this.setState({ isComponentReady: true });
-      }, 100);
+      // Check styles and render when modal opens
+      this.checkStylesAndRender();
     }
   }
+
+  /**
+   * Checks if CSS styles are properly loaded and applied to prevent layout issues on slow networks
+   */
+  private checkStylesAndRender = (): void => {
+    const maxAttempts = 50; // Maximum attempts (5 seconds at 100ms intervals)
+    const checkInterval = 100; // Check every 100ms
+
+    const checkStyles = (): void => {
+      const currentAttempts = this.state.renderAttempts + 1;
+
+      // Check if we've exceeded max attempts
+      if (currentAttempts >= maxAttempts) {
+        Logger.warn('CSS loading check timed out, rendering anyway');
+        this.setState({
+          isComponentReady: true,
+          isStylesLoaded: true,
+          renderAttempts: currentAttempts
+        });
+        return;
+      }
+
+      // Check if styles are loaded by testing key CSS properties
+      const stylesLoaded = this.areStylesLoaded();
+
+      if (stylesLoaded) {
+        // Styles are loaded, safe to render
+        this.setState({
+          isComponentReady: true,
+          isStylesLoaded: true,
+          renderAttempts: currentAttempts
+        });
+      } else {
+        // Styles not loaded yet, increment attempts and check again
+        this.setState({ renderAttempts: currentAttempts });
+
+        // Continue checking
+        this.styleCheckInterval = setTimeout(checkStyles, checkInterval);
+      }
+    };
+
+    // Start checking
+    checkStyles();
+  };
+
+  /**
+   * Tests if critical CSS styles are loaded and applied
+   */
+  private areStylesLoaded = (): boolean => {
+    try {
+      // Create a test element to check if our CSS classes are applied
+      const testElement = document.createElement('div');
+      testElement.className = styles.exportDialog;
+      testElement.style.visibility = 'hidden';
+      testElement.style.position = 'absolute';
+      testElement.style.top = '-9999px';
+      document.body.appendChild(testElement);
+
+      // Check if our CSS is applied by testing computed styles
+      const computedStyle = window.getComputedStyle(testElement);
+      const hasWidth = computedStyle.width !== 'auto' && computedStyle.width !== '';
+      const hasBoxSizing = computedStyle.boxSizing === 'border-box';
+      const hasOverflow = computedStyle.overflowX === 'hidden';
+
+      // Clean up test element
+      document.body.removeChild(testElement);
+
+      // Also check if Fluent UI styles are loaded by testing a known Fluent class
+      const fluentTest = document.createElement('div');
+      fluentTest.className = 'ms-Dialog-main';
+      fluentTest.style.visibility = 'hidden';
+      fluentTest.style.position = 'absolute';
+      fluentTest.style.top = '-9999px';
+      document.body.appendChild(fluentTest);
+
+      const fluentStyle = window.getComputedStyle(fluentTest);
+      const hasFluentStyles = fluentStyle.position !== 'static' || fluentStyle.display !== 'inline';
+
+      document.body.removeChild(fluentTest);
+
+      // Return true if both our styles and Fluent styles are loaded
+      return (hasWidth || hasBoxSizing || hasOverflow) && hasFluentStyles;
+
+    } catch (error) {
+      Logger.warn('Error checking CSS styles, assuming loaded', error);
+      return true; // Assume loaded if we can't check
+    }
+  };
 
   private getDefaultStateForDate = (currentDate?: Date): IExcelExportState => {
     // Use current calendar date or today as reference
@@ -102,7 +203,9 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       importMessageType: MessageBarType.info,
       dragActive: false,
       backgroundImportInProgress: false,
-      isComponentReady: false
+      isComponentReady: false,
+      isStylesLoaded: false,
+      renderAttempts: 0
     };
   };
 
@@ -225,23 +328,25 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         backgroundImportInProgress: true
       });
 
-      // Start background save (non-blocking)
+      // Start background save (non-blocking) with timeout protection
       if (this.props.onImportEvents) {
-        this.props.onImportEvents(events).then(() => {
-          // Silent success - no notification needed
-          this.setState({ backgroundImportInProgress: false });
-          Logger.info(`Successfully saved ${events.length} events to SharePoint`);
-        }).catch((error) => {
-          // Only notify on error
-          this.setState({ backgroundImportInProgress: false });
-          const errorMessage = `Failed to save events to SharePoint: ${error.message || 'Unknown error'}`;
-          Logger.error('Background import failed', error);
+        const importPromise = this.props.onImportEvents(events);
+        withTimeout(importPromise, NETWORK_TIMEOUTS.VERY_SLOW, `Background save of ${events.length} events`)
+          .then(() => {
+            // Silent success - no notification needed
+            this.setState({ backgroundImportInProgress: false });
+            Logger.info(`Successfully saved ${events.length} events to SharePoint`);
+          }).catch((error) => {
+            // Only notify on error
+            this.setState({ backgroundImportInProgress: false });
+            const errorMessage = `Failed to save events to SharePoint: ${error.message || 'Unknown error'}`;
+            Logger.error('Background import failed', error);
 
-          // Notify parent of error if callback provided
-          if (this.props.onImportError) {
-            this.props.onImportError(errorMessage);
-          }
-        });
+            // Notify parent of error if callback provided
+            if (this.props.onImportError) {
+              this.props.onImportError(errorMessage);
+            }
+          });
       }
 
     } catch (error) {
@@ -797,6 +902,55 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       subText: 'Export calendar data or import events from another BigCal instance.'
     };
 
+    // Show loading state while styles are loading to prevent layout issues
+    if (!this.state.isComponentReady || !this.state.isStylesLoaded) {
+      return (
+        <Dialog
+          hidden={!this.props.isOpen}
+          onDismiss={this.props.onDismiss}
+          dialogContentProps={{
+            type: DialogType.normal,
+            title: 'Calendar Data Management',
+            subText: 'Loading...'
+          }}
+          modalProps={{
+            isBlocking: false,
+            isDarkOverlay: true
+          }}
+          minWidth={600}
+          maxWidth={700}
+        >
+          <div style={{
+            padding: '40px',
+            textAlign: 'center',
+            minHeight: '200px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Icon
+              iconName="Sync"
+              styles={{
+                root: {
+                  fontSize: 32,
+                  color: '#0078d4',
+                  marginBottom: 16,
+                  animation: 'spin 1s linear infinite'
+                }
+              }}
+            />
+            <Text variant="medium" block styles={{ root: { marginBottom: 8 } }}>
+              Preparing Calendar Data Management...
+            </Text>
+            <Text variant="small" block styles={{ root: { color: '#666' } }}>
+              {this.state.renderAttempts > 0 && `Attempt ${this.state.renderAttempts}/50`}
+            </Text>
+          </div>
+        </Dialog>
+      );
+    }
+
     return (
       <Dialog
         hidden={!this.props.isOpen}
@@ -809,7 +963,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         minWidth={600}
         maxWidth={700}
       >
-        <div className={styles.exportDialog}>
+        <div ref={this.modalRef} className={styles.exportDialog}>
           <Pivot
             selectedKey={this.state.selectedTab}
             onLinkClick={this.onTabChange}

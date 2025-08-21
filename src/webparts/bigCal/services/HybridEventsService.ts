@@ -37,7 +37,6 @@ export class HybridEventsService {
 
       if (!this.canAccessPrivateEvents) {
         // User cannot see private events - return public events with "Unavailable" placeholders
-        console.log(emulateNonPrivilegedUser ? 'Testing: Emulating non-privileged user' : 'User does not have access to private events');
         return this.convertToCalendarEvents(publicEvents, []);
       }
 
@@ -46,7 +45,6 @@ export class HybridEventsService {
       return this.convertToCalendarEvents(publicEvents, privateEvents);
 
     } catch (error: unknown) {
-      console.error('Error fetching hybrid events:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       throw new Error(`Failed to fetch events: ${errorMessage}`);
     }
@@ -96,13 +94,7 @@ export class HybridEventsService {
           };
         }
 
-        console.log('HybridEventsService: Created private event:', {
-          id: privateEvent.Id,
-          title: privateEvent.Title
-        });
-
         // 2. Create placeholder in main list using the numeric ID
-        console.log('HybridEventsService: Creating Unavailable placeholder with isPrivate=true');
         const placeholder = await this.sharePointService.createEvent(
           'Unavailable', // Generic title
           start,
@@ -114,12 +106,7 @@ export class HybridEventsService {
           privateEvent.Id.toString() // Store numeric ID as string
         );
 
-        console.log('HybridEventsService: Created placeholder:', {
-          id: placeholder.Id,
-          title: placeholder.Title,
-          private: placeholder.Private,
-          privateEventId: placeholder.PrivateEventId
-        });
+
 
         return {
           success: true,
@@ -142,7 +129,6 @@ export class HybridEventsService {
       }
 
     } catch (error: unknown) {
-      console.error('Error creating hybrid event:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return {
         success: false,
@@ -165,7 +151,6 @@ export class HybridEventsService {
     isPrivate?: boolean
   ): Promise<IHybridEventResult> {
     try {
-      console.log('HybridEventsService: Updating event', { id, title, isPrivate });
 
       // Get the current event to understand its current state
       const currentEvents = await this.sharePointService.getEvents();
@@ -187,7 +172,7 @@ export class HybridEventsService {
       const wasPrivate = currentEvent.Private;
       const willBePrivate = isPrivate || false;
 
-      console.log('HybridEventsService: Event state change', { wasPrivate, willBePrivate });
+
 
       // Case 1: Public -> Private conversion
       if (!wasPrivate && willBePrivate) {
@@ -218,7 +203,6 @@ export class HybridEventsService {
       }
 
     } catch (error: unknown) {
-      console.error('Error updating hybrid event:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return {
         success: false,
@@ -239,7 +223,6 @@ export class HybridEventsService {
     status: string,
     description: string
   ): Promise<IHybridEventResult> {
-    console.log('HybridEventsService: Converting public event to private');
 
     // 1. Create private event in PrivateEvents list
     const privateEvent = await this.privateEventsService.createPrivateEvent(
@@ -276,7 +259,6 @@ export class HybridEventsService {
     status: string,
     description: string
   ): Promise<IHybridEventResult> {
-    console.log('HybridEventsService: Converting private event to public');
 
     // Get current event to find PrivateEventId
     const currentEvents = await this.sharePointService.getEvents();
@@ -321,7 +303,6 @@ export class HybridEventsService {
     status: string,
     description: string
   ): Promise<IHybridEventResult> {
-    console.log('HybridEventsService: Updating private event');
 
     // Get current event to find PrivateEventId
     const currentEvents = await this.sharePointService.getEvents();
@@ -365,7 +346,6 @@ export class HybridEventsService {
       };
 
     } catch (error: unknown) {
-      console.error('Error deleting hybrid event:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return {
         success: false,
@@ -381,14 +361,7 @@ export class HybridEventsService {
     publicEvents: ISharePointEvent[],
     privateEvents: IPrivateEventData[]
   ): ICalendarEvent[] {
-    // Debug: Check for Datasheet events in the conversion process
-    const datasheetPublicEvents = publicEvents.filter(e => e.Title && e.Title.toLowerCase().indexOf('datasheet') !== -1);
-    console.log('HybridEventsService Debug - Datasheet events in publicEvents:', datasheetPublicEvents.map(e => ({
-      Title: e.Title,
-      Swimlane: e.Swimlane,
-      Status: e.Status,
-      Private: e.Private
-    })));
+
 
     const privateEventMap = new Map<string, IPrivateEventData>();
 
@@ -415,21 +388,7 @@ export class HybridEventsService {
       return this.sharePointEventToCalendarEvent(event);
     });
 
-    // Debug: Check what Datasheet events look like after conversion
-    const datasheetConverted = convertedEvents.filter(e => e.title && e.title.toLowerCase().indexOf('datasheet') !== -1);
-    console.log('HybridEventsService Debug - Datasheet events after conversion:');
-    datasheetConverted.forEach((e, index) => {
-      console.log(`  Event ${index + 1}:`, {
-        title: e.title,
-        swimlane: e.swimlane,
-        swimlaneType: typeof e.swimlane,
-        swimlaneIsNull: e.swimlane === null,
-        swimlaneIsUndefined: e.swimlane === undefined,
-        swimlaneValue: JSON.stringify(e.swimlane),
-        status: e.status,
-        isPrivate: e.isPrivate
-      });
-    });
+
 
     return convertedEvents;
   }

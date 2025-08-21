@@ -8,6 +8,7 @@ import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
 import { Logger } from '../services/LoggingService';
 import { SPECIFIC_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
+import { withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
 
 export interface IExportManagerProps {
   context: WebPartContext;
@@ -94,8 +95,9 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
         }
       });
 
-      // Execute all creations in parallel
-      await Promise.all(creationPromises);
+      // Execute all creations in parallel with timeout protection
+      const importPromise = Promise.all(creationPromises);
+      await withTimeout(importPromise, NETWORK_TIMEOUTS.VERY_SLOW, `Import ${importedEvents.length} events to SharePoint`);
 
       Logger.info(`Successfully imported ${importedEvents.length} events to SharePoint`);
 

@@ -375,7 +375,8 @@ export class SharePointService {
           }
         }
 
-        const result = await this.sp.web.lists.getByTitle(this.listName).items.add(itemData);
+        const createPromise = this.sp.web.lists.getByTitle(this.listName).items.add(itemData);
+        const result = await withTimeout(createPromise, NETWORK_TIMEOUTS.STANDARD, `Create event in ${this.listName}`);
 
         Logger.debug('Batch item creation result:', result);
 
@@ -444,7 +445,8 @@ export class SharePointService {
         Logger.warn('Cannot create private event - Private fields do not exist in SharePoint list');
       }
 
-      const result = await this.sp.web.lists.getByTitle(this.listName).items.add(itemData);
+      const createPromise = this.sp.web.lists.getByTitle(this.listName).items.add(itemData);
+      const result = await withTimeout(createPromise, NETWORK_TIMEOUTS.STANDARD, `Create single event in ${this.listName}`);
 
       Logger.debug(`Created event: ${result.Title}`);
 
