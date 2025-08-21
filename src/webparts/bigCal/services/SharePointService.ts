@@ -6,6 +6,7 @@ import '@pnp/sp/items';
 import '@pnp/sp/fields';
 import { Logger } from './LoggingService';
 import '@pnp/sp/content-types';
+import { withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
 
 export interface ISharePointEvent {
   Id: number;
@@ -275,10 +276,12 @@ export class SharePointService {
 
 
 
-      const items = await this.sp.web.lists.getByTitle(this.listName).items
+      const itemsPromise = this.sp.web.lists.getByTitle(this.listName).items
         .select(selectFields)
         .orderBy('EventDate', true)
         .top(5000)(); // Increase limit to 5000 events
+
+      const items = await withTimeout(itemsPromise, NETWORK_TIMEOUTS.STANDARD, `Get events from ${this.listName}`);
 
       Logger.info(`Loaded ${items.length} events from SharePoint`);
 
@@ -519,8 +522,9 @@ export class SharePointService {
     }
 
     try {
-      // Check if list exists
-      const list = await this.sp.web.lists.getByTitle(targetListName)();
+      // Check if list exists with timeout protection
+      const listPromise = this.sp.web.lists.getByTitle(targetListName)();
+      const list = await withTimeout(listPromise, NETWORK_TIMEOUTS.FAST, `Check if list ${targetListName} exists`);
 
       if (!list) {
         return {

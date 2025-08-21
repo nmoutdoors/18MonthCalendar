@@ -5,6 +5,7 @@ import '@pnp/sp/fields';
 import { spfi, SPFx } from '@pnp/sp';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { IColorMapping, IFieldOption, IColorPaletteConfig, generateColorsForOptions, getDefaultIcon } from '../interfaces/IColorMapping';
+import { withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
 
 /**
  * Interface for SharePoint list item from BigCalConfig
@@ -42,9 +43,14 @@ export class ColorMappingService {
    */
   public async discoverFieldOptions(eventsListName: string): Promise<IFieldOption[]> {
     try {
-      // Get field choices from SharePoint list
-      const swimlaneField = await this.sp.web.lists.getByTitle(eventsListName).fields.getByInternalNameOrTitle('Swimlane')();
-      const statusField = await this.sp.web.lists.getByTitle(eventsListName).fields.getByInternalNameOrTitle('Status')();
+      // Get field choices from SharePoint list with timeout protection
+      const swimlaneFieldPromise = this.sp.web.lists.getByTitle(eventsListName).fields.getByInternalNameOrTitle('Swimlane')();
+      const statusFieldPromise = this.sp.web.lists.getByTitle(eventsListName).fields.getByInternalNameOrTitle('Status')();
+
+      const [swimlaneField, statusField] = await Promise.all([
+        withTimeout(swimlaneFieldPromise, NETWORK_TIMEOUTS.FAST, `Get Swimlane field from ${eventsListName}`),
+        withTimeout(statusFieldPromise, NETWORK_TIMEOUTS.FAST, `Get Status field from ${eventsListName}`)
+      ]);
 
       const discoveredOptions: IFieldOption[] = [];
       const existingMappings = await this.getColorMappings();
@@ -116,11 +122,13 @@ export class ColorMappingService {
         }
       }
 
-      const items = await this.sp.web.lists.getByTitle(this.configListName).items
+      const itemsPromise = this.sp.web.lists.getByTitle(this.configListName).items
         .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'IsActive', 'SortOrder', 'Created', 'Modified')
         .filter("ConfigType eq 'ColorMapping'")
         .orderBy('FieldName', true)
         .orderBy('SortOrder', true)();
+
+      const items = await withTimeout(itemsPromise, NETWORK_TIMEOUTS.STANDARD, 'Get color mappings from BigCalConfig');
 
       this.cachedMappings = items.map((item: ISharePointConfigItem) => ({
         id: item.Id,
@@ -162,10 +170,10 @@ export class ColorMappingService {
    */
   public async checkConfigListExists(): Promise<boolean> {
     try {
-      await this.sp.web.lists.getByTitle(this.configListName)();
+      const listPromise = this.sp.web.lists.getByTitle(this.configListName)();
+      await withTimeout(listPromise, NETWORK_TIMEOUTS.FAST, 'Check BigCalConfig list exists');
       return true;
-    } catch (error) {
-      console.log(`BigCalConfig list does not exist: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch {
       return false;
     }
   }

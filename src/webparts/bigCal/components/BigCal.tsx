@@ -27,7 +27,7 @@ import { IconSelector } from './IconSelector';
 import { Suspense } from 'react';
 import { ColorPaletteStudio } from './ColorPaletteStudio';
 import { GridView } from './GridView';
-import { formatMonthYear } from '../utils/BigCalUtilities';
+import { formatMonthYear, withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Setup the localizer for react-big-calendar
@@ -1276,10 +1276,18 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     try {
       const colorMappingService = new ColorMappingService(this.props.context);
-      const [discoveredOptions, colorMappings] = await Promise.all([
+
+      // Use timeout wrapper for the Promise.all to prevent hanging on slow networks
+      const dataPromise = Promise.all([
         colorMappingService.discoverFieldOptions(this.props.listName),
         colorMappingService.getColorMappings()
       ]);
+
+      const [discoveredOptions, colorMappings] = await withTimeout(
+        dataPromise,
+        NETWORK_TIMEOUTS.STANDARD,
+        'Load Color Palette Studio data'
+      );
 
       this.setState({
         colorPaletteDiscoveredOptions: discoveredOptions,

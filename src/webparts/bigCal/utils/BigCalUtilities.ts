@@ -27,4 +27,45 @@ export const getContrastColor = (hexColor: string): string => {
   return luminance > 0.5 ? '#000000' : '#ffffff';
 };
 
+/**
+ * Timeout wrapper for network operations to prevent hanging on slow networks
+ * @param promise The promise to wrap with timeout
+ * @param timeoutMs Timeout in milliseconds
+ * @param operation Description of the operation for error messages
+ * @returns Promise that resolves with the original result or rejects with timeout error
+ */
+export const withTimeout = <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  operation: string
+): Promise<T> => {
+  return new Promise<T>((resolve, reject) => {
+    // Create timeout promise that rejects
+    const timeoutPromise = new Promise<never>((_resolve, _reject) => {
+      setTimeout(() => {
+        _reject(new Error(`Operation '${operation}' timed out after ${timeoutMs}ms. This may be due to slow network conditions.`));
+      }, timeoutMs);
+    });
+
+    // Race the original promise against the timeout
+    Promise.race([promise, timeoutPromise])
+      .then(resolve)
+      .catch(reject);
+  });
+};
+
+/**
+ * Network timeout constants for different types of operations
+ */
+export const NETWORK_TIMEOUTS = {
+  /** Fast operations like field discovery */
+  FAST: 10000,      // 10 seconds
+  /** Standard operations like getting events or color mappings */
+  STANDARD: 15000,  // 15 seconds
+  /** Slow operations like list creation or bulk saves */
+  SLOW: 30000,      // 30 seconds
+  /** Very slow operations like large data imports */
+  VERY_SLOW: 60000  // 60 seconds
+} as const;
+
 // Legacy getEventCategoryIcon function removed - all icons now come from Color Palette Studio
