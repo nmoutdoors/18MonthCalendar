@@ -13,7 +13,7 @@ import type { ICalendarEvent } from './ICalendarEvent';
 
 import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
-import { SPECIFIC_COLOR_MAPPINGS, IColorMapping, IFieldOption } from '../interfaces/IColorMapping';
+import { SPECIFIC_COLOR_MAPPINGS, DEFAULT_ICON_MAPPINGS, IColorMapping, IFieldOption } from '../interfaces/IColorMapping';
 import { ColorMappingService } from '../services/ColorMappingService';
 
 import { HolidayService } from '../services/HolidayService';
@@ -248,9 +248,18 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           staticColorMappings.set(key, SPECIFIC_COLOR_MAPPINGS[key]);
         }
       }
+
+      // Fall back to default icon mappings
+      const staticIconMappings = new Map<string, string>();
+      for (const key in DEFAULT_ICON_MAPPINGS) {
+        if (Object.prototype.hasOwnProperty.call(DEFAULT_ICON_MAPPINGS, key)) {
+          staticIconMappings.set(key, DEFAULT_ICON_MAPPINGS[key]);
+        }
+      }
+
       this.setState({
         dynamicColorMappings: staticColorMappings,
-        dynamicIconMappings: new Map() // Empty icon mappings on fallback
+        dynamicIconMappings: staticIconMappings
       });
     }
   };

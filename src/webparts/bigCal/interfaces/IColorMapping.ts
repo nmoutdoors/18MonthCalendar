@@ -195,6 +195,38 @@ export const SPECIFIC_COLOR_MAPPINGS: { [key: string]: string } = {
 };
 
 /**
+ * Default icon mappings for known options - used for BigCalConfig initialization
+ * These provide sensible default icons that users can change via Color Palette Studio
+ */
+export const DEFAULT_ICON_MAPPINGS: { [key: string]: string } = {
+  // Status icons - only Tentative gets its own icon
+  'Tentative': '❓',                    // Question mark for tentative status
+
+  // Swimlane icons - using emoji for best compatibility and visibility
+  'DCDC': '🏢',                         // Office building for DCDC
+  'DISA': '📡',                         // Satellite dish for DISA network/communications
+  'DOD CIO / NSA / USCC': '🌐',         // Globe for network/cyber
+  'Exercises': '🎯',                    // Target for exercises/training
+  'FYSA': '📋',                         // Clipboard for information sharing
+  'Joint DISA & DCDC': '🤝',            // Handshake for joint operations
+  'Mission Partner': '🤝',              // Handshake for partnerships
+  'Out of Office': '🏠',                // House for out of office
+  'Speaking Event': '🎤',               // Microphone for speaking
+  'Exec Time': '⭐',                    // Star for executive time
+  'TDY Meetings/Congressional': '🏛️',    // Government building for congressional
+  'Transit': '✈️',                      // Airplane for transit
+  'Private Events': '🔒'                // Lock icon for private events
+};
+
+/**
+ * Get default icon for a specific option value
+ * Used for BigCalConfig initialization and fallback scenarios
+ */
+export function getDefaultIcon(optionValue: string): string {
+  return DEFAULT_ICON_MAPPINGS[optionValue] || '';
+}
+
+/**
  * Utility function to generate default colors for discovered options
  * Now uses specific color mappings when available
  */

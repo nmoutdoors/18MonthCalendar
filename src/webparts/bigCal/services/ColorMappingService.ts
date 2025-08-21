@@ -4,7 +4,7 @@ import '@pnp/sp/items';
 import '@pnp/sp/fields';
 import { spfi, SPFx } from '@pnp/sp';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
-import { IColorMapping, IFieldOption, IColorPaletteConfig, generateColorsForOptions } from '../interfaces/IColorMapping';
+import { IColorMapping, IFieldOption, IColorPaletteConfig, generateColorsForOptions, getDefaultIcon } from '../interfaces/IColorMapping';
 
 /**
  * Interface for SharePoint list item from BigCalConfig
@@ -379,6 +379,7 @@ export class ColorMappingService {
             fieldName: 'Swimlanes',
             optionValue: option.optionValue,
             colorHex: swimlaneColorMap[option.optionValue],
+            iconName: getDefaultIcon(option.optionValue),
             isActive: true,
             sortOrder: sortOrder++
           });
@@ -396,6 +397,7 @@ export class ColorMappingService {
             fieldName: 'Status',
             optionValue: option.optionValue,
             colorHex: statusColorMap[option.optionValue],
+            iconName: getDefaultIcon(option.optionValue),
             isActive: true,
             sortOrder: sortOrder++
           });
@@ -769,6 +771,7 @@ export class ColorMappingService {
             fieldName: 'Swimlanes',
             optionValue: option.optionValue,
             colorHex: swimlaneColorMap[option.optionValue],
+            iconName: getDefaultIcon(option.optionValue),
             isActive: true,
             sortOrder: sortOrder++
           });
@@ -786,6 +789,7 @@ export class ColorMappingService {
             fieldName: 'Status',
             optionValue: option.optionValue,
             colorHex: statusColorMap[option.optionValue],
+            iconName: getDefaultIcon(option.optionValue),
             isActive: true,
             sortOrder: sortOrder++
           });
