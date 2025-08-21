@@ -285,25 +285,42 @@ export class ColorMappingService {
   }
 
   /**
-   * Save multiple color mappings in batch
+   * Save multiple color mappings in batch with improved concurrency handling
    */
   public async saveBulkColorMappings(mappings: IColorMapping[]): Promise<IColorMapping[]> {
     try {
       console.log(`Saving ${mappings.length} color mappings in bulk`);
-      
+
       const results: IColorMapping[] = [];
-      
-      // Process in batches to avoid overwhelming SharePoint
-      const batchSize = 10;
+
+      // Process in smaller batches with delays to avoid SharePoint concurrency issues
+      const batchSize = 3; // Reduced from 10 to 3
       for (let i = 0; i < mappings.length; i += batchSize) {
         const batch = mappings.slice(i, i + batchSize);
-        const batchResults = await Promise.all(
-          batch.map(mapping => this.saveColorMapping(mapping))
-        );
-        results.push(...batchResults);
+
+        console.log(`Processing batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(mappings.length / batchSize)}`);
+
+        // Process batch items sequentially instead of parallel to avoid conflicts
+        for (const mapping of batch) {
+          try {
+            const result = await this.saveColorMapping(mapping);
+            results.push(result);
+
+            // Small delay between individual saves within batch
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (error) {
+            console.warn(`Failed to save mapping for ${mapping.optionValue}:`, error);
+            // Continue with other mappings instead of failing entire batch
+          }
+        }
+
+        // Longer delay between batches
+        if (i + batchSize < mappings.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
 
-      console.log('Bulk color mappings saved successfully');
+      console.log(`Bulk save completed: ${results.length}/${mappings.length} mappings saved successfully`);
       return results;
 
     } catch (error) {
@@ -541,18 +558,28 @@ export class ColorMappingService {
 
       const swimlaneColors = new Map<string, string>();
       const statusColors = new Map<string, string>();
+      const swimlaneIcons = new Map<string, string>();
+      const statusIcons = new Map<string, string>();
 
       activeMappings.forEach(mapping => {
         if (mapping.fieldName === 'Swimlanes') {
           swimlaneColors.set(mapping.optionValue, mapping.colorHex);
+          if (mapping.iconName) {
+            swimlaneIcons.set(mapping.optionValue, mapping.iconName);
+          }
         } else if (mapping.fieldName === 'Status') {
           statusColors.set(mapping.optionValue, mapping.colorHex);
+          if (mapping.iconName) {
+            statusIcons.set(mapping.optionValue, mapping.iconName);
+          }
         }
       });
 
       return {
         swimlaneColors,
         statusColors,
+        swimlaneIcons,
+        statusIcons,
         lastUpdated: new Date(),
         version: 1
       };

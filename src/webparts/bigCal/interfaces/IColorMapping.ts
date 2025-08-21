@@ -31,6 +31,8 @@ export interface IFieldOption {
 export interface IColorPaletteConfig {
   swimlaneColors: Map<string, string>;
   statusColors: Map<string, string>;
+  swimlaneIcons: Map<string, string>;
+  statusIcons: Map<string, string>;
   lastUpdated: Date;
   version: number;
 }

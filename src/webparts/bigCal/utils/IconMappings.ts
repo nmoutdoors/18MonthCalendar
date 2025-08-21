@@ -97,18 +97,19 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-road', displayName: 'Road', iconSet: 'fontawesome' },
       { iconName: 'fa-map', displayName: 'Map', iconSet: 'fontawesome' },
       { iconName: 'fa-location-arrow', displayName: 'Direction', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful)
-      { iconName: 'Airplane', displayName: 'Airplane', iconSet: 'fluent' },
-      { iconName: 'Car', displayName: 'Car', iconSet: 'fluent' },
-      { iconName: 'Bus', displayName: 'Bus', iconSet: 'fluent' },
-      { iconName: 'Train', displayName: 'Train', iconSet: 'fluent' },
-      { iconName: 'Move', displayName: 'Movement', iconSet: 'fluent' },
-      { iconName: 'Forward', displayName: 'Travel', iconSet: 'fluent' },
-      { iconName: 'Location', displayName: 'Location', iconSet: 'fluent' },
-      { iconName: 'MapPin', displayName: 'Pin', iconSet: 'fluent' },
-      { iconName: 'Compass', displayName: 'Compass', iconSet: 'fluent' },
-      { iconName: 'Globe', displayName: 'Globe', iconSet: 'fluent' },
-      { iconName: 'Forward', displayName: 'Directions', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-taxi', displayName: 'Taxi', iconSet: 'fontawesome' },
+      { iconName: 'fa-subway', displayName: 'Subway', iconSet: 'fontawesome' },
+      { iconName: 'fa-anchor', displayName: 'Anchor', iconSet: 'fontawesome' },
+      { iconName: 'fa-paper-plane', displayName: 'Paper Plane', iconSet: 'fontawesome' },
+      { iconName: 'fa-rocket', displayName: 'Rocket', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '🏨', displayName: 'Hotel', iconSet: 'emoji' },
+      { iconName: '🗺️', displayName: 'World Map', iconSet: 'emoji' },
+      { iconName: '🧳', displayName: 'Luggage', iconSet: 'emoji' },
+      { iconName: '🏖️', displayName: 'Beach', iconSet: 'emoji' },
+      { iconName: '🏔️', displayName: 'Mountain', iconSet: 'emoji' },
+      { iconName: '⛵', displayName: 'Sailboat', iconSet: 'emoji' }
     ];
     return deduplicateIcons(transitIcons);
   }
@@ -132,13 +133,18 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-bullhorn', displayName: 'Bullhorn', iconSet: 'fontawesome' },
       { iconName: 'fa-volume-up', displayName: 'Volume', iconSet: 'fontawesome' },
       { iconName: 'fa-users', displayName: 'Audience', iconSet: 'fontawesome' },
-      // Fluent UI icons (using guaranteed SharePoint icons)
-      { iconName: 'Microphone', displayName: 'Microphone', iconSet: 'fluent' },
-      { iconName: 'Document', displayName: 'Presentation', iconSet: 'fluent' },
-      { iconName: 'Megaphone', displayName: 'Megaphone', iconSet: 'fluent' },
-      { iconName: 'Home', displayName: 'Stage', iconSet: 'fluent' },
-      { iconName: 'People', displayName: 'Audience', iconSet: 'fluent' },
-      { iconName: 'FavoriteStarFill', displayName: 'Podium', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-file-powerpoint-o', displayName: 'PowerPoint', iconSet: 'fontawesome' },
+      { iconName: 'fa-desktop', displayName: 'Screen', iconSet: 'fontawesome' },
+      { iconName: 'fa-video-camera', displayName: 'Camera', iconSet: 'fontawesome' },
+      { iconName: 'fa-star', displayName: 'Featured', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '🎤', displayName: 'Mic', iconSet: 'emoji' },
+      { iconName: '🎪', displayName: 'Event', iconSet: 'emoji' },
+      { iconName: '🎭', displayName: 'Performance', iconSet: 'emoji' },
+      { iconName: '🎬', displayName: 'Action', iconSet: 'emoji' },
+      { iconName: '📺', displayName: 'Broadcast', iconSet: 'emoji' },
+      { iconName: '🎯', displayName: 'Focus', iconSet: 'emoji' }
     ];
     return deduplicateIcons(speakingIcons);
   }
@@ -166,14 +172,18 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-briefcase', displayName: 'Business', iconSet: 'fontawesome' },
       { iconName: 'fa-building', displayName: 'Building', iconSet: 'fontawesome' },
       { iconName: 'fa-clipboard', displayName: 'Clipboard', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful) - using guaranteed SharePoint icons
-      { iconName: 'People', displayName: 'People', iconSet: 'fluent' },
-      { iconName: 'People', displayName: 'Meeting', iconSet: 'fluent' },
-      { iconName: 'Calendar', displayName: 'Calendar', iconSet: 'fluent' },
-      { iconName: 'People', displayName: 'Conference', iconSet: 'fluent' },
-      { iconName: 'People', displayName: 'Group', iconSet: 'fluent' },
-      { iconName: 'People', displayName: 'Partnership', iconSet: 'fluent' },
-      { iconName: 'Home', displayName: 'Government', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-group', displayName: 'Group', iconSet: 'fontawesome' },
+      { iconName: 'fa-comments', displayName: 'Discussion', iconSet: 'fontawesome' },
+      { iconName: 'fa-phone', displayName: 'Call', iconSet: 'fontawesome' },
+      { iconName: 'fa-video-camera', displayName: 'Video Call', iconSet: 'fontawesome' },
+      { iconName: 'fa-table', displayName: 'Conference Table', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '👥', displayName: 'Team', iconSet: 'emoji' },
+      { iconName: '🤝', displayName: 'Agreement', iconSet: 'emoji' },
+      { iconName: '💼', displayName: 'Business', iconSet: 'emoji' },
+      { iconName: '🏢', displayName: 'Corporate', iconSet: 'emoji' },
+      { iconName: '📋', displayName: 'Agenda', iconSet: 'emoji' }
     ];
     return deduplicateIcons(meetingIcons);
   }
@@ -216,17 +226,18 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-bullseye', displayName: 'Focus', iconSet: 'fontawesome' },
       { iconName: 'fa-cogs', displayName: 'Management', iconSet: 'fontawesome' },
       { iconName: 'fa-line-chart', displayName: 'Growth', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful)
-      { iconName: 'Clock', displayName: 'Clock', iconSet: 'fluent' },
-      { iconName: 'Calendar', displayName: 'Calendar', iconSet: 'fluent' },
-      { iconName: 'Important', displayName: 'Important', iconSet: 'fluent' },
-      { iconName: 'FavoriteStarFill', displayName: 'Executive', iconSet: 'fluent' },
-      { iconName: 'Home', displayName: 'Business', iconSet: 'fluent' },
-      { iconName: 'Trophy2', displayName: 'Achievement', iconSet: 'fluent' },
-      { iconName: 'Info', displayName: 'Analytics', iconSet: 'fluent' },
-      { iconName: 'POI', displayName: 'Focus', iconSet: 'fluent' },
-      { iconName: 'Important', displayName: 'Management', iconSet: 'fluent' },
-      { iconName: 'Important', displayName: 'Growth', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-user-tie', displayName: 'Executive', iconSet: 'fontawesome' },
+      { iconName: 'fa-diamond', displayName: 'Premium', iconSet: 'fontawesome' },
+      { iconName: 'fa-crown', displayName: 'Leadership', iconSet: 'fontawesome' },
+      { iconName: 'fa-gavel', displayName: 'Decision', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '⏰', displayName: 'Alarm', iconSet: 'emoji' },
+      { iconName: '📅', displayName: 'Schedule', iconSet: 'emoji' },
+      { iconName: '⚡', displayName: 'Priority', iconSet: 'emoji' },
+      { iconName: '👔', displayName: 'Executive', iconSet: 'emoji' },
+      { iconName: '🏆', displayName: 'Achievement', iconSet: 'emoji' },
+      { iconName: '📊', displayName: 'Analytics', iconSet: 'emoji' }
     ];
     return deduplicateIcons(execIcons);
   }
@@ -254,13 +265,16 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-lock', displayName: 'Locked', iconSet: 'fontawesome' },
       { iconName: 'fa-phone-slash', displayName: 'No Contact', iconSet: 'fontawesome' },
       { iconName: 'fa-bed', displayName: 'Rest', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful) - using guaranteed SharePoint icons
-      { iconName: 'Forward', displayName: 'Away', iconSet: 'fluent' },
-      { iconName: 'Calendar', displayName: 'Vacation', iconSet: 'fluent' },
-      { iconName: 'Home', displayName: 'Home', iconSet: 'fluent' },
-      { iconName: 'Clock', displayName: 'Time Off', iconSet: 'fluent' },
-      { iconName: 'Cancel', displayName: 'Unavailable', iconSet: 'fluent' },
-      { iconName: 'Back', displayName: 'Leave', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-home', displayName: 'Home', iconSet: 'fontawesome' },
+      { iconName: 'fa-calendar-times-o', displayName: 'Time Off', iconSet: 'fontawesome' },
+      { iconName: 'fa-ban', displayName: 'Unavailable', iconSet: 'fontawesome' },
+      { iconName: 'fa-arrow-left', displayName: 'Leave', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '🏠', displayName: 'Home', iconSet: 'emoji' },
+      { iconName: '🚪', displayName: 'Exit', iconSet: 'emoji' },
+      { iconName: '🔒', displayName: 'Locked Out', iconSet: 'emoji' },
+      { iconName: '💤', displayName: 'Sleep', iconSet: 'emoji' }
     ];
     return deduplicateIcons(outOfOfficeIcons);
   }
@@ -288,13 +302,17 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-bolt', displayName: 'Power', iconSet: 'fontawesome' },
       { iconName: 'fa-flag', displayName: 'Flag', iconSet: 'fontawesome' },
       { iconName: 'fa-fire', displayName: 'Intensity', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful) - using guaranteed SharePoint icons
-      { iconName: 'Document', displayName: 'Training', iconSet: 'fluent' },
-      { iconName: 'Warning', displayName: 'Defense', iconSet: 'fluent' },
-      { iconName: 'People', displayName: 'Teamwork', iconSet: 'fluent' },
-      { iconName: 'POI', displayName: 'Target', iconSet: 'fluent' },
-      { iconName: 'FavoriteStarFill', displayName: 'Mission', iconSet: 'fluent' },
-      { iconName: 'Star', displayName: 'Achievement', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-graduation-cap', displayName: 'Training', iconSet: 'fontawesome' },
+      { iconName: 'fa-users', displayName: 'Teamwork', iconSet: 'fontawesome' },
+      { iconName: 'fa-bullseye', displayName: 'Target', iconSet: 'fontawesome' },
+      { iconName: 'fa-flag-checkered', displayName: 'Mission', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '🎖️', displayName: 'Military', iconSet: 'emoji' },
+      { iconName: '🏋️', displayName: 'Training', iconSet: 'emoji' },
+      { iconName: '🛡️', displayName: 'Defense', iconSet: 'emoji' },
+      { iconName: '🎯', displayName: 'Target', iconSet: 'emoji' },
+      { iconName: '🚁', displayName: 'Military', iconSet: 'emoji' }
     ];
     return deduplicateIcons(exerciseIcons);
   }
@@ -336,17 +354,18 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-wrench', displayName: 'Tools', iconSet: 'fontawesome' },
       { iconName: 'fa-bar-chart', displayName: 'Data', iconSet: 'fontawesome' },
       { iconName: 'fa-crosshairs', displayName: 'Mission', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful)
-      { iconName: 'Globe', displayName: 'Network', iconSet: 'fluent' },
-      { iconName: 'Home', displayName: 'Server', iconSet: 'fluent' },
-      { iconName: 'Warning', displayName: 'Security', iconSet: 'fluent' },
-      { iconName: 'Wifi', displayName: 'Connectivity', iconSet: 'fluent' },
-      { iconName: 'Cloud', displayName: 'Cloud', iconSet: 'fluent' },
-      { iconName: 'Lock', displayName: 'Secure', iconSet: 'fluent' },
-      { iconName: 'Important', displayName: 'Systems', iconSet: 'fluent' },
-      { iconName: 'Repair', displayName: 'Tools', iconSet: 'fluent' },
-      { iconName: 'Info', displayName: 'Data', iconSet: 'fluent' },
-      { iconName: 'POI', displayName: 'Mission', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-server', displayName: 'Server', iconSet: 'fontawesome' },
+      { iconName: 'fa-database', displayName: 'Database', iconSet: 'fontawesome' },
+      { iconName: 'fa-code', displayName: 'Code', iconSet: 'fontawesome' },
+      { iconName: 'fa-terminal', displayName: 'Terminal', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '🌐', displayName: 'Network', iconSet: 'emoji' },
+      { iconName: '💻', displayName: 'Computer', iconSet: 'emoji' },
+      { iconName: '🔒', displayName: 'Security', iconSet: 'emoji' },
+      { iconName: '📡', displayName: 'Satellite', iconSet: 'emoji' },
+      { iconName: '☁️', displayName: 'Cloud', iconSet: 'emoji' },
+      { iconName: '🛡️', displayName: 'Shield', iconSet: 'emoji' }
     ];
     return deduplicateIcons(disaIcons);
   }
@@ -388,17 +407,19 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-desktop', displayName: 'Desktop', iconSet: 'fontawesome' },
       { iconName: 'fa-cogs', displayName: 'Settings', iconSet: 'fontawesome' },
       { iconName: 'fa-eye', displayName: 'Monitor', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful) - using guaranteed SharePoint icons
-      { iconName: 'Home', displayName: 'Command', iconSet: 'fluent' },
-      { iconName: 'Warning', displayName: 'Defense', iconSet: 'fluent' },
-      { iconName: 'Globe', displayName: 'Global', iconSet: 'fluent' },
-      { iconName: 'Globe', displayName: 'Monitoring', iconSet: 'fluent' },
-      { iconName: 'FavoriteStarFill', displayName: 'Flag', iconSet: 'fluent' },
-      { iconName: 'Important', displayName: 'Critical', iconSet: 'fluent' },
-      { iconName: 'POI', displayName: 'Target', iconSet: 'fluent' },
-      { iconName: 'Lock', displayName: 'Secure', iconSet: 'fluent' },
-      { iconName: 'Info', displayName: 'Monitor', iconSet: 'fluent' },
-      { iconName: 'FavoriteStarFill', displayName: 'Authority', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-home', displayName: 'Command', iconSet: 'fontawesome' },
+      { iconName: 'fa-shield', displayName: 'Defense', iconSet: 'fontawesome' },
+      { iconName: 'fa-sitemap', displayName: 'Control', iconSet: 'fontawesome' },
+      { iconName: 'fa-bullseye', displayName: 'Target', iconSet: 'fontawesome' },
+      { iconName: 'fa-crown', displayName: 'Authority', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '🏢', displayName: 'Command', iconSet: 'emoji' },
+      { iconName: '🛡️', displayName: 'Defense', iconSet: 'emoji' },
+      { iconName: '🌐', displayName: 'Global', iconSet: 'emoji' },
+      { iconName: '📡', displayName: 'Monitoring', iconSet: 'emoji' },
+      { iconName: '🚩', displayName: 'Flag', iconSet: 'emoji' },
+      { iconName: '⚡', displayName: 'Critical', iconSet: 'emoji' }
     ];
     return deduplicateIcons(dcdcIcons);
   }
@@ -442,17 +463,18 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-crosshairs', displayName: 'Mission', iconSet: 'fontawesome' },
       { iconName: 'fa-flag', displayName: 'Joint', iconSet: 'fontawesome' },
       { iconName: 'fa-cogs', displayName: 'Integration', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful)
-      { iconName: 'Globe', displayName: 'Network', iconSet: 'fluent' },
-      { iconName: 'Home', displayName: 'Command', iconSet: 'fluent' },
-      { iconName: 'Info', displayName: 'Systems', iconSet: 'fluent' },
-      { iconName: 'Warning', displayName: 'Security', iconSet: 'fluent' },
-      { iconName: 'Lock', displayName: 'Secure', iconSet: 'fluent' },
-      { iconName: 'Globe', displayName: 'Communications', iconSet: 'fluent' },
-      { iconName: 'Important', displayName: 'Operations', iconSet: 'fluent' },
-      { iconName: 'POI', displayName: 'Mission', iconSet: 'fluent' },
-      { iconName: 'FavoriteStarFill', displayName: 'Joint', iconSet: 'fluent' },
-      { iconName: 'Important', displayName: 'Integration', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-link', displayName: 'Connection', iconSet: 'fontawesome' },
+      { iconName: 'fa-handshake-o', displayName: 'Partnership', iconSet: 'fontawesome' },
+      { iconName: 'fa-puzzle-piece', displayName: 'Integration', iconSet: 'fontawesome' },
+      { iconName: 'fa-users', displayName: 'Joint', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '🌐', displayName: 'Network', iconSet: 'emoji' },
+      { iconName: '🏢', displayName: 'Command', iconSet: 'emoji' },
+      { iconName: '💻', displayName: 'Systems', iconSet: 'emoji' },
+      { iconName: '🛡️', displayName: 'Security', iconSet: 'emoji' },
+      { iconName: '🔒', displayName: 'Secure', iconSet: 'emoji' },
+      { iconName: '📡', displayName: 'Communications', iconSet: 'emoji' }
     ];
     return deduplicateIcons(jointIcons);
   }
@@ -494,17 +516,19 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-crosshairs', displayName: 'Target', iconSet: 'fontawesome' },
       { iconName: 'fa-laptop', displayName: 'Cyber', iconSet: 'fontawesome' },
       { iconName: 'fa-globe', displayName: 'Global', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful) - using guaranteed SharePoint icons
-      { iconName: 'Warning', displayName: 'Security', iconSet: 'fluent' },
-      { iconName: 'Home', displayName: 'Government', iconSet: 'fluent' },
-      { iconName: 'Lock', displayName: 'Secure', iconSet: 'fluent' },
-      { iconName: 'Important', displayName: 'Critical', iconSet: 'fluent' },
-      { iconName: 'FavoriteStarFill', displayName: 'National', iconSet: 'fluent' },
-      { iconName: 'FavoriteStarFill', displayName: 'Authority', iconSet: 'fluent' },
-      { iconName: 'Accept', displayName: 'Certified', iconSet: 'fluent' },
-      { iconName: 'People', displayName: 'Access', iconSet: 'fluent' },
-      { iconName: 'AlertSolid', displayName: 'Alert', iconSet: 'fluent' },
-      { iconName: 'POI', displayName: 'Target', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-certificate', displayName: 'Certified', iconSet: 'fontawesome' },
+      { iconName: 'fa-users', displayName: 'Access', iconSet: 'fontawesome' },
+      { iconName: 'fa-flag-usa', displayName: 'National', iconSet: 'fontawesome' },
+      { iconName: 'fa-gavel', displayName: 'Authority', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '🛡️', displayName: 'Security', iconSet: 'emoji' },
+      { iconName: '🏛️', displayName: 'Government', iconSet: 'emoji' },
+      { iconName: '🔒', displayName: 'Secure', iconSet: 'emoji' },
+      { iconName: '⚡', displayName: 'Critical', iconSet: 'emoji' },
+      { iconName: '🇺🇸', displayName: 'National', iconSet: 'emoji' },
+      { iconName: '👑', displayName: 'Authority', iconSet: 'emoji' },
+      { iconName: '🎖️', displayName: 'Military', iconSet: 'emoji' }
     ];
     return deduplicateIcons(dodIcons);
   }
@@ -566,25 +590,24 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-flag', displayName: 'Flag', iconSet: 'fontawesome' },
       { iconName: 'fa-puzzle-piece', displayName: 'Partnership', iconSet: 'fontawesome' },
       { iconName: 'fa-cog', displayName: 'Cooperation', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful) - using guaranteed SharePoint icons
-      { iconName: 'People', displayName: 'Partnership', iconSet: 'fluent' },
-      { iconName: 'People', displayName: 'Collaboration', iconSet: 'fluent' },
-      { iconName: 'Group', displayName: 'Team', iconSet: 'fluent' },
-      { iconName: 'Globe', displayName: 'Global', iconSet: 'fluent' },
-      { iconName: 'Link', displayName: 'Connection', iconSet: 'fluent' },
-      { iconName: 'People', displayName: 'Teamwork', iconSet: 'fluent' },
-      { iconName: 'Home', displayName: 'Business', iconSet: 'fluent' },
-      { iconName: 'Contact', displayName: 'Contact', iconSet: 'fluent' },
-      { iconName: 'Document', displayName: 'Agreement', iconSet: 'fluent' },
-      { iconName: 'POI', displayName: 'Mission', iconSet: 'fluent' },
-      { iconName: 'Forward', displayName: 'Launch', iconSet: 'fluent' },
-      { iconName: 'Important', displayName: 'Alliance', iconSet: 'fluent' },
-      { iconName: 'Sync', displayName: 'Exchange', iconSet: 'fluent' },
-      { iconName: 'Heart', displayName: 'Unity', iconSet: 'fluent' },
-      { iconName: 'Star', displayName: 'Excellence', iconSet: 'fluent' },
-      { iconName: 'Star', displayName: 'Success', iconSet: 'fluent' },
-      { iconName: 'Accept', displayName: 'Achievement', iconSet: 'fluent' },
-      { iconName: 'FavoriteStarFill', displayName: 'Flag', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-handshake-o', displayName: 'Partnership', iconSet: 'fontawesome' },
+      { iconName: 'fa-users', displayName: 'Collaboration', iconSet: 'fontawesome' },
+      { iconName: 'fa-group', displayName: 'Team', iconSet: 'fontawesome' },
+      { iconName: 'fa-link', displayName: 'Connection', iconSet: 'fontawesome' },
+      { iconName: 'fa-phone', displayName: 'Contact', iconSet: 'fontawesome' },
+      { iconName: 'fa-file-text', displayName: 'Agreement', iconSet: 'fontawesome' },
+      { iconName: 'fa-arrow-right', displayName: 'Launch', iconSet: 'fontawesome' },
+      { iconName: 'fa-refresh', displayName: 'Exchange', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '🤝', displayName: 'Partnership', iconSet: 'emoji' },
+      { iconName: '👥', displayName: 'Collaboration', iconSet: 'emoji' },
+      { iconName: '🌍', displayName: 'Global', iconSet: 'emoji' },
+      { iconName: '🔗', displayName: 'Connection', iconSet: 'emoji' },
+      { iconName: '💼', displayName: 'Business', iconSet: 'emoji' },
+      { iconName: '📋', displayName: 'Agreement', iconSet: 'emoji' },
+      { iconName: '🚀', displayName: 'Launch', iconSet: 'emoji' },
+      { iconName: '❤️', displayName: 'Unity', iconSet: 'emoji' }
     ];
     return deduplicateIcons(missionPartnerIcons);
   }
@@ -611,12 +634,16 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-exclamation-triangle', displayName: 'Warning', iconSet: 'fontawesome' },
       { iconName: 'fa-hourglass-half', displayName: 'Waiting', iconSet: 'fontawesome' },
       { iconName: 'fa-refresh', displayName: 'Refresh', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful)
-      { iconName: 'Clock', displayName: 'Pending', iconSet: 'fluent' },
-      { iconName: 'Search', displayName: 'Uncertain', iconSet: 'fluent' },
-      { iconName: 'Warning', displayName: 'Caution', iconSet: 'fluent' },
-      { iconName: 'Clock', displayName: 'Waiting', iconSet: 'fluent' },
-      { iconName: 'Sync', displayName: 'In Progress', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-pause', displayName: 'Pending', iconSet: 'fontawesome' },
+      { iconName: 'fa-search', displayName: 'Uncertain', iconSet: 'fontawesome' },
+      { iconName: 'fa-spinner', displayName: 'Processing', iconSet: 'fontawesome' },
+      { iconName: 'fa-ellipsis-h', displayName: 'Waiting', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '⏸️', displayName: 'Paused', iconSet: 'emoji' },
+      { iconName: '🔍', displayName: 'Searching', iconSet: 'emoji' },
+      { iconName: '⚠️', displayName: 'Caution', iconSet: 'emoji' },
+      { iconName: '🔄', displayName: 'Processing', iconSet: 'emoji' }
     ];
     return deduplicateIcons(tentativeIcons);
   }
@@ -642,12 +669,16 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
       { iconName: 'fa-thumbs-up', displayName: 'Thumbs Up', iconSet: 'fontawesome' },
       { iconName: 'fa-star', displayName: 'Star', iconSet: 'fontawesome' },
       { iconName: 'fa-trophy', displayName: 'Trophy', iconSet: 'fontawesome' },
-      // Fluent UI icons (least colorful)
-      { iconName: 'CheckMark', displayName: 'Confirmed', iconSet: 'fluent' },
-      { iconName: 'CheckMark', displayName: 'Accepted', iconSet: 'fluent' },
-      { iconName: 'CheckMark', displayName: 'Complete', iconSet: 'fluent' },
-      { iconName: 'Star', displayName: 'Success', iconSet: 'fluent' },
-      { iconName: 'Star', displayName: 'Priority', iconSet: 'fluent' }
+      // More Font Awesome icons
+      { iconName: 'fa-check-square', displayName: 'Confirmed', iconSet: 'fontawesome' },
+      { iconName: 'fa-check-square-o', displayName: 'Accepted', iconSet: 'fontawesome' },
+      { iconName: 'fa-tasks', displayName: 'Complete', iconSet: 'fontawesome' },
+      { iconName: 'fa-star-o', displayName: 'Priority', iconSet: 'fontawesome' },
+      // More Emoji icons
+      { iconName: '✅', displayName: 'Confirmed', iconSet: 'emoji' },
+      { iconName: '☑️', displayName: 'Accepted', iconSet: 'emoji' },
+      { iconName: '🎯', displayName: 'On Target', iconSet: 'emoji' },
+      { iconName: '🏆', displayName: 'Success', iconSet: 'emoji' }
     ];
     return deduplicateIcons(confirmedIcons);
   }
@@ -674,14 +705,19 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
     { iconName: 'fa-clock-o', displayName: 'Clock', iconSet: 'fontawesome' },
     { iconName: 'fa-map-marker', displayName: 'Location', iconSet: 'fontawesome' },
     { iconName: 'fa-flag', displayName: 'Flag', iconSet: 'fontawesome' },
-    // Fluent UI icons (least colorful)
-    { iconName: 'Calendar', displayName: 'Calendar', iconSet: 'fluent' },
-    { iconName: 'Important', displayName: 'Important', iconSet: 'fluent' },
-    { iconName: 'Star', displayName: 'Star', iconSet: 'fluent' },
-    { iconName: 'FavoriteStarFill', displayName: 'Flag', iconSet: 'fluent' },
-    { iconName: 'People', displayName: 'People', iconSet: 'fluent' },
-    { iconName: 'Clock', displayName: 'Clock', iconSet: 'fluent' },
-    { iconName: 'Location', displayName: 'Location', iconSet: 'fluent' }
+    // More Font Awesome icons
+    { iconName: 'fa-home', displayName: 'Home', iconSet: 'fontawesome' },
+    { iconName: 'fa-briefcase', displayName: 'Work', iconSet: 'fontawesome' },
+    { iconName: 'fa-cog', displayName: 'Settings', iconSet: 'fontawesome' },
+    { iconName: 'fa-info', displayName: 'Info', iconSet: 'fontawesome' },
+    // More Emoji icons
+    { iconName: '📅', displayName: 'Calendar', iconSet: 'emoji' },
+    { iconName: '⚡', displayName: 'Important', iconSet: 'emoji' },
+    { iconName: '⭐', displayName: 'Star', iconSet: 'emoji' },
+    { iconName: '🚩', displayName: 'Flag', iconSet: 'emoji' },
+    { iconName: '👥', displayName: 'People', iconSet: 'emoji' },
+    { iconName: '🕐', displayName: 'Clock', iconSet: 'emoji' },
+    { iconName: '📍', displayName: 'Location', iconSet: 'emoji' }
   ];
   return deduplicateIcons(defaultIcons);
 };

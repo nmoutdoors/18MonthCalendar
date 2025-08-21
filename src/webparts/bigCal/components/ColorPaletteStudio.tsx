@@ -129,15 +129,25 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     // Silent auto-save in background
     try {
       await this.props.onSaveColorMappings(updatedMappings);
+      console.log('Color mapping saved successfully');
     } catch (error) {
-      // Show error but don't block UI
-      this.setState({
-        errorMessage: `Auto-save failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-      });
-      // Clear error after 5 seconds
-      setTimeout(() => {
-        this.setState({ errorMessage: undefined });
-      }, 5000);
+      console.error('Auto-save error:', error);
+
+      // Only show error if it's not a SharePoint concurrency issue (which often resolves itself)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.indexOf('Save Conflict') === -1 &&
+          errorMessage.indexOf('2130575305') === -1 &&
+          errorMessage.indexOf('-2147467259') === -1 && // The specific error you encountered
+          errorMessage.indexOf('concurrently') === -1 &&
+          errorMessage.indexOf('Cannot complete this action') === -1) {
+        this.setState({
+          errorMessage: `Auto-save failed: ${errorMessage}`
+        });
+        // Clear error after 5 seconds
+        setTimeout(() => {
+          this.setState({ errorMessage: undefined });
+        }, 5000);
+      }
     }
   };
 
@@ -190,15 +200,25 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     // Silent auto-save in background
     try {
       await this.props.onSaveColorMappings(updatedMappings);
+      console.log('Icon mapping saved successfully');
     } catch (error) {
-      // Show error but don't block UI
-      this.setState({
-        errorMessage: `Auto-save failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-      });
-      // Clear error after 5 seconds
-      setTimeout(() => {
-        this.setState({ errorMessage: undefined });
-      }, 5000);
+      console.error('Auto-save error:', error);
+
+      // Only show error if it's not a SharePoint concurrency issue (which often resolves itself)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.indexOf('Save Conflict') === -1 &&
+          errorMessage.indexOf('2130575305') === -1 &&
+          errorMessage.indexOf('-2147467259') === -1 && // The specific error you encountered
+          errorMessage.indexOf('concurrently') === -1 &&
+          errorMessage.indexOf('Cannot complete this action') === -1) {
+        this.setState({
+          errorMessage: `Auto-save failed: ${errorMessage}`
+        });
+        // Clear error after 5 seconds
+        setTimeout(() => {
+          this.setState({ errorMessage: undefined });
+        }, 5000);
+      }
     }
   };
 
@@ -266,6 +286,42 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     }
   };
 
+  private renderIconForDisplay = (iconName: string): React.ReactElement => {
+    if (!iconName) {
+      return <div style={{ width: '24px', height: '24px' }} />;
+    }
+
+    // Determine icon type based on iconName
+    if (iconName.indexOf('fa-') === 0) {
+      // Font Awesome icon
+      return (
+        <i
+          className={`fa ${iconName}`}
+          style={{
+            fontSize: '24px',
+            color: '#605e5c',
+            display: 'block',
+            lineHeight: '1'
+          }}
+        />
+      );
+    } else if (/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(iconName)) {
+      // Emoji or Unicode symbol
+      return (
+        <span style={{ fontSize: '24px', display: 'block', lineHeight: '1' }}>
+          {iconName}
+        </span>
+      );
+    } else {
+      // Fallback to regular text/symbol
+      return (
+        <span style={{ fontSize: '24px', display: 'block', lineHeight: '1', color: '#605e5c' }}>
+          {iconName}
+        </span>
+      );
+    }
+  };
+
   private handleRestoreOriginal = async (): Promise<void> => {
     try {
       const { discoveredOptions } = this.props;
@@ -327,6 +383,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
 
   private renderOptionRow = (option: IFieldOption): React.ReactElement => {
     const currentIcon = this.getCurrentIcon(option);
+    const currentColor = this.getCurrentColor(option);
 
     return (
       <Stack key={`${option.fieldName}-${option.optionValue}`} horizontal verticalAlign="center" tokens={{ childrenGap: 12 }}>
@@ -335,7 +392,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
           style={{
             width: '40px',
             height: '40px',
-            backgroundColor: this.getCurrentColor(option),
+            backgroundColor: currentColor,
             border: '2px solid #edebe9',
             borderRadius: '4px',
             cursor: 'pointer',
@@ -347,7 +404,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
           onClick={() => this.setState({
             selectedColorOption: option,
             showColorPicker: true,
-            selectedColor: getColorFromString(this.getCurrentColor(option))!,
+            selectedColor: getColorFromString(currentColor)!,
             selectedIcon: this.getCurrentIcon(option),
             availableIcons: getContextualIcons(option.optionValue)
           })}
@@ -358,21 +415,45 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
           )}
         </div>
 
+        {/* Icon Square */}
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            border: '2px solid #edebe9',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#fafafa',
+            boxShadow: option.isNewlyDiscovered ? '0 0 8px rgba(255, 193, 7, 0.6)' : 'none'
+          }}
+          onClick={() => this.setState({
+            selectedColorOption: option,
+            showColorPicker: true,
+            selectedColor: getColorFromString(currentColor)!,
+            selectedIcon: this.getCurrentIcon(option),
+            availableIcons: getContextualIcons(option.optionValue)
+          })}
+          title={`Click to change icon for ${option.optionValue}`}
+        >
+          {currentIcon ? (
+            this.renderIconForDisplay(currentIcon)
+          ) : (
+            <div style={{ width: '24px', height: '24px', border: '1px dashed #ccc', borderRadius: '2px' }} />
+          )}
+        </div>
+
         {/* Option Info */}
         <Stack style={{ flex: 1 }}>
-          <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-            <Text variant="medium" style={{ fontWeight: option.isNewlyDiscovered ? 'bold' : 'normal' }}>
-              {option.optionValue}
-            </Text>
-            {currentIcon && (
-              <Icon iconName={currentIcon} style={{ fontSize: '16px', color: '#605e5c' }} />
-            )}
-          </Stack>
+          <Text variant="medium" style={{ fontWeight: option.isNewlyDiscovered ? 'bold' : 'normal' }}>
+            {option.optionValue}
+          </Text>
           <Text variant="small" style={{ color: '#605e5c' }}>
-            {this.getCurrentColor(option)} {currentIcon && `• ${currentIcon}`}
+            {currentColor}
           </Text>
         </Stack>
-
 
       </Stack>
     );

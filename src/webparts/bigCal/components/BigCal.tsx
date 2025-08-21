@@ -70,6 +70,8 @@ interface IBigCalState {
   listConfigurationIssues: string[];
   // Dynamic color mappings from Color Palette Studio
   dynamicColorMappings: Map<string, string>;
+  // Dynamic icon mappings from Color Palette Studio
+  dynamicIconMappings: Map<string, string>;
 }
 
 export default class BigCal extends React.Component<IBigCalProps, IBigCalState> {
@@ -132,7 +134,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       privateEventsListAvailable: true, // Will be checked on load
       listConfigurationIssues: [], // Will be populated on load
       // Dynamic color mappings from Color Palette Studio
-      dynamicColorMappings: new Map()
+      dynamicColorMappings: new Map(),
+      // Dynamic icon mappings from Color Palette Studio
+      dynamicIconMappings: new Map()
     };
 
     this.sharePointService = new SharePointService(props.context, props.listName);
@@ -201,30 +205,46 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       const colorPaletteConfig = await colorMappingService.getColorPaletteConfig();
 
       // Combine swimlane and status colors into a single map
-      const combinedMappings = new Map<string, string>();
+      const combinedColorMappings = new Map<string, string>();
+      const combinedIconMappings = new Map<string, string>();
 
-      // Add swimlane colors
+      // Add swimlane colors and icons
       colorPaletteConfig.swimlaneColors.forEach((color, swimlane) => {
-        combinedMappings.set(swimlane, color);
+        combinedColorMappings.set(swimlane, color);
+      });
+      colorPaletteConfig.swimlaneIcons.forEach((icon, swimlane) => {
+        combinedIconMappings.set(swimlane, icon);
       });
 
-      // Add status colors
+      // Add status colors and icons
       colorPaletteConfig.statusColors.forEach((color, status) => {
-        combinedMappings.set(status, color);
+        combinedColorMappings.set(status, color);
+      });
+      colorPaletteConfig.statusIcons.forEach((icon, status) => {
+        combinedIconMappings.set(status, icon);
       });
 
-      this.setState({ dynamicColorMappings: combinedMappings });
-      Logger.debug('Loaded dynamic color mappings', combinedMappings);
+      this.setState({
+        dynamicColorMappings: combinedColorMappings,
+        dynamicIconMappings: combinedIconMappings
+      });
+      Logger.debug('Loaded dynamic color and icon mappings', {
+        colors: combinedColorMappings.size,
+        icons: combinedIconMappings.size
+      });
     } catch (error) {
       Logger.error('Failed to load dynamic color mappings', error);
       // Fall back to static mappings
-      const staticMappings = new Map<string, string>();
+      const staticColorMappings = new Map<string, string>();
       for (const key in SPECIFIC_COLOR_MAPPINGS) {
         if (Object.prototype.hasOwnProperty.call(SPECIFIC_COLOR_MAPPINGS, key)) {
-          staticMappings.set(key, SPECIFIC_COLOR_MAPPINGS[key]);
+          staticColorMappings.set(key, SPECIFIC_COLOR_MAPPINGS[key]);
         }
       }
-      this.setState({ dynamicColorMappings: staticMappings });
+      this.setState({
+        dynamicColorMappings: staticColorMappings,
+        dynamicIconMappings: new Map() // Empty icon mappings on fallback
+      });
     }
   };
 
@@ -893,6 +913,26 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
            '#6c757d'; // Gray fallback
   };
 
+  private getEventIconFromMapping = (swimlane: string, status: string): string => {
+    // Check for dynamic icon mappings first
+    // Priority: Status icon (if Tentative) > Swimlane icon > Static fallback
+    if (status === 'Tentative') {
+      const tentativeIcon = this.state.dynamicIconMappings.get('Tentative');
+      if (tentativeIcon) {
+        return tentativeIcon;
+      }
+    }
+
+    // Check for swimlane icon
+    const swimlaneIcon = this.state.dynamicIconMappings.get(swimlane);
+    if (swimlaneIcon) {
+      return swimlaneIcon;
+    }
+
+    // Fall back to static icon mapping
+    return getEventCategoryIcon(swimlane);
+  };
+
   private checkListConfigurations = async (): Promise<void> => {
     const issues: string[] = [];
     let colorMappingsAvailable = true;
@@ -1010,8 +1050,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       );
     }
 
-    // Private events get locked icon, regular events get category icon
-    const iconEmoji = event.isPrivate ? '🔒' : getEventCategoryIcon(event.swimlane!);
+    // Private events get locked icon, regular events get dynamic category icon
+    const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
 
     return (
       <div
@@ -1081,8 +1121,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       );
     }
 
-    // Private events get locked icon, regular events get category icon
-    const iconEmoji = event.isPrivate ? '🔒' : getEventCategoryIcon(event.swimlane!);
+    // Private events get locked icon, regular events get dynamic category icon
+    const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
 
     return (
       <div
