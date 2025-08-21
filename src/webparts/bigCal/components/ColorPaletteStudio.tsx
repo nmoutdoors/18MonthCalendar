@@ -74,11 +74,64 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
 
   public componentDidUpdate(prevProps: IColorPaletteStudioProps): void {
     if (prevProps.colorMappings !== this.props.colorMappings) {
-      this.setState({
-        localMappings: [...this.props.colorMappings]
-      });
+      // Case 1: Modal just opened - initialize with fresh data from props
+      if (!prevProps.isOpen && this.props.isOpen) {
+        this.setState({
+          localMappings: [...this.props.colorMappings]
+        });
+      }
+      // Case 2: Modal is open and props updated - check if this represents a successful save
+      else if (this.props.isOpen && this.propsContainLocalChanges(this.props.colorMappings)) {
+        // Props contain our local changes - this is a successful save, update local state
+        this.setState({
+          localMappings: [...this.props.colorMappings]
+        });
+      }
+      // Case 3: Modal is open but props don't contain local changes - ignore (stale data)
     }
   }
+
+  /**
+   * Check if the incoming props contain the changes we made locally
+   * This helps distinguish between successful saves and stale data
+   */
+  private propsContainLocalChanges = (newMappings: IColorMapping[]): boolean => {
+    const { localMappings } = this.state;
+
+    // If we have no local changes, accept any props update
+    if (localMappings.length === 0) {
+      return true;
+    }
+
+    // Check if the new mappings contain our local changes
+    // Compare key fields that would indicate our changes were saved
+    for (let i = 0; i < localMappings.length; i++) {
+      const localMapping = localMappings[i];
+      let matchingProp: IColorMapping | undefined;
+
+      // Find matching mapping in new props
+      for (let j = 0; j < newMappings.length; j++) {
+        const propMapping = newMappings[j];
+        if (propMapping.fieldName === localMapping.fieldName &&
+            propMapping.optionValue === localMapping.optionValue) {
+          matchingProp = propMapping;
+          break;
+        }
+      }
+
+      if (matchingProp) {
+        // If colors or icons don't match, this might be stale data
+        if (localMapping.colorHex && matchingProp.colorHex !== localMapping.colorHex) {
+          return false;
+        }
+        if (localMapping.iconName && matchingProp.iconName !== localMapping.iconName) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
 
   private handleColorChange = async (option: IFieldOption, color: IColor): Promise<void> => {
     const { localMappings } = this.state;

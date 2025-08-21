@@ -476,6 +476,58 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     // This method is kept for compatibility but does nothing
   };
 
+  /**
+   * Update dynamic color and icon mappings from current local state
+   * This prevents rollback issues by using local data instead of reloading from SharePoint
+   */
+  private updateDynamicMappingsFromLocalState = (): void => {
+    const { colorPaletteMappings } = this.state;
+
+    // Build color and icon mappings from current local state
+    const combinedColorMappings = new Map<string, string>();
+    const combinedIconMappings = new Map<string, string>();
+
+    colorPaletteMappings.forEach(mapping => {
+      if (mapping.isActive) {
+        // Use the mapping key format that matches the event styling
+        const key = mapping.optionValue;
+
+        if (mapping.colorHex) {
+          combinedColorMappings.set(key, mapping.colorHex);
+        }
+
+        if (mapping.iconName) {
+          combinedIconMappings.set(key, mapping.iconName);
+        }
+      }
+    });
+
+    // Update state with new mappings
+    this.setState({
+      dynamicColorMappings: combinedColorMappings,
+      dynamicIconMappings: combinedIconMappings
+    });
+  };
+
+  /**
+   * Refresh color palette mappings from SharePoint when Legend Studio closes
+   * This ensures next open has the latest saved data
+   */
+  private refreshColorPaletteMappings = async (): Promise<void> => {
+    try {
+      const colorMappingService = new ColorMappingService(this.props.context);
+      const colorMappings = await colorMappingService.getColorMappings(true); // Force refresh
+
+      this.setState({ colorPaletteMappings: colorMappings });
+
+      // Also update dynamic mappings for immediate UI effect
+      await this.loadDynamicColorMappings();
+    } catch (error) {
+      Logger.error('Failed to refresh color palette mappings', error);
+      // Don't throw - this is a background refresh
+    }
+  };
+
   // Remove getStatusIcon since we're using colored circles instead
 
   private getAllEventsWithHolidays = (): ICalendarEvent[] => {
@@ -1382,11 +1434,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       const colorMappingService = new ColorMappingService(this.props.context);
       await colorMappingService.saveBulkColorMappings(mappings);
 
-      // Update local state
+      // Update local state with saved mappings
+      // This ensures the Legend Studio UI shows the correct saved values
       this.setState({ colorPaletteMappings: mappings });
 
-      // Reload dynamic color mappings for immediate UI update
-      await this.loadDynamicColorMappings();
     } catch (error) {
       Logger.error('Failed to save color mappings', error);
       throw error; // Re-throw so ColorPaletteStudio can handle the error
@@ -2006,12 +2057,22 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         {/* Color Palette Studio Modal */}
         <ColorPaletteStudio
           isOpen={isColorPaletteStudioOpen}
-          onDismiss={() => this.setState({ isColorPaletteStudioOpen: false })}
+          onDismiss={() => {
+            this.setState({ isColorPaletteStudioOpen: false });
+            // Refresh data when modal closes so next open has latest data
+            this.refreshColorPaletteMappings().catch(error =>
+              Logger.error('Failed to refresh color mappings on modal close', error)
+            );
+          }}
           discoveredOptions={this.state.colorPaletteDiscoveredOptions}
           colorMappings={this.state.colorPaletteMappings}
           isLoading={this.state.isColorPaletteLoading}
           onSaveColorMappings={this.saveColorMappings}
-          onColorsChanged={() => this.loadDynamicColorMappings()} // Reload colors when changed
+          onColorsChanged={() => {
+            // Update dynamic color and icon mappings from current local state
+            // This prevents the rollback issue where fresh SharePoint data overwrites local changes
+            this.updateDynamicMappingsFromLocalState();
+          }}
         />
 
         {/* Event Popover */}
