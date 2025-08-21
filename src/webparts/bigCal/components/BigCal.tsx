@@ -404,7 +404,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // Add Private Events option
     const privateCount = filteredEvents.filter(e => !e.isHoliday && e.isPrivate).length;
-    const privateIcon = this.state.dynamicIconMappings.get('Private Events') || '';
+    const privateIcon = this.state.dynamicIconMappings.get('Private Events') || DEFAULT_ICON_MAPPINGS['Private Events'] || '';
     options.push({
       key: 'Private Events',
       text: `Private Events (${privateCount})`,
@@ -493,9 +493,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   private applyFiltersToEvents = (events: ICalendarEvent[]): ICalendarEvent[] => {
     const { searchText, selectedEventCategories, selectedStatuses } = this.state;
 
-    // Debug: Check for Datasheet events before filtering
-    const datasheetEvents = events.filter(e => e.title && e.title.toLowerCase().indexOf('datasheet') !== -1);
-    console.log('BigCal Debug - Datasheet events before filtering:', datasheetEvents.length);
+
 
     const filteredEvents = events.filter(event => {
       // Holiday events are always shown (they don't have swimlane/status filters)
@@ -544,30 +542,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       return matchesCategory && matchesStatus && matchesSearch;
     });
 
-    // Debug: Check for Datasheet events after filtering
-    const datasheetFiltered = filteredEvents.filter(e => e.title && e.title.toLowerCase().indexOf('datasheet') !== -1);
-    console.log('BigCal Debug - Datasheet events after filtering:', datasheetFiltered.length);
-    if (datasheetEvents.length > 0 && datasheetFiltered.length === 0) {
-      console.log('BigCal Debug - Datasheet events were filtered out! Checking why...');
-      datasheetEvents.forEach(event => {
-        const matchesCategory = selectedEventCategories.size === 0 ||
-          (event.isPrivate && selectedEventCategories.has('Private Events')) ||
-          (!event.isPrivate && selectedEventCategories.has(event.swimlane!));
-        const matchesStatus = selectedStatuses.size === 0 ||
-          (event.status && selectedStatuses.has(event.status));
-        const matchesSearch = !searchText || event.title.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
 
-        console.log(`  ${event.title}:`, {
-          swimlane: event.swimlane,
-          status: event.status,
-          matchesCategory,
-          matchesStatus,
-          matchesSearch,
-          selectedCategoriesSize: selectedEventCategories.size,
-          selectedStatusesSize: selectedStatuses.size
-        });
-      });
-    }
 
     return filteredEvents;
   };
@@ -1017,7 +992,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       } catch (error) {
         colorMappingsAvailable = false;
         issues.push('BigCalConfig list validation failed');
-        console.error('Error checking BigCalConfig:', error);
+        Logger.error('Error checking BigCalConfig', error);
       }
 
       // Check Public Events list (main list)
@@ -1039,7 +1014,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       } catch (error) {
         publicEventsListAvailable = false;
         issues.push('Public Events list validation failed');
-        console.error('Error checking Public Events list:', error);
+        Logger.error('Error checking Public Events list', error);
       }
 
       // Check PrivateEvents list
@@ -1061,7 +1036,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       } catch (error) {
         privateEventsListAvailable = false;
         issues.push('PrivateEvents list validation failed');
-        console.error('Error checking PrivateEvents list:', error);
+        Logger.error('Error checking PrivateEvents list', error);
       }
 
       // Update state with all results
@@ -1074,13 +1049,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
       // Log summary
       if (issues.length > 0) {
-        console.warn(`BigCal configuration issues found (${issues.length}):`, issues);
-      } else {
-        console.log('All BigCal lists are properly configured');
+        Logger.warn(`BigCal configuration issues found (${issues.length})`, issues);
       }
 
     } catch (error) {
-      console.error('Error during list configuration check:', error);
+      Logger.error('Error during list configuration check', error);
       this.setState({
         colorMappingsAvailable: false,
         publicEventsListAvailable: false,

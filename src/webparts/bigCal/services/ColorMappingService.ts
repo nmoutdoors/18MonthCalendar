@@ -42,34 +42,15 @@ export class ColorMappingService {
    */
   public async discoverFieldOptions(eventsListName: string): Promise<IFieldOption[]> {
     try {
-      console.log(`Discovering field options from Events list: ${eventsListName}`);
-
       // Get field choices from SharePoint list
       const swimlaneField = await this.sp.web.lists.getByTitle(eventsListName).fields.getByInternalNameOrTitle('Swimlane')();
       const statusField = await this.sp.web.lists.getByTitle(eventsListName).fields.getByInternalNameOrTitle('Status')();
-
-      console.log('Swimlane field:', swimlaneField ? {
-        Title: swimlaneField.Title,
-        InternalName: swimlaneField.InternalName,
-        TypeAsString: swimlaneField.TypeAsString,
-        ChoicesCount: swimlaneField.Choices ? swimlaneField.Choices.length : 0,
-        Choices: swimlaneField.Choices
-      } : 'NOT FOUND');
-
-      console.log('Status field:', statusField ? {
-        Title: statusField.Title,
-        InternalName: statusField.InternalName,
-        TypeAsString: statusField.TypeAsString,
-        ChoicesCount: statusField.Choices ? statusField.Choices.length : 0,
-        Choices: statusField.Choices
-      } : 'NOT FOUND');
 
       const discoveredOptions: IFieldOption[] = [];
       const existingMappings = await this.getColorMappings();
 
       // Process Swimlane options
       if (swimlaneField && swimlaneField.Choices) {
-        console.log(`Processing ${swimlaneField.Choices.length} Swimlane choices:`, swimlaneField.Choices);
         for (const choice of swimlaneField.Choices) {
           if (choice && choice.trim()) {
             let existingMapping: IColorMapping | undefined;
@@ -89,13 +70,10 @@ export class ColorMappingService {
             });
           }
         }
-      } else {
-        console.warn('Swimlane field not found or has no choices');
       }
 
       // Process Status options (exclude 'Canceled' as per requirements)
       if (statusField && statusField.Choices) {
-        console.log(`Processing ${statusField.Choices.length} Status choices:`, statusField.Choices);
         for (const choice of statusField.Choices) {
           if (choice && choice.trim() && choice.toLowerCase() !== 'canceled') {
             let existingMapping: IColorMapping | undefined;
@@ -115,11 +93,8 @@ export class ColorMappingService {
             });
           }
         }
-      } else {
-        console.warn('Status field not found or has no choices');
       }
 
-      console.log(`Discovered ${discoveredOptions.length} field options:`, discoveredOptions.map(o => `${o.fieldName}: ${o.optionValue}`));
       return discoveredOptions;
 
     } catch (error) {
@@ -141,8 +116,6 @@ export class ColorMappingService {
         }
       }
 
-      console.log('Fetching color mappings from BigCalConfig list');
-
       const items = await this.sp.web.lists.getByTitle(this.configListName).items
         .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'IsActive', 'SortOrder', 'Created', 'Modified')
         .filter("ConfigType eq 'ColorMapping'")
@@ -163,8 +136,6 @@ export class ColorMappingService {
       }));
 
       this.lastCacheUpdate = new Date();
-      console.log(`Loaded ${this.cachedMappings.length} color mappings`);
-
       return this.cachedMappings;
 
     } catch (error) {
@@ -177,7 +148,6 @@ export class ColorMappingService {
         error.message.indexOf('404') !== -1 ||
         error.message.indexOf(this.configListName) !== -1
       )) {
-        console.log('BigCalConfig list does not exist, returning empty mappings');
         this.cachedMappings = [];
         this.lastCacheUpdate = new Date();
         return this.cachedMappings;
@@ -205,7 +175,6 @@ export class ColorMappingService {
    */
   public async saveColorMapping(mapping: IColorMapping): Promise<IColorMapping> {
     try {
-      console.log(`Saving color mapping: ${mapping.fieldName} - ${mapping.optionValue}`);
 
       const itemData = {
         Title: `${mapping.fieldName} - ${mapping.optionValue}`,
@@ -228,18 +197,13 @@ export class ColorMappingService {
         // Create new mapping
         const addResult = await this.sp.web.lists.getByTitle(this.configListName).items.add(itemData);
 
-        console.log('Add result:', addResult);
-
         // Handle different PnP.js response formats
         if (addResult && addResult.data) {
-          console.log('Using addResult.data format');
           savedItem = addResult.data;
         } else if (addResult && addResult.Id) {
-          console.log('Using direct addResult format');
           savedItem = addResult;
         } else {
           // Fallback: fetch the item by querying for it
-          console.log('Add result format unexpected, fetching item by title:', addResult);
           const items = await this.sp.web.lists.getByTitle(this.configListName).items
             .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'IsActive', 'SortOrder', 'Created', 'Modified')
             .filter(`Title eq '${itemData.Title}'`)
@@ -247,7 +211,6 @@ export class ColorMappingService {
 
           if (items && items.length > 0) {
             savedItem = items[0];
-            console.log('Found item via fallback query');
           } else {
             throw new Error('Failed to retrieve created item');
           }
@@ -275,7 +238,6 @@ export class ColorMappingService {
       // Update cache
       this.invalidateCache();
 
-      console.log('Color mapping saved successfully');
       return result;
 
     } catch (error) {
@@ -289,16 +251,12 @@ export class ColorMappingService {
    */
   public async saveBulkColorMappings(mappings: IColorMapping[]): Promise<IColorMapping[]> {
     try {
-      console.log(`Saving ${mappings.length} color mappings in bulk`);
-
       const results: IColorMapping[] = [];
 
       // Process in smaller batches with delays to avoid SharePoint concurrency issues
       const batchSize = 3; // Reduced from 10 to 3
       for (let i = 0; i < mappings.length; i += batchSize) {
         const batch = mappings.slice(i, i + batchSize);
-
-        console.log(`Processing batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(mappings.length / batchSize)}`);
 
         // Process batch items sequentially instead of parallel to avoid conflicts
         for (const mapping of batch) {
@@ -308,8 +266,7 @@ export class ColorMappingService {
 
             // Small delay between individual saves within batch
             await new Promise(resolve => setTimeout(resolve, 100));
-          } catch (error) {
-            console.warn(`Failed to save mapping for ${mapping.optionValue}:`, error);
+          } catch {
             // Continue with other mappings instead of failing entire batch
           }
         }
@@ -320,7 +277,6 @@ export class ColorMappingService {
         }
       }
 
-      console.log(`Bulk save completed: ${results.length}/${mappings.length} mappings saved successfully`);
       return results;
 
     } catch (error) {
@@ -334,14 +290,10 @@ export class ColorMappingService {
    */
   public async deleteColorMapping(mappingId: number): Promise<void> {
     try {
-      console.log(`Deleting color mapping: ${mappingId}`);
-
       await this.sp.web.lists.getByTitle(this.configListName).items.getById(mappingId).delete();
 
       // Update cache
       this.invalidateCache();
-
-      console.log('Color mapping deleted successfully');
 
     } catch (error) {
       console.error('Error deleting color mapping', error);
@@ -731,6 +683,15 @@ export class ColorMappingService {
         hasColorMapping: false,
         currentColor: undefined
       });
+    });
+
+    // Add Private Events as a special virtual swimlane option for UI filtering
+    fallbackOptions.push({
+      fieldName: 'Swimlanes',
+      optionValue: 'Private Events',
+      isNewlyDiscovered: true,
+      hasColorMapping: false,
+      currentColor: undefined
     });
 
     // Add status options

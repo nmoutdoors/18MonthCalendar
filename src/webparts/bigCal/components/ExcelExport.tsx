@@ -35,6 +35,7 @@ export interface IExcelExportState {
   importMessageType: MessageBarType;
   dragActive: boolean;
   backgroundImportInProgress: boolean;
+  isComponentReady: boolean;
 }
 
 export class ExcelExport extends React.Component<IExcelExportProps, IExcelExportState> {
@@ -43,6 +44,13 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
 
     const defaultState = this.getDefaultStateForDate(props.currentDate);
     this.state = defaultState;
+  }
+
+  public componentDidMount(): void {
+    // Add small delay to ensure all components are ready for slow networks
+    setTimeout(() => {
+      this.setState({ isComponentReady: true });
+    }, 100);
   }
 
   public componentDidUpdate(prevProps: IExcelExportProps): void {
@@ -56,8 +64,14 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         fileName: defaultState.fileName,
         exportMessage: '',
         importMessage: '',
-        selectedTab: 'export'
+        selectedTab: 'export',
+        isComponentReady: false
       });
+
+      // Re-enable component after brief delay for slow networks
+      setTimeout(() => {
+        this.setState({ isComponentReady: true });
+      }, 100);
     }
   }
 
@@ -87,7 +101,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       importMessage: '',
       importMessageType: MessageBarType.info,
       dragActive: false,
-      backgroundImportInProgress: false
+      backgroundImportInProgress: false,
+      isComponentReady: false
     };
   };
 

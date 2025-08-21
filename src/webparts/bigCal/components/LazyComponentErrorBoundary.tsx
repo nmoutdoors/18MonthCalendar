@@ -36,8 +36,7 @@ export class LazyComponentErrorBoundary extends React.Component<
 
   public componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     Logger.error(`Lazy component ${this.props.componentName} failed to load`, error);
-    console.error(`Error loading ${this.props.componentName}:`, error, errorInfo);
-    
+
     this.setState({
       componentName: this.props.componentName,
       error

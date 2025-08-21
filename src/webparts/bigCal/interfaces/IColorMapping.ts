@@ -199,22 +199,23 @@ export const SPECIFIC_COLOR_MAPPINGS: { [key: string]: string } = {
  * These provide sensible default icons that users can change via Color Palette Studio
  */
 export const DEFAULT_ICON_MAPPINGS: { [key: string]: string } = {
-  // Status icons - only Tentative gets its own icon
-  'Tentative': '❓',                    // Question mark for tentative status
+  // Status icons
+  'Tentative': '❓',                    // Question mark (pink)
+  'Confirmed': '✅',                    // Checkmark (green)
 
-  // Swimlane icons - using emoji for best compatibility and visibility
-  'DCDC': '🏢',                         // Office building for DCDC
-  'DISA': '📡',                         // Satellite dish for DISA network/communications
-  'DOD CIO / NSA / USCC': '🌐',         // Globe for network/cyber
-  'Exercises': '🎯',                    // Target for exercises/training
-  'FYSA': '📋',                         // Clipboard for information sharing
-  'Joint DISA & DCDC': '🤝',            // Handshake for joint operations
-  'Mission Partner': '🤝',              // Handshake for partnerships
-  'Out of Office': '🏠',                // House for out of office
-  'Speaking Event': '🎤',               // Microphone for speaking
-  'Exec Time': '⭐',                    // Star for executive time
-  'TDY Meetings/Congressional': '🏛️',    // Government building for congressional
-  'Transit': '✈️',                      // Airplane for transit
+  // Swimlane icons - matching current BigCalConfig list
+  'DCDC': '🏢',                         // Building (blue)
+  'DISA': '📡',                         // Satellite dish
+  'DOD CIO / NSA / USCC': '🛡️',         // Shield
+  'Exercises': '🎯',                    // Target/bullseye
+  'FYSA': '🚩',                         // Flag
+  'Joint DISA & DCDC': '🌐',            // Globe (light blue)
+  'Mission Partner': '🤝',              // Handshake (yellow)
+  'Out of Office': '🕐',                // Clock
+  'Speaking Event': '📢',               // Bullhorn/megaphone
+  'Exec Time': '⭐',                    // Star (yellow)
+  'TDY Meetings/Congressional': '🏛️',    // Government building (brown)
+  'Transit': '✈️',                      // Airplane (blue)
   'Private Events': '🔒'                // Lock icon for private events
 };
 

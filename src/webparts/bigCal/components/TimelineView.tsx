@@ -46,7 +46,6 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
   }
 
   public componentDidMount(): void {
-    console.log('Fresh Timeline mounting - events:', this.props.events.length);
     this.initializeTimeline();
   }
 
@@ -55,7 +54,6 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
         prevProps.selectedEventCategories !== this.props.selectedEventCategories ||
         prevProps.searchText !== this.props.searchText ||
         prevProps.selectedStatuses !== this.props.selectedStatuses) {
-      console.log('Timeline updating - events:', this.props.events.length);
       this.updateTimelineData();
     }
 
@@ -73,8 +71,6 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
 
   private initializeTimeline = (): void => {
     if (!this.timelineRef.current) return;
-
-    console.log('Initializing fresh timeline');
 
     // Set initial date range
     const today = new Date();
@@ -131,9 +127,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     };
 
     // Create timeline
-    console.log('Creating Timeline instance');
     const timeline = new Timeline(this.timelineRef.current, this.items, this.groups, options);
-    console.log('Timeline instance created');
 
     // Add event listeners
     timeline.on('select', (properties: { items: number[] }) => {
@@ -166,7 +160,6 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     });
 
     this.setState({ timeline, isLoading: false }, () => {
-      console.log('Timeline initialized, updating data');
       this.updateTimelineData();
       this.injectTimelineDynamicStyles();
     });
@@ -174,8 +167,6 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
 
   private updateTimelineData = (): void => {
     if (!this.state.timeline) return;
-
-    console.log('Updating timeline data');
 
     // Filter events
     const filteredEvents = this.props.events.filter(event => {
@@ -207,7 +198,6 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
         content: category
       }));
 
-    console.log('Timeline groups:', visibleGroups.length);
     this.groups.clear();
     this.groups.add(visibleGroups);
 
@@ -220,8 +210,6 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
       className: `dynamic-color-${event.swimlane || 'FYSA'}-${event.status || 'Confirmed'}`.replace(/\s+/g, ''),
       type: 'point'
     }));
-
-    console.log('Timeline items:', timelineItems.length);
     this.items.clear();
     this.items.add(timelineItems);
 
