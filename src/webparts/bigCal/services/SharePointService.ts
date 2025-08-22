@@ -1105,5 +1105,16 @@ export class SharePointService {
     }
   }
 
-
+  /**
+   * Get the GUID of a SharePoint list for Outlook connection
+   */
+  public async getListGuid(listName: string): Promise<string> {
+    try {
+      const list = await this.sp.web.lists.getByTitle(listName).select('Id')();
+      return `{${list.Id.toUpperCase()}}`;
+    } catch (error) {
+      Logger.error(`Error getting GUID for list ${listName}`, error);
+      throw new Error(`Failed to get list GUID: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }

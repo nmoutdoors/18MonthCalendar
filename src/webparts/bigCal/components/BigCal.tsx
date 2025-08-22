@@ -1486,6 +1486,39 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
   };
 
+  /**
+   * Connect the public Events list to Outlook using stssync protocol
+   */
+  private connectToOutlook = async (): Promise<void> => {
+    try {
+      // Get list GUID for Outlook connection
+      const listGuid = await this.sharePointService.getListGuid(this.props.listName);
+
+      // Get site information
+      const siteUrl = this.props.context.pageContext.web.absoluteUrl;
+      const siteName = this.props.context.pageContext.web.title;
+
+      // Construct list URL (standard SharePoint Events list path)
+      const listUrl = `/Lists/${this.props.listName}/AllItems.aspx`;
+
+      // Build stssync URL for Outlook connection
+      const stssyncUrl = `stssync://sts/?ver=1.0&type=calendar&cmd=add-folder` +
+        `&base-url=${encodeURIComponent(siteUrl)}` +
+        `&list-url=${encodeURIComponent(listUrl)}` +
+        `&guid=${encodeURIComponent(listGuid)}` +
+        `&site-name=${encodeURIComponent(siteName)}` +
+        `&list-name=${encodeURIComponent(this.props.listName)}`;
+
+      // Open the stssync URL to trigger Outlook connection
+      window.location.href = stssyncUrl;
+
+    } catch (error) {
+      Logger.error('Error connecting to Outlook', error);
+      // Show user-friendly error message
+      alert('Unable to connect to Outlook. Please ensure Outlook is installed and try again.');
+    }
+  };
+
 
 
   // Testing method - remove after testing
@@ -1880,6 +1913,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 iconProps={{ iconName: 'Table' }}
                 title="DataSheet View"
                 onClick={this.openDataSheetModal}
+                className={styles.navbarButton}
+              />
+              <IconButton
+                iconProps={{ iconName: 'OutlookLogo' }}
+                title="Connect to Outlook - Sync this calendar with Outlook"
+                onClick={this.connectToOutlook}
                 className={styles.navbarButton}
               />
               {/* Impersonate Button - Conditionally visible based on webpart property */}
