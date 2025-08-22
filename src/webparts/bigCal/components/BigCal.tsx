@@ -169,7 +169,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     // Check all list configurations and load color mappings
     await Promise.all([
       this.checkListConfigurations(),
-      this.loadDynamicColorMappings()
+      this.loadDynamicColorMappings(),
+      this.loadColorPaletteMappings()
     ]);
 
     // Inject dynamic color styles
@@ -269,6 +270,21 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         dynamicColorMappings: staticColorMappings,
         dynamicIconMappings: staticIconMappings
       });
+    }
+  };
+
+  private loadColorPaletteMappings = async (): Promise<void> => {
+    try {
+      const colorMappingService = new ColorMappingService(this.props.context);
+      const colorMappings = await colorMappingService.getColorMappings();
+
+      this.setState({ colorPaletteMappings: colorMappings });
+      Logger.debug('Loaded color palette mappings for text color logic', {
+        mappings: colorMappings.length
+      });
+    } catch (error) {
+      Logger.error('Failed to load color palette mappings', error);
+      // Don't throw - this is for text color enhancement only
     }
   };
 
@@ -988,12 +1004,13 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // Use Color Palette Studio system for all events
     const backgroundColor = this.getEventColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
+    const textColor = this.getEventTextColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
 
     return {
       className: `${statusClass} ${swimlaneClass}`,
       style: {
         backgroundColor,
-        color: 'white',
+        color: textColor,
         border: 'none'
       }
     };
@@ -1011,6 +1028,22 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     return this.state.dynamicColorMappings.get(swimlane) ||
            SPECIFIC_COLOR_MAPPINGS[swimlane] ||
            '#6c757d'; // Gray fallback
+  };
+
+  private getEventTextColorFromMapping = (swimlane: string, status: string): string => {
+    // Check if we should use dark text for this event
+    const optionValue = status === 'Tentative' ? 'Tentative' : swimlane;
+
+    // Find the color mapping to check useDarkText preference
+    for (let i = 0; i < this.state.colorPaletteMappings.length; i++) {
+      const mapping = this.state.colorPaletteMappings[i];
+      if (mapping.optionValue === optionValue && mapping.isActive) {
+        return mapping.useDarkText ? '#000000' : '#ffffff';
+      }
+    }
+
+    // Default to white text
+    return '#ffffff';
   };
 
   private getEventIconFromMapping = (swimlane: string, status: string): string => {
@@ -1264,9 +1297,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     } else {
       // Regular events - apply dynamic color system
       const backgroundColor = this.getEventColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
+      const textColor = this.getEventTextColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
       inlineStyles = {
         backgroundColor,
-        color: 'white'
+        color: textColor
       };
     }
 
@@ -2054,6 +2088,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           onAddEventsToUI={this.handleAddEventsToUI}
           onImportError={this.handleImportError}
           dynamicColorMappings={this.state.dynamicColorMappings}
+          colorPaletteMappings={this.state.colorPaletteMappings}
         />
 
         {/* Icon Selector Modal */}

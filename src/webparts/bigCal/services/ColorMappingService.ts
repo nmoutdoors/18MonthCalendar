@@ -20,6 +20,7 @@ interface ISharePointConfigItem {
   OptionValue: string;
   ColorHex: string;
   IconName?: string; // Optional icon name
+  UseDarkText?: boolean; // Optional dark text preference
   IsActive: boolean;
   SortOrder: number;
   Created: string;
@@ -125,7 +126,7 @@ export class ColorMappingService {
       }
 
       const itemsPromise = this.sp.web.lists.getByTitle(this.configListName).items
-        .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'IsActive', 'SortOrder', 'Created', 'Modified')
+        .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'UseDarkText', 'IsActive', 'SortOrder', 'Created', 'Modified')
         .filter("ConfigType eq 'ColorMapping'")
         .orderBy('FieldName', true)
         .orderBy('SortOrder', true)();
@@ -139,6 +140,7 @@ export class ColorMappingService {
         optionValue: item.OptionValue,
         colorHex: item.ColorHex,
         iconName: item.IconName || undefined, // Handle null/empty icon names
+        useDarkText: item.UseDarkText || false, // Handle dark text preference
         isActive: item.IsActive,
         sortOrder: item.SortOrder || 0,
         created: item.Created ? new Date(item.Created) : undefined,
@@ -193,6 +195,7 @@ export class ColorMappingService {
         OptionValue: mapping.optionValue,
         ColorHex: mapping.colorHex,
         IconName: mapping.iconName || null, // Store null if no icon selected
+        UseDarkText: mapping.useDarkText || false, // Store dark text preference
         IsActive: mapping.isActive,
         SortOrder: mapping.sortOrder
       };
@@ -202,7 +205,7 @@ export class ColorMappingService {
         // Update existing mapping
         await this.sp.web.lists.getByTitle(this.configListName).items.getById(mapping.id).update(itemData);
         savedItem = await this.sp.web.lists.getByTitle(this.configListName).items.getById(mapping.id)
-          .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'IsActive', 'SortOrder', 'Created', 'Modified')();
+          .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'UseDarkText', 'IsActive', 'SortOrder', 'Created', 'Modified')();
       } else {
         // Create new mapping
         const addResult = await this.sp.web.lists.getByTitle(this.configListName).items.add(itemData);
@@ -215,7 +218,7 @@ export class ColorMappingService {
         } else {
           // Fallback: fetch the item by querying for it
           const items = await this.sp.web.lists.getByTitle(this.configListName).items
-            .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'IsActive', 'SortOrder', 'Created', 'Modified')
+            .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'UseDarkText', 'IsActive', 'SortOrder', 'Created', 'Modified')
             .filter(`Title eq '${itemData.Title}'`)
             .top(1)();
 
@@ -239,6 +242,7 @@ export class ColorMappingService {
         optionValue: savedItem.OptionValue,
         colorHex: savedItem.ColorHex,
         iconName: savedItem.IconName || undefined, // Handle null/empty icon names
+        useDarkText: savedItem.UseDarkText || false, // Handle dark text preference
         isActive: savedItem.IsActive,
         sortOrder: savedItem.SortOrder || 0,
         created: savedItem.Created ? new Date(savedItem.Created) : undefined,

@@ -8,6 +8,7 @@ export interface IColorMapping {
   optionValue: string;
   colorHex: string;
   iconName?: string; // Optional icon for swimlanes/status
+  useDarkText?: boolean; // Optional flag for dark text on light backgrounds
   isActive: boolean;
   sortOrder: number;
   created?: Date;

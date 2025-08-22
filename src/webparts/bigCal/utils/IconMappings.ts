@@ -247,16 +247,18 @@ export const getContextualIcons = (optionValue: string): IIconOption[] => {
     const outOfOfficeIcons: IIconOption[] = [
       { iconName: '', displayName: 'None', description: 'No icon' },
       // Emoji icons (most vibrant)
+      { iconName: '🕐', displayName: 'Clock (Default)', iconSet: 'emoji' }, // Default Out of Office icon
       { iconName: '🏠', displayName: 'Home', iconSet: 'emoji' },
       { iconName: '🏖️', displayName: 'Vacation', iconSet: 'emoji' },
       { iconName: '🚪', displayName: 'Away', iconSet: 'emoji' },
-      { iconName: '⏰', displayName: 'Time Off', iconSet: 'emoji' },
+      { iconName: '⏰', displayName: 'Alarm Clock', iconSet: 'emoji' },
       { iconName: '🔒', displayName: 'Unavailable', iconSet: 'emoji' },
       { iconName: '📴', displayName: 'Offline', iconSet: 'emoji' },
       // Unicode symbols
+      { iconName: '🕐', displayName: 'Clock (Default)', iconSet: 'unicode' }, // Default Out of Office icon
       { iconName: '🏠', displayName: 'Home', iconSet: 'unicode' },
       { iconName: '🚪', displayName: 'Door', iconSet: 'unicode' },
-      { iconName: '⏰', displayName: 'Clock', iconSet: 'unicode' },
+      { iconName: '⏰', displayName: 'Alarm Clock', iconSet: 'unicode' },
       { iconName: '🔒', displayName: 'Lock', iconSet: 'unicode' },
       // Font Awesome icons
       { iconName: 'fa-home', displayName: 'Home', iconSet: 'fontawesome' },

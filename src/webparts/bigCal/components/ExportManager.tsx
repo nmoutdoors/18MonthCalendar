@@ -7,7 +7,7 @@ import { PrintDialog } from './PrintDialog';
 import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
 import { Logger } from '../services/LoggingService';
-import { SPECIFIC_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
+import { SPECIFIC_COLOR_MAPPINGS, IColorMapping } from '../interfaces/IColorMapping';
 import { withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
 
 export interface IExportManagerProps {
@@ -25,6 +25,7 @@ export interface IExportManagerProps {
   onAddEventsToUI?: (events: ICalendarEvent[]) => void;
   onImportError?: (error: string) => void;
   dynamicColorMappings?: Map<string, string>;
+  colorPaletteMappings?: IColorMapping[];
 }
 
 export interface IExportManagerState {
@@ -152,11 +153,12 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
 
     // Use Color Palette Studio system for all events
     const backgroundColor = this.getEventColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
+    const textColor = this.getEventTextColorFromMapping(event.swimlane || 'FYSA', event.status || 'Confirmed');
 
     return {
       style: {
         backgroundColor,
-        color: 'white',
+        color: textColor,
         border: 'none'
       }
     };
@@ -174,6 +176,24 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
     return this.props.dynamicColorMappings?.get(swimlane) ||
            SPECIFIC_COLOR_MAPPINGS[swimlane] ||
            '#6c757d'; // Gray fallback
+  };
+
+  private getEventTextColorFromMapping = (swimlane: string, status: string): string => {
+    // Check if we should use dark text for this event
+    const optionValue = status === 'Tentative' ? 'Tentative' : swimlane;
+
+    // Find the color mapping to check useDarkText preference
+    if (this.props.colorPaletteMappings) {
+      for (let i = 0; i < this.props.colorPaletteMappings.length; i++) {
+        const mapping = this.props.colorPaletteMappings[i];
+        if (mapping.optionValue === optionValue && mapping.isActive) {
+          return mapping.useDarkText ? '#000000' : '#ffffff';
+        }
+      }
+    }
+
+    // Default to white text
+    return '#ffffff';
   };
 
   public render(): React.ReactElement {

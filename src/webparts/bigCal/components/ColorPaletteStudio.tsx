@@ -13,8 +13,9 @@ import {
   IColor,
   getColorFromString,
   Icon,
+  Checkbox,
 } from '@fluentui/react';
-import { IColorMapping, IFieldOption, ORIGINAL_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
+import { IColorMapping, IFieldOption, ORIGINAL_COLOR_MAPPINGS, getDefaultIcon } from '../interfaces/IColorMapping';
 import { getContextualIcons, IIconOption } from '../utils/IconMappings';
 import styles from './BigCal.module.scss';
 
@@ -35,9 +36,11 @@ export interface IColorPaletteStudioState {
   showColorPicker: boolean;
   selectedColor: IColor;
   selectedIcon: string;
+  selectedUseDarkText: boolean; // Track dark text preference for current selection
   availableIcons: IIconOption[];
   errorMessage?: string;
   successMessage?: string;
+  isSaving: boolean; // Track save state to show spinner and prevent close
 }
 
 export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps, IColorPaletteStudioState> {
@@ -52,9 +55,11 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
       showColorPicker: false,
       selectedColor: getColorFromString('#0078d4')!,
       selectedIcon: '',
+      selectedUseDarkText: false,
       availableIcons: [],
       errorMessage: undefined,
-      successMessage: undefined
+      successMessage: undefined,
+      isSaving: false
     };
 
     // Load Font Awesome 4.7 CSS if not already loaded
@@ -162,7 +167,14 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     return true;
   };
 
-  private handleColorChange = async (option: IFieldOption, color: IColor): Promise<void> => {
+
+
+
+
+  /**
+   * Combined handler for color, icon, and text preference changes to prevent race conditions
+   */
+  private handleColorAndIconChange = async (option: IFieldOption, color: IColor, iconName: string, useDarkText: boolean): Promise<void> => {
     const { localMappings } = this.state;
     const colorHex = `#${color.hex}`;
 
@@ -178,20 +190,24 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     let updatedMappings: IColorMapping[];
 
     if (existingIndex >= 0) {
-      // Update existing mapping
+      // Update existing mapping with color, icon, and text preference
       updatedMappings = [...localMappings];
       updatedMappings[existingIndex] = {
         ...updatedMappings[existingIndex],
         colorHex,
+        iconName: iconName || undefined,
+        useDarkText,
         isActive: true
       };
     } else {
-      // Create new mapping
+      // Create new mapping with color, icon, and text preference
       const newMapping: IColorMapping = {
         configType: 'ColorMapping',
         fieldName: option.fieldName,
         optionValue: option.optionValue,
         colorHex,
+        iconName: iconName || undefined,
+        useDarkText,
         isActive: true,
         sortOrder: localMappings.length + 1
       };
@@ -202,109 +218,42 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     this.setState({
       localMappings: updatedMappings,
       showColorPicker: false,
-      errorMessage: undefined
-    });
-
-    // Trigger real-time UI update in calendar
-    this.props.onColorsChanged();
-
-    // Silent auto-save in background
-    try {
-      await this.props.onSaveColorMappings(updatedMappings);
-      // Color mapping saved successfully (logged by service layer)
-    } catch (error) {
-      console.error('Auto-save error:', error);
-
-      // Only show error if it's not a SharePoint concurrency issue (which often resolves itself)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      if (errorMessage.indexOf('Save Conflict') === -1 &&
-          errorMessage.indexOf('2130575305') === -1 &&
-          errorMessage.indexOf('-2147467259') === -1 && // The specific error you encountered
-          errorMessage.indexOf('concurrently') === -1 &&
-          errorMessage.indexOf('Cannot complete this action') === -1) {
-        this.setState({
-          errorMessage: `Auto-save failed: ${errorMessage}`
-        });
-        // Clear error after 5 seconds
-        this.setTrackedTimeout(() => {
-          this.setState({ errorMessage: undefined });
-        }, 5000);
-      }
-    }
-  };
-
-  private handleIconChange = async (option: IFieldOption, iconName: string): Promise<void> => {
-    const { localMappings } = this.state;
-
-    // Find existing mapping or create new one
-    let existingIndex = -1;
-    for (let i = 0; i < localMappings.length; i++) {
-      if (localMappings[i].fieldName === option.fieldName && localMappings[i].optionValue === option.optionValue) {
-        existingIndex = i;
-        break;
-      }
-    }
-
-    let updatedMappings: IColorMapping[];
-
-    if (existingIndex >= 0) {
-      // Update existing mapping
-      updatedMappings = [...localMappings];
-      updatedMappings[existingIndex] = {
-        ...updatedMappings[existingIndex],
-        iconName: iconName || undefined, // Store undefined for empty icon
-        isActive: true
-      };
-    } else {
-      // Create new mapping
-      const newMapping: IColorMapping = {
-        configType: 'ColorMapping',
-        fieldName: option.fieldName,
-        optionValue: option.optionValue,
-        colorHex: this.getCurrentColor(option),
-        iconName: iconName || undefined,
-        isActive: true,
-        sortOrder: localMappings.length + 1
-      };
-      updatedMappings = [...localMappings, newMapping];
-    }
-
-    // Update state immediately for real-time UI feedback
-    this.setState({
-      localMappings: updatedMappings,
       selectedIcon: iconName,
-      errorMessage: undefined
+      errorMessage: undefined,
+      isSaving: true // Show saving state
     });
 
     // Trigger real-time UI update in calendar
     this.props.onColorsChanged();
 
-    // Silent auto-save in background
+    // Save changes and wait for completion
     try {
       await this.props.onSaveColorMappings(updatedMappings);
-      // Icon mapping saved successfully (logged by service layer)
+      // Success - clear saving state
+      this.setState({ isSaving: false });
     } catch (error) {
-      console.error('Auto-save error:', error);
+      console.error('Save error:', error);
 
-      // Only show error if it's not a SharePoint concurrency issue (which often resolves itself)
+      // Clear saving state and show error
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (errorMessage.indexOf('Save Conflict') === -1 &&
           errorMessage.indexOf('2130575305') === -1 &&
-          errorMessage.indexOf('-2147467259') === -1 && // The specific error you encountered
+          errorMessage.indexOf('-2147467259') === -1 &&
           errorMessage.indexOf('concurrently') === -1 &&
           errorMessage.indexOf('Cannot complete this action') === -1) {
         this.setState({
-          errorMessage: `Auto-save failed: ${errorMessage}`
+          isSaving: false,
+          errorMessage: `Failed to save color and icon: ${errorMessage}`
         });
-        // Clear error after 5 seconds
         this.setTrackedTimeout(() => {
           this.setState({ errorMessage: undefined });
         }, 5000);
+      } else {
+        // For concurrency errors, just clear saving state (save likely succeeded)
+        this.setState({ isSaving: false });
       }
     }
   };
-
-
 
   private getCurrentIcon = (option: IFieldOption): string => {
     let mapping: IColorMapping | undefined;
@@ -409,7 +358,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
       const { discoveredOptions } = this.props;
       const restoredMappings: IColorMapping[] = [];
 
-      // Create mappings using original colors for discovered options
+      // Create mappings using original colors and default icons for discovered options
       discoveredOptions.forEach((option, index) => {
         const originalColor = ORIGINAL_COLOR_MAPPINGS[option.optionValue];
         if (originalColor) {
@@ -418,24 +367,37 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
             fieldName: option.fieldName,
             optionValue: option.optionValue,
             colorHex: originalColor,
-            iconName: '', // Clear icons on restore
+            iconName: getDefaultIcon(option.optionValue), // Restore default icons
             isActive: true,
             sortOrder: index + 1
           });
         }
       });
 
-      // Update state immediately
+      // Update state immediately and force re-render
       this.setState({
         localMappings: restoredMappings,
-        successMessage: 'Original colors restored!'
+        successMessage: 'Original colors restored!',
+        isSaving: true,
+        // Clear any selected state to ensure fresh display
+        selectedColorOption: undefined,
+        showColorPicker: false,
+        selectedIcon: '',
+        selectedUseDarkText: false,
+        availableIcons: []
       });
 
       // Trigger real-time UI update
       this.props.onColorsChanged();
 
-      // Silent auto-save
+      // Save and wait for completion
       await this.props.onSaveColorMappings(restoredMappings);
+
+      // Clear saving state and force a complete re-render
+      this.setState({ isSaving: false });
+
+      // Force component to re-render to ensure icon display updates
+      this.forceUpdate();
 
       // Clear success message after 3 seconds
       this.setTrackedTimeout(() => {
@@ -444,6 +406,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
 
     } catch (error) {
       this.setState({
+        isSaving: false,
         errorMessage: `Failed to restore original colors: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
       this.setTrackedTimeout(() => {
@@ -461,6 +424,17 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
       }
     }
     return mapping ? mapping.colorHex : '#0078d4';
+  };
+
+  private getCurrentUseDarkText = (option: IFieldOption): boolean => {
+    let mapping: IColorMapping | undefined;
+    for (let i = 0; i < this.state.localMappings.length; i++) {
+      if (this.state.localMappings[i].fieldName === option.fieldName && this.state.localMappings[i].optionValue === option.optionValue) {
+        mapping = this.state.localMappings[i];
+        break;
+      }
+    }
+    return mapping ? (mapping.useDarkText || false) : false;
   };
 
   private renderOptionRow = (option: IFieldOption): React.ReactElement => {
@@ -488,6 +462,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
             showColorPicker: true,
             selectedColor: getColorFromString(currentColor)!,
             selectedIcon: this.getCurrentIcon(option),
+            selectedUseDarkText: this.getCurrentUseDarkText(option),
             availableIcons: getContextualIcons(option.optionValue)
           })}
           title={`Click to change color for ${option.optionValue}`}
@@ -516,6 +491,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
             showColorPicker: true,
             selectedColor: getColorFromString(currentColor)!,
             selectedIcon: this.getCurrentIcon(option),
+            selectedUseDarkText: this.getCurrentUseDarkText(option),
             availableIcons: getContextualIcons(option.optionValue)
           })}
           title={`Click to change icon for ${option.optionValue}`}
@@ -585,13 +561,13 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
 
   public render(): React.ReactElement {
     const { isOpen, onDismiss, isLoading, error } = this.props;
-    const { showColorPicker, selectedColorOption, selectedColor, selectedIcon, availableIcons, errorMessage, successMessage } = this.state;
+    const { showColorPicker, selectedColorOption, selectedColor, selectedIcon, availableIcons, errorMessage, successMessage, isSaving } = this.state;
 
     return (
       <Modal
         isOpen={isOpen}
-        onDismiss={onDismiss}
-        isBlocking={false}
+        onDismiss={isSaving ? undefined : onDismiss} // Prevent close during save
+        isBlocking={isSaving} // Block interaction during save
         containerClassName={styles.colorPaletteStudioModal}
       >
         <div className={styles.colorPaletteStudioContent}>
@@ -601,9 +577,20 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
               <DefaultButton
                 iconProps={{ iconName: 'Cancel' }}
                 onClick={onDismiss}
-                title="Close"
+                disabled={isSaving}
+                title={isSaving ? "Please wait while saving..." : "Close"}
               />
             </Stack>
+
+            {/* Saving Alert */}
+            {isSaving && (
+              <MessageBar messageBarType={MessageBarType.info}>
+                <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+                  <Spinner size={SpinnerSize.small} />
+                  <Text>Saving changes to SharePoint...</Text>
+                </Stack>
+              </MessageBar>
+            )}
 
             {/* Show error from props (e.g., missing BigCalConfig list) */}
             {error && (
@@ -661,13 +648,14 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
                 <DefaultButton
                   text="🔄 Restore Default Colors & Icons"
                   onClick={this.handleRestoreOriginal}
-                  disabled={isLoading}
-                  title="Restore all colors and icons to their default values"
+                  disabled={isLoading || isSaving}
+                  title={isSaving ? "Please wait while saving..." : "Restore all colors and icons to their default values"}
                 />
 
                 <DefaultButton
                   text="Close"
                   onClick={onDismiss}
+                  disabled={isSaving}
                 />
               </Stack>
             )}
@@ -697,7 +685,18 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
 
                   {/* Icon Selection */}
                   <div style={{ flex: '1 1 auto', minWidth: '300px' }}>
-                    <Text variant="medium" style={{ marginBottom: '8px' }}>Choose Icon:</Text>
+                    <Stack tokens={{ childrenGap: 8 }}>
+                      <Checkbox
+                        label="Use dark text"
+                        checked={this.state.selectedUseDarkText}
+                        onChange={(ev, checked) => this.setState({ selectedUseDarkText: checked || false })}
+                        styles={{
+                          text: { fontSize: '14px' },
+                          label: { fontSize: '14px' }
+                        }}
+                      />
+                      <Text variant="medium">Choose Icon:</Text>
+                    </Stack>
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fill, minmax(48px, 1fr))',
@@ -746,8 +745,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
                   <PrimaryButton
                     text="Apply Color & Icon"
                     onClick={() => {
-                      this.handleColorChange(selectedColorOption, selectedColor).catch(console.error);
-                      this.handleIconChange(selectedColorOption, selectedIcon).catch(console.error);
+                      this.handleColorAndIconChange(selectedColorOption, selectedColor, selectedIcon, this.state.selectedUseDarkText).catch(console.error);
                     }}
                   />
                 </Stack>
