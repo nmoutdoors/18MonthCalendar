@@ -6,6 +6,8 @@ import { spfi, SPFx } from '@pnp/sp';
 import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { IColorMapping, IFieldOption, IColorPaletteConfig, generateColorsForOptions, getDefaultIcon } from '../interfaces/IColorMapping';
 import { withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
+import { Logger } from './LoggingService';
+import { DEFAULT_LIST_NAMES, CACHE_CONFIG } from '../constants/BigCalConstants';
 
 /**
  * Interface for SharePoint list item from BigCalConfig
@@ -29,10 +31,10 @@ interface ISharePointConfigItem {
  */
 export class ColorMappingService {
   private sp: ReturnType<typeof spfi>;
-  private configListName: string = 'BigCalConfig';
+  private configListName: string = DEFAULT_LIST_NAMES.CONFIG;
   private cachedMappings: IColorMapping[] = [];
   private lastCacheUpdate: Date | null = null;
-  private cacheExpiryMinutes: number = 5;
+  private cacheExpiryMinutes: number = CACHE_CONFIG.COLOR_MAPPING_EXPIRY_MINUTES;
 
   constructor(context: WebPartContext) {
     this.sp = spfi().using(SPFx(context));
@@ -602,19 +604,19 @@ export class ColorMappingService {
    */
   public async initializeConfigListWithDefaults(eventsListName: string): Promise<void> {
     try {
-      console.log('Initializing BigCalConfig list with default color mappings');
+      Logger.info('Initializing BigCalConfig list with default color mappings');
 
       // Try to discover field options from the Events list
       let discoveredOptions = await this.discoverFieldOptions(eventsListName);
 
       // If discovery failed or returned incomplete results, use fallback
       if (discoveredOptions.length === 0 || this.isDiscoveryIncomplete(discoveredOptions)) {
-        console.log('Field discovery incomplete, using fallback known options');
+        Logger.info('Field discovery incomplete, using fallback known options');
         discoveredOptions = this.getFallbackFieldOptions();
       }
 
       if (discoveredOptions.length === 0) {
-        console.log('No field options available, skipping initialization');
+        Logger.info('No field options available, skipping initialization');
         return;
       }
 
@@ -624,7 +626,7 @@ export class ColorMappingService {
       if (allMappings.length > 0) {
         // Save all the default mappings
         await this.saveBulkColorMappings(allMappings);
-        console.log(`Initialized BigCalConfig with ${allMappings.length} default color mappings`);
+        Logger.info(`Initialized BigCalConfig with ${allMappings.length} default color mappings`);
       }
 
     } catch (error) {

@@ -299,9 +299,9 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
           const eventsListName = this.properties.listName || 'Events';
           await colorMappingService.initializeConfigListWithDefaults(eventsListName);
 
-          console.log('BigCalConfig list created and initialized with custom color defaults');
+          Logger.info('BigCalConfig list created and initialized with custom color defaults');
         } catch (initError) {
-          console.warn('BigCalConfig list created but failed to initialize with defaults:', initError);
+          Logger.warn('BigCalConfig list created but failed to initialize with defaults', initError);
           // Don't fail the entire operation if initialization fails
         }
 

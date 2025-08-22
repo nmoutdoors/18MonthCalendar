@@ -151,9 +151,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   }
 
   public async componentDidMount(): Promise<void> {
-    // Add debug reference for console debugging
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).bigCalInstance = this;
+    // Add debug reference for console debugging (development only)
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).bigCalInstance = this;
+    }
 
     // Find the web part container element - try multiple selectors
     this.webPartElement = document.querySelector('[data-sp-web-part-id]') as HTMLElement ||
@@ -197,12 +199,18 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   }
 
   /**
-   * Cleanup fullscreen styles on unmount - ProgramTracker pattern
+   * Cleanup fullscreen styles and timers on unmount - ProgramTracker pattern
    */
   public componentWillUnmount(): void {
     // Remove full screen styles if needed
     if (this.state.isFullscreen) {
       this.exitFullscreen();
+    }
+
+    // Clear any pending popover timeout to prevent memory leaks
+    if (this.popoverTimeout) {
+      window.clearTimeout(this.popoverTimeout);
+      this.popoverTimeout = null;
     }
   }
 

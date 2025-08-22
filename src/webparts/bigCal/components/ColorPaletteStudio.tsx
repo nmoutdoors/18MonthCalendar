@@ -41,7 +41,8 @@ export interface IColorPaletteStudioState {
 }
 
 export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps, IColorPaletteStudioState> {
-  
+  private messageTimeouts: number[] = []; // Track timeouts to prevent memory leaks
+
   constructor(props: IColorPaletteStudioProps) {
     super(props);
 
@@ -70,6 +71,34 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
       link.crossOrigin = 'anonymous';
       document.head.appendChild(link);
     }
+  };
+
+  /**
+   * Cleanup timeouts on unmount to prevent memory leaks
+   */
+  public componentWillUnmount(): void {
+    // Clear all pending message timeouts
+    this.messageTimeouts.forEach(timeoutId => {
+      window.clearTimeout(timeoutId);
+    });
+    this.messageTimeouts = [];
+  }
+
+  /**
+   * Helper method to track timeouts and prevent memory leaks
+   */
+  private setTrackedTimeout = (callback: () => void, delay: number): void => {
+    const timeoutId = window.setTimeout(() => {
+      callback();
+      // Remove from tracking array when timeout completes
+      const index = this.messageTimeouts.indexOf(timeoutId);
+      if (index > -1) {
+        this.messageTimeouts.splice(index, 1);
+      }
+    }, delay);
+
+    // Track the timeout ID
+    this.messageTimeouts.push(timeoutId);
   };
 
   public componentDidUpdate(prevProps: IColorPaletteStudioProps): void {
@@ -182,7 +211,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     // Silent auto-save in background
     try {
       await this.props.onSaveColorMappings(updatedMappings);
-      console.log('Color mapping saved successfully');
+      // Color mapping saved successfully (logged by service layer)
     } catch (error) {
       console.error('Auto-save error:', error);
 
@@ -197,7 +226,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
           errorMessage: `Auto-save failed: ${errorMessage}`
         });
         // Clear error after 5 seconds
-        setTimeout(() => {
+        this.setTrackedTimeout(() => {
           this.setState({ errorMessage: undefined });
         }, 5000);
       }
@@ -253,7 +282,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     // Silent auto-save in background
     try {
       await this.props.onSaveColorMappings(updatedMappings);
-      console.log('Icon mapping saved successfully');
+      // Icon mapping saved successfully (logged by service layer)
     } catch (error) {
       console.error('Auto-save error:', error);
 
@@ -268,7 +297,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
           errorMessage: `Auto-save failed: ${errorMessage}`
         });
         // Clear error after 5 seconds
-        setTimeout(() => {
+        this.setTrackedTimeout(() => {
           this.setState({ errorMessage: undefined });
         }, 5000);
       }
@@ -409,7 +438,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
       await this.props.onSaveColorMappings(restoredMappings);
 
       // Clear success message after 3 seconds
-      setTimeout(() => {
+      this.setTrackedTimeout(() => {
         this.setState({ successMessage: undefined });
       }, 3000);
 
@@ -417,7 +446,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
       this.setState({
         errorMessage: `Failed to restore original colors: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
-      setTimeout(() => {
+      this.setTrackedTimeout(() => {
         this.setState({ errorMessage: undefined });
       }, 5000);
     }
