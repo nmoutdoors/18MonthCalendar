@@ -37,6 +37,9 @@ export class ColorMappingService {
   private lastCacheUpdate: Date | null = null;
   private cacheExpiryMinutes: number = CACHE_CONFIG.COLOR_MAPPING_EXPIRY_MINUTES;
 
+  // ID-based mapping cache for efficient updates
+  private idMappingCache: Map<string, number> = new Map(); // key: "FieldName-OptionValue", value: SharePoint ID
+
   constructor(context: WebPartContext) {
     this.sp = spfi().using(SPFx(context));
   }
@@ -147,6 +150,13 @@ export class ColorMappingService {
         modified: item.Modified ? new Date(item.Modified) : undefined
       }));
 
+      // Build ID mapping cache for efficient lookups
+      this.idMappingCache.clear();
+      this.cachedMappings.forEach(mapping => {
+        const key = `${mapping.fieldName}-${mapping.optionValue}`;
+        this.idMappingCache.set(key, mapping.id!);
+      });
+
       this.lastCacheUpdate = new Date();
       return this.cachedMappings;
 
@@ -201,10 +211,23 @@ export class ColorMappingService {
       };
 
       let savedItem;
-      if (mapping.id) {
+      let existingItemId = mapping.id;
+
+      // If no ID provided, check ID cache for existing mapping
+      if (!existingItemId) {
+        // Ensure cache is loaded
+        if (this.idMappingCache.size === 0) {
+          await this.getColorMappings(); // This will populate the ID cache
+        }
+
+        const key = `${mapping.fieldName}-${mapping.optionValue}`;
+        existingItemId = this.idMappingCache.get(key);
+      }
+
+      if (existingItemId) {
         // Update existing mapping
-        await this.sp.web.lists.getByTitle(this.configListName).items.getById(mapping.id).update(itemData);
-        savedItem = await this.sp.web.lists.getByTitle(this.configListName).items.getById(mapping.id)
+        await this.sp.web.lists.getByTitle(this.configListName).items.getById(existingItemId).update(itemData);
+        savedItem = await this.sp.web.lists.getByTitle(this.configListName).items.getById(existingItemId)
           .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'UseDarkText', 'IsActive', 'SortOrder', 'Created', 'Modified')();
       } else {
         // Create new mapping
@@ -249,6 +272,10 @@ export class ColorMappingService {
         modified: savedItem.Modified ? new Date(savedItem.Modified) : undefined
       };
 
+      // Update ID mapping cache for future lookups
+      const key = `${result.fieldName}-${result.optionValue}`;
+      this.idMappingCache.set(key, result.id!);
+
       // Update cache
       this.invalidateCache();
 
@@ -261,33 +288,37 @@ export class ColorMappingService {
   }
 
   /**
-   * Save multiple color mappings in batch with improved concurrency handling
+   * Save multiple color mappings efficiently - optimized for single changes
    */
   public async saveBulkColorMappings(mappings: IColorMapping[]): Promise<IColorMapping[]> {
     try {
-      const results: IColorMapping[] = [];
+      // OPTIMIZATION: For single mapping changes (like icon updates), use direct save
+      if (mappings.length === 1) {
+        const result = await this.saveColorMapping(mappings[0]);
+        return [result];
+      }
 
-      // Process in smaller batches with delays to avoid SharePoint concurrency issues
-      const batchSize = 3; // Reduced from 10 to 3
+      // For bulk operations, use batch processing
+      const results: IColorMapping[] = [];
+      const batchSize = 5; // Increased from 3 for better performance
+
       for (let i = 0; i < mappings.length; i += batchSize) {
         const batch = mappings.slice(i, i + batchSize);
 
-        // Process batch items sequentially instead of parallel to avoid conflicts
-        for (const mapping of batch) {
-          try {
-            const result = await this.saveColorMapping(mapping);
-            results.push(result);
+        // Process batch items in parallel for better performance
+        const batchPromises = batch.map(mapping =>
+          this.saveColorMapping(mapping).catch(error => {
+            console.warn(`Failed to save mapping for ${mapping.optionValue}:`, error);
+            return null; // Continue with other mappings
+          })
+        );
 
-            // Small delay between individual saves within batch
-            await new Promise(resolve => setTimeout(resolve, 100));
-          } catch {
-            // Continue with other mappings instead of failing entire batch
-          }
-        }
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults.filter(result => result !== null) as IColorMapping[]);
 
-        // Longer delay between batches
-        if (i + batchSize < mappings.length) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+        // Only add delay between batches for large operations
+        if (i + batchSize < mappings.length && mappings.length > 10) {
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
 
@@ -785,5 +816,6 @@ export class ColorMappingService {
   public invalidateCache(): void {
     this.cachedMappings = [];
     this.lastCacheUpdate = null;
+    this.idMappingCache.clear(); // Clear ID mapping cache too
   }
 }

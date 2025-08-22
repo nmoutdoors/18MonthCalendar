@@ -43,6 +43,13 @@ export interface IFieldDefinition {
   defaultValue?: string;
 }
 
+/**
+ * SharePoint service for managing lists, fields, and data operations
+ * Handles Events list, PrivateEvents list, and BigCalConfig list management
+ *
+ * STANDARD PRACTICE: All BigCal-created lists use Classic experience (ListExperienceOptions: 1)
+ * for better data management, field visibility, and power user functionality.
+ */
 export class SharePointService {
   private sp: ReturnType<typeof spfi>;
   private listName: string;
@@ -722,6 +729,17 @@ export class SharePointService {
 
       // Create the list based on Events template (enables Outlook sync)
       await this.sp.web.lists.add(listName, `Events list created by BigCal webpart with required fields for event management and Outlook sync`, 106, true);
+
+      // Set to Classic experience for better data management
+      try {
+        const createdList = this.sp.web.lists.getByTitle(listName);
+        await createdList.update({
+          ListExperienceOptions: 1 // 1 = Classic, 0 = Auto (Modern), 2 = Modern
+        });
+        Logger.info('Set Events list to Classic experience');
+      } catch (experienceError) {
+        Logger.warn('Could not set Classic experience, continuing with default', experienceError);
+      }
 
       // Get the created list to add fields
       const createdList = this.sp.web.lists.getByTitle(listName);
