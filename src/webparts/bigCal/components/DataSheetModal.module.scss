@@ -43,29 +43,8 @@
   box-sizing: border-box;
 }
 
-// Global overrides for all modal elements
-:global {
-  .ms-Modal-main {
-    width: 1200px !important;
-    max-width: 1200px !important;
-    min-width: 1200px !important;
-  }
-
-  .ms-Modal-scrollableContent {
-    width: 1200px !important;
-    max-width: 1200px !important;
-    min-width: 1200px !important;
-  }
-
-  // Override any responsive behavior
-  @media (max-width: 1400px) {
-    .ms-Modal-main {
-      width: 1200px !important;
-      max-width: 1200px !important;
-      min-width: 1200px !important;
-    }
-  }
-}
+// Removed global overrides - they were polluting other modals like Legend Studio
+// DataSheet modal sizing is handled by scoped styles in .modalContainer above
 
 .modalHeader {
   display: flex;
