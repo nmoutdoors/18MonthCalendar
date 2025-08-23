@@ -25,6 +25,8 @@ export interface ILegendaryPrintPreviewState {
   printView: 'month' | 'week' | 'day' | 'agenda';
   isGeneratingPrint: boolean;
   forceSinglePage: boolean;
+  agendaStartDate: Date;
+  agendaEndDate: Date;
 }
 
 export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPreviewProps, ILegendaryPrintPreviewState> {
@@ -33,11 +35,18 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
   constructor(props: ILegendaryPrintPreviewProps) {
     super(props);
 
+    // Default agenda range: current month
+    const currentDate = props.currentDate || new Date();
+    const startOfMonth = moment(currentDate).startOf('month').toDate();
+    const endOfMonth = moment(currentDate).endOf('month').toDate();
+
     this.state = {
-      selectedDate: props.currentDate || new Date(),
+      selectedDate: currentDate,
       printView: 'month', // Start with month view - the most requested
       isGeneratingPrint: false,
-      forceSinglePage: false
+      forceSinglePage: false,
+      agendaStartDate: startOfMonth,
+      agendaEndDate: endOfMonth
     };
   }
 
@@ -49,7 +58,15 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
   public componentDidUpdate(prevProps: ILegendaryPrintPreviewProps): void {
     // If the modal was closed and is now opening, update to current calendar date
     if (this.props.isOpen && !prevProps.isOpen && this.props.currentDate) {
-      this.setState({ selectedDate: this.props.currentDate });
+      const currentDate = this.props.currentDate;
+      const startOfMonth = moment(currentDate).startOf('month').toDate();
+      const endOfMonth = moment(currentDate).endOf('month').toDate();
+
+      this.setState({
+        selectedDate: currentDate,
+        agendaStartDate: startOfMonth,
+        agendaEndDate: endOfMonth
+      });
     }
   }
 
@@ -68,7 +85,45 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
   private onDateChange = (date: Date | null | undefined): void => {
     if (date) {
-      this.setState({ selectedDate: date });
+      // Update agenda date range to match the new month
+      const newMonth = moment(date);
+      const agendaStartDate = newMonth.clone().startOf('month').toDate();
+      const agendaEndDate = newMonth.clone().endOf('month').toDate();
+
+      this.setState({
+        selectedDate: date,
+        agendaStartDate,
+        agendaEndDate
+      });
+    }
+  };
+
+  // 🔄 NAVIGATION SYNC - Handle navigation from react-big-calendar views
+  private onCalendarNavigate = (date: Date): void => {
+    // Update the main selected date
+    this.setState({ selectedDate: date });
+
+    // Also update agenda date range to match the new month
+    const newMonth = moment(date);
+    const agendaStartDate = newMonth.clone().startOf('month').toDate();
+    const agendaEndDate = newMonth.clone().endOf('month').toDate();
+
+    this.setState({
+      selectedDate: date,
+      agendaStartDate,
+      agendaEndDate
+    });
+  };
+
+  private onAgendaStartDateChange = (date: Date | null | undefined): void => {
+    if (date) {
+      this.setState({ agendaStartDate: date });
+    }
+  };
+
+  private onAgendaEndDateChange = (date: Date | null | undefined): void => {
+    if (date) {
+      this.setState({ agendaEndDate: date });
     }
   };
 
@@ -88,7 +143,16 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       newDate.setMonth(newDate.getMonth() + 1);
     }
 
-    this.setState({ selectedDate: newDate });
+    // Update agenda date range to match the new month
+    const newMonth = moment(newDate);
+    const agendaStartDate = newMonth.clone().startOf('month').toDate();
+    const agendaEndDate = newMonth.clone().endOf('month').toDate();
+
+    this.setState({
+      selectedDate: newDate,
+      agendaStartDate,
+      agendaEndDate
+    });
   };
 
   private navigateWeek = (direction: 'prev' | 'next'): void => {
@@ -101,7 +165,16 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       newDate.add(1, 'week');
     }
 
-    this.setState({ selectedDate: newDate.toDate() });
+    // Update agenda date range to match the new month
+    const newMonth = newDate.clone();
+    const agendaStartDate = newMonth.clone().startOf('month').toDate();
+    const agendaEndDate = newMonth.clone().endOf('month').toDate();
+
+    this.setState({
+      selectedDate: newDate.toDate(),
+      agendaStartDate,
+      agendaEndDate
+    });
   };
 
   private navigateDay = (direction: 'prev' | 'next'): void => {
@@ -114,7 +187,16 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       newDate.add(1, 'day');
     }
 
-    this.setState({ selectedDate: newDate.toDate() });
+    // Update agenda date range to match the new month
+    const newMonth = newDate.clone();
+    const agendaStartDate = newMonth.clone().startOf('month').toDate();
+    const agendaEndDate = newMonth.clone().endOf('month').toDate();
+
+    this.setState({
+      selectedDate: newDate.toDate(),
+      agendaStartDate,
+      agendaEndDate
+    });
   };
 
   private getFilteredEvents = (): ICalendarEvent[] => {
@@ -217,6 +299,36 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       return filteredEvents;
     }
 
+    if (printView === 'agenda') {
+      const { agendaStartDate, agendaEndDate } = this.state;
+      const filteredEvents = events.filter(event => {
+        // Use moment.js for ALL date operations
+        const eventStartMoment = moment(event.start);
+        const eventEndMoment = moment(event.end);
+        const startRangeMoment = moment(agendaStartDate);
+        const endRangeMoment = moment(agendaEndDate);
+
+        // Include events that start in range, end in range, or span across the range
+        const eventStartsInRange = eventStartMoment.isBetween(startRangeMoment, endRangeMoment, 'day', '[]');
+        const eventEndsInRange = eventEndMoment.isBetween(startRangeMoment, endRangeMoment, 'day', '[]');
+        const eventSpansRange = eventStartMoment.isBefore(startRangeMoment, 'day') && eventEndMoment.isAfter(endRangeMoment, 'day');
+
+        const isInRange = eventStartsInRange || eventEndsInRange || eventSpansRange;
+
+        if (isInRange) {
+          Logger.debug(`Including agenda event: ${event.title} (${eventStartMoment.format('YYYY-MM-DD')})`);
+        }
+
+        return isInRange;
+      });
+
+      // Sort events chronologically for agenda view
+      const sortedEvents = filteredEvents.sort((a, b) => moment(a.start).valueOf() - moment(b.start).valueOf());
+
+      Logger.info(`Filtered agenda events count: ${sortedEvents.length}`);
+      return sortedEvents;
+    }
+
     // For other views, we'll implement later
     return events;
   };
@@ -286,6 +398,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
     if (printView === 'day') {
       return this.generateDayPrintHTML(events, selectedDate, title);
+    }
+
+    if (printView === 'agenda') {
+      return this.generateAgendaPrintHTML(events, selectedDate, title);
     }
 
     return `<html><body><h1>Print view ${printView} coming soon!</h1></body></html>`;
@@ -477,6 +593,96 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         <span className={bigCalStyles.eventTitle}>{event.title}</span>
       </div>
     );
+  };
+
+  // 🎯 EXACT COPY of BigCal's EventComponent - adapted for Agenda print view
+  private PrintAgendaEvent = ({ event }: { event: ICalendarEvent }): React.ReactElement => {
+    // Holiday events get special display
+    if (event.isHoliday) {
+      return (
+        <div className={bigCalStyles.customEvent}>
+          <span
+            className={bigCalStyles.eventIcon}
+            style={{ fontSize: '14px', marginRight: '6px' }}
+          >
+            🎉
+          </span>
+          <span className={bigCalStyles.eventTitle}>{event.title}</span>
+        </div>
+      );
+    }
+
+    // Get the icon for this event
+    const iconEmoji = this.getEventIconFromMapping(event.swimlane || '', event.status || '');
+
+    return (
+      <div className={bigCalStyles.customEvent}>
+        <span
+          className={bigCalStyles.eventIcon}
+          style={{ fontSize: '14px', marginRight: '6px' }}
+        >
+          {iconEmoji}
+        </span>
+        <span className={bigCalStyles.eventTitle}>{event.title}</span>
+      </div>
+    );
+  };
+
+  // 🎨 VIEW-SPECIFIC EVENT STYLE GETTERS
+  private monthEventStyleGetter = (event: ICalendarEvent): { style: React.CSSProperties } => {
+    return this.props.eventStyleGetter(event);
+  };
+
+  private weekEventStyleGetter = (event: ICalendarEvent): { style: React.CSSProperties } => {
+    return this.props.eventStyleGetter(event);
+  };
+
+  private dayEventStyleGetter = (event: ICalendarEvent): { style: React.CSSProperties } => {
+    return this.props.eventStyleGetter(event);
+  };
+
+  private agendaEventStyleGetter = (event: ICalendarEvent): { style: React.CSSProperties } => {
+    // For agenda view - only colors for private events and holidays
+    if (event.isHoliday) {
+      return {
+        style: {
+          backgroundColor: '#ff9800',
+          borderColor: '#ff9800',
+          color: 'white',
+          border: '1px solid #ff9800',
+          borderRadius: '4px',
+          fontSize: '12px',
+          padding: '2px 6px'
+        }
+      };
+    }
+
+    if (event.isPrivate) {
+      return {
+        style: {
+          backgroundColor: '#8a8886',
+          borderColor: '#8a8886',
+          color: 'white',
+          border: '1px solid #8a8886',
+          borderRadius: '4px',
+          fontSize: '12px',
+          padding: '2px 6px'
+        }
+      };
+    }
+
+    // All other events get neutral styling for agenda
+    return {
+      style: {
+        backgroundColor: '#f8f9fa',
+        borderColor: '#dee2e6',
+        color: '#333333',
+        border: '1px solid #dee2e6',
+        borderRadius: '4px',
+        fontSize: '12px',
+        padding: '2px 6px'
+      }
+    };
   };
 
   // 🎯 EXACT COPY of BigCal's getEventIconFromMapping method
@@ -884,6 +1090,220 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     return html;
   };
 
+  private generateAgendaPrintHTML = (events: ICalendarEvent[], selectedDate: Date, title: string): string => {
+    // Generate legendary agenda view HTML matching react-big-calendar table format
+    const { agendaStartDate, agendaEndDate } = this.state;
+    const startMoment = moment(agendaStartDate);
+    const endMoment = moment(agendaEndDate);
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @page {
+              size: portrait;
+              margin: 0.75in;
+            }
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              margin: 0;
+              padding: 20px;
+              -webkit-print-color-adjust: exact;
+              color-adjust: exact;
+              line-height: 1.4;
+            }
+            .print-header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 3px solid #0078d4;
+              padding-bottom: 15px;
+            }
+            .print-header h1 {
+              margin: 0;
+              color: #0078d4;
+              font-size: 28px;
+              font-weight: 600;
+            }
+            .print-header .date-range {
+              margin: 5px 0 0 0;
+              color: #666;
+              font-size: 16px;
+            }
+            .agenda-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            .agenda-table th {
+              background-color: #0078d4;
+              color: white;
+              padding: 12px 15px;
+              text-align: left;
+              font-weight: 600;
+              font-size: 16px;
+              border: 1px solid #0078d4;
+            }
+            .agenda-table td {
+              padding: 12px 15px;
+              border: 1px solid #dee2e6;
+              vertical-align: top;
+            }
+            .agenda-table tr:nth-child(even) {
+              background-color: #f8f9fa;
+            }
+            .agenda-table tr:hover {
+              background-color: #e3f2fd;
+            }
+            .event-icon {
+              font-size: 16px;
+              margin-right: 8px;
+            }
+            .event-title {
+              font-weight: 500;
+            }
+            .event-details {
+              color: #666;
+              font-size: 14px;
+              margin-top: 4px;
+            }
+              margin-bottom: 8px;
+              border-radius: 0 6px 6px 0;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            .event-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 6px;
+            }
+            .event-title {
+              font-weight: 600;
+              font-size: 14px;
+              color: #0078d4;
+              flex: 1;
+              margin-right: 15px;
+            }
+            .event-time {
+              font-size: 12px;
+              color: #666;
+              white-space: nowrap;
+              font-weight: 500;
+            }
+            .event-details {
+              font-size: 12px;
+              color: #666;
+              margin-top: 4px;
+            }
+            .event-swimlane {
+              display: inline-block;
+              background-color: #e1e1e1;
+              color: #333;
+              padding: 2px 8px;
+              border-radius: 12px;
+              font-size: 10px;
+              margin-right: 8px;
+            }
+            .event-status {
+              display: inline-block;
+              background-color: #ffd700;
+              color: #333;
+              padding: 2px 8px;
+              border-radius: 12px;
+              font-size: 10px;
+            }
+            .no-events {
+              color: #666;
+              font-style: italic;
+              text-align: center;
+              padding: 40px 20px;
+              background-color: #f8f9fa;
+              border-radius: 8px;
+              margin-top: 20px;
+            }
+            .no-events {
+              color: #666;
+              font-style: italic;
+              text-align: center;
+              padding: 40px 20px;
+              background-color: #f8f9fa;
+              border-radius: 8px;
+              margin-top: 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <h1>📋 ${title}</h1>
+            <div class="date-range">${startMoment.format('MMMM D, YYYY')} - ${endMoment.format('MMMM D, YYYY')}</div>
+          </div>
+          ${this.generateAgendaTableContent(events)}
+        </body>
+      </html>
+    `;
+  };
+
+  private generateAgendaTableContent = (events: ICalendarEvent[]): string => {
+    if (events.length === 0) {
+      return `
+        <div class="no-events">
+          There are no events in this range.
+        </div>
+      `;
+    }
+
+    // Sort events by date and time
+    const sortedEvents = events.sort((a, b) => {
+      const dateCompare = moment(a.start).diff(moment(b.start));
+      if (dateCompare !== 0) return dateCompare;
+      return moment(a.start).diff(moment(b.start), 'minutes');
+    });
+
+    let html = `
+      <table class="agenda-table">
+        <thead>
+          <tr>
+            <th style="width: 15%;">Date</th>
+            <th style="width: 15%;">Time</th>
+            <th style="width: 70%;">Event</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    sortedEvents.forEach(event => {
+      const eventDate = moment(event.start).format('ddd MMM DD');
+      const startTime = moment(event.start).format('h:mm A');
+      const endTime = moment(event.end).format('h:mm A');
+      const timeRange = `${startTime} – ${endTime}`;
+
+      // Get icon for the event
+      const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
+
+      html += `
+        <tr>
+          <td>${eventDate}</td>
+          <td>${timeRange}</td>
+          <td>
+            <span class="event-icon">${iconEmoji}</span>
+            <span class="event-title">${event.title}</span>
+            ${event.swimlane ? `<div class="event-details">${event.swimlane}${event.status && event.status !== 'Not Set' ? ` • ${event.status}` : ''}</div>` : ''}
+          </td>
+        </tr>
+      `;
+    });
+
+    html += `
+        </tbody>
+      </table>
+    `;
+
+    return html;
+  };
+
+
+
   public render(): React.ReactElement<ILegendaryPrintPreviewProps> {
     if (!this.props.isOpen) {
       return <div />;
@@ -918,45 +1338,68 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
           </div>
 
           <div className={styles.headerCenter}>
-            <Stack horizontal tokens={{ childrenGap: 15 }} verticalAlign="center">
-              <IconButton
-                iconProps={{ iconName: 'ChevronLeft' }}
-                title={printView === 'day' ? 'Previous Day' : printView === 'week' ? 'Previous Week' : 'Previous Month'}
-                onClick={() => {
-                  if (printView === 'day') this.navigateDay('prev');
-                  else if (printView === 'week') this.navigateWeek('prev');
-                  else this.navigateMonth('prev');
-                }}
-                className={styles.navButton}
-              />
+            {printView === 'agenda' ? (
+              <Stack horizontal tokens={{ childrenGap: 15 }} verticalAlign="center">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: '600' }}>From:</span>
+                  <DatePicker
+                    value={this.state.agendaStartDate}
+                    onSelectDate={this.onAgendaStartDateChange}
+                    formatDate={(date) => moment(date).format('MMM D, YYYY')}
+                    className={styles.datePicker}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: '600' }}>To:</span>
+                  <DatePicker
+                    value={this.state.agendaEndDate}
+                    onSelectDate={this.onAgendaEndDateChange}
+                    formatDate={(date) => moment(date).format('MMM D, YYYY')}
+                    className={styles.datePicker}
+                  />
+                </div>
+              </Stack>
+            ) : (
+              <Stack horizontal tokens={{ childrenGap: 15 }} verticalAlign="center">
+                <IconButton
+                  iconProps={{ iconName: 'ChevronLeft' }}
+                  title={printView === 'day' ? 'Previous Day' : printView === 'week' ? 'Previous Week' : 'Previous Month'}
+                  onClick={() => {
+                    if (printView === 'day') this.navigateDay('prev');
+                    else if (printView === 'week') this.navigateWeek('prev');
+                    else this.navigateMonth('prev');
+                  }}
+                  className={styles.navButton}
+                />
 
-              <DatePicker
-                value={selectedDate}
-                onSelectDate={this.onDateChange}
-                formatDate={(date) => {
-                  if (printView === 'day') {
-                    return moment(date).format('dddd, MMMM D, YYYY');
-                  } else if (printView === 'week') {
-                    const weekStart = moment(date).startOf('week');
-                    const weekEnd = moment(date).endOf('week');
-                    return `${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}`;
-                  }
-                  return moment(date).format('MMMM YYYY');
-                }}
-                className={styles.datePicker}
-              />
+                <DatePicker
+                  value={selectedDate}
+                  onSelectDate={this.onDateChange}
+                  formatDate={(date) => {
+                    if (printView === 'day') {
+                      return moment(date).format('dddd, MMMM D, YYYY');
+                    } else if (printView === 'week') {
+                      const weekStart = moment(date).startOf('week');
+                      const weekEnd = moment(date).endOf('week');
+                      return `${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}`;
+                    }
+                    return moment(date).format('MMMM YYYY');
+                  }}
+                  className={styles.datePicker}
+                />
 
-              <IconButton
-                iconProps={{ iconName: 'ChevronRight' }}
-                title={printView === 'day' ? 'Next Day' : printView === 'week' ? 'Next Week' : 'Next Month'}
-                onClick={() => {
-                  if (printView === 'day') this.navigateDay('next');
-                  else if (printView === 'week') this.navigateWeek('next');
-                  else this.navigateMonth('next');
-                }}
-                className={styles.navButton}
-              />
-            </Stack>
+                <IconButton
+                  iconProps={{ iconName: 'ChevronRight' }}
+                  title={printView === 'day' ? 'Next Day' : printView === 'week' ? 'Next Week' : 'Next Month'}
+                  onClick={() => {
+                    if (printView === 'day') this.navigateDay('next');
+                    else if (printView === 'week') this.navigateWeek('next');
+                    else this.navigateMonth('next');
+                  }}
+                  className={styles.navButton}
+                />
+              </Stack>
+            )}
           </div>
 
           <div className={styles.headerRight}>
@@ -1006,14 +1449,14 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   view="month"
                   date={selectedDate}
                   toolbar={false}
-                  eventPropGetter={this.props.eventStyleGetter}
+                  eventPropGetter={this.monthEventStyleGetter}
                   components={{
                     event: this.PrintMonthEvent
                   }}
                   popup
                   onSelectEvent={() => {}} // Disable event selection for print
                   onSelectSlot={() => {}} // Disable slot selection for print
-                  onNavigate={() => {}} // Prevent navigation
+                  onNavigate={this.onCalendarNavigate}
                   onView={() => {}} // Prevent view changes
                 />
               )}
@@ -1030,14 +1473,14 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   date={selectedDate}
                   toolbar={false}
                   min={new Date(2000, 0, 1, 7, 0, 0)} // Start at 7:00 AM - LEGENDARY business hours!
-                  eventPropGetter={this.props.eventStyleGetter}
+                  eventPropGetter={this.weekEventStyleGetter}
                   components={{
                     event: this.PrintWeekEvent
                   }}
                   popup
                   onSelectEvent={() => {}} // Disable event selection for print
                   onSelectSlot={() => {}} // Disable slot selection for print
-                  onNavigate={() => {}} // Prevent navigation
+                  onNavigate={this.onCalendarNavigate}
                   onView={() => {}} // Prevent view changes
                 />
               )}
@@ -1054,23 +1497,39 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   date={selectedDate}
                   toolbar={false}
                   min={new Date(2000, 0, 1, 7, 0, 0)} // Start at 7:00 AM - LEGENDARY business hours!
-                  eventPropGetter={this.props.eventStyleGetter}
+                  eventPropGetter={this.dayEventStyleGetter}
                   components={{
                     event: this.PrintDayEvent
                   }}
                   popup
                   onSelectEvent={() => {}} // Disable event selection for print
                   onSelectSlot={() => {}} // Disable slot selection for print
-                  onNavigate={() => {}} // Prevent navigation
+                  onNavigate={this.onCalendarNavigate}
                   onView={() => {}} // Prevent view changes
                 />
               )}
 
               {printView === 'agenda' && (
-                <div className={styles.comingSoon}>
-                  <h3>🚧 Agenda View Coming Soon!</h3>
-                  <p>We&apos;re building legendary agenda print support. Month, Week, and Day views are ready to rock! 🎸</p>
-                </div>
+                <Calendar
+                  localizer={localizer}
+                  events={filteredEvents}
+                  startAccessor="start"
+                  endAccessor="end"
+                  style={{ height: 'calc(100vh - 200px)', width: '100%' }}
+                  views={['agenda']}
+                  view="agenda"
+                  date={selectedDate}
+                  toolbar={false}
+                  eventPropGetter={this.agendaEventStyleGetter}
+                  components={{
+                    event: this.PrintAgendaEvent
+                  }}
+                  popup
+                  onSelectEvent={() => {}} // Disable event selection for print
+                  onSelectSlot={() => {}} // Disable slot selection for print
+                  onNavigate={this.onCalendarNavigate}
+                  onView={() => {}} // Prevent view changes
+                />
               )}
             </div>
           </div>

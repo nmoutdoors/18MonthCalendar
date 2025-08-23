@@ -1019,6 +1019,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     };
   };
 
+
   private getEventColorFromMapping = (swimlane: string, status: string): string => {
     // New color strategy: Confirmed and blank/null use swimlane color, Tentative uses its own color
     if (status === 'Tentative') {
