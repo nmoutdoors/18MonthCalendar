@@ -100,10 +100,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
   // 🔄 NAVIGATION SYNC - Handle navigation from react-big-calendar views
   private onCalendarNavigate = (date: Date): void => {
-    // Update the main selected date
-    this.setState({ selectedDate: date });
-
-    // Also update agenda date range to match the new month
+    // Update both selectedDate and agenda date range in a single setState call
     const newMonth = moment(date);
     const agendaStartDate = newMonth.clone().startOf('month').toDate();
     const agendaEndDate = newMonth.clone().endOf('month').toDate();
