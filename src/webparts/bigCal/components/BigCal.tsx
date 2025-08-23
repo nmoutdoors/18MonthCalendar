@@ -26,6 +26,7 @@ import { LazyComponentErrorBoundary } from './LazyComponentErrorBoundary';
 import { IconSelector } from './IconSelector';
 import { Suspense } from 'react';
 import { ColorPaletteStudio } from './ColorPaletteStudio';
+import { LegendaryPrintPreview } from './LegendaryPrintPreview';
 import { GridView } from './GridView';
 import { formatMonthYear, withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -55,6 +56,7 @@ interface IBigCalState {
   viewMode: 'calendar' | 'grid' | 'timeline';
   isExportDialogOpen: boolean;
   isPrintDialogOpen: boolean;
+  isLegendaryPrintOpen: boolean;
   isDataSheetModalOpen: boolean;
   // Popover state
   popoverEvent?: ICalendarEvent;
@@ -121,6 +123,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       viewMode: 'calendar',
       isExportDialogOpen: false,
       isPrintDialogOpen: false,
+      isLegendaryPrintOpen: false,
       isDataSheetModalOpen: false,
       // Popover state
       popoverEvent: undefined,
@@ -1348,12 +1351,19 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     this.setState({ isExportDialogOpen: false });
   };
 
-  private openPrintDialog = (): void => {
-    this.setState({ isPrintDialogOpen: true });
-  };
-
   private closePrintDialog = (): void => {
     this.setState({ isPrintDialogOpen: false });
+  };
+
+  // 🚀 LEGENDARY PRINT METHODS
+  private openLegendaryPrint = (): void => {
+    Logger.info('Opening Legendary Print Preview - prepare for awesomeness! 🎸');
+    this.setState({ isLegendaryPrintOpen: true });
+  };
+
+  private closeLegendaryPrint = (): void => {
+    Logger.info('Closing Legendary Print Preview - hope you enjoyed the show! 🎭');
+    this.setState({ isLegendaryPrintOpen: false });
   };
 
   private openIconSelector = (): void => {
@@ -1696,7 +1706,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   public render(): React.ReactElement<IBigCalProps> {
     const { hasTeamsContext } = this.props;
-    const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedEventCategories, selectedStatuses, viewMode, isExportDialogOpen, isPrintDialogOpen, isIconSelectorOpen, isColorPaletteStudioOpen } = this.state;
+    const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedEventCategories, selectedStatuses, viewMode, isExportDialogOpen, isPrintDialogOpen, isLegendaryPrintOpen, isIconSelectorOpen, isColorPaletteStudioOpen } = this.state;
 
     // Combine regular events with holiday events and apply filters
     const allEventsWithHolidays = this.getAllEventsWithHolidays();
@@ -1899,8 +1909,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
               />
               <IconButton
                 iconProps={{ iconName: 'Print' }}
-                title="Print Calendar"
-                onClick={this.openPrintDialog}
+                title="🚀 Legendary Print - WYSIWYG Print Preview"
+                onClick={this.openLegendaryPrint}
                 className={styles.navbarButton}
               />
               <IconButton
@@ -2155,6 +2165,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
             // This prevents the rollback issue where fresh SharePoint data overwrites local changes
             this.updateDynamicMappingsFromLocalState();
           }}
+        />
+
+        {/* 🚀 LEGENDARY PRINT PREVIEW - The Future of Calendar Printing! */}
+        <LegendaryPrintPreview
+          events={allEventsWithHolidays}
+          isOpen={isLegendaryPrintOpen}
+          onClose={this.closeLegendaryPrint}
+          currentDate={currentDate}
+          currentView={currentView}
+          eventStyleGetter={this.eventStyleGetter}
         />
 
         {/* Event Popover */}
