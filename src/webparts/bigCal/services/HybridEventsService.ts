@@ -4,6 +4,7 @@ import { PrivateEventsService, IPrivateEventData } from './PrivateEventsService'
 import { Logger } from './LoggingService';
 import { ICalendarEvent, SwimlaneType, StatusType } from '../components/ICalendarEvent';
 
+
 export interface IHybridEventResult {
   success: boolean;
   event?: ICalendarEvent;
@@ -446,12 +447,22 @@ export class HybridEventsService {
 
   /**
    * Parse SharePoint date string to JavaScript Date
-   * Since we now store dates without timezone info, SharePoint returns them correctly
+   * Handle timezone-safe parsing for local time preservation
    */
   private parseSharePointDate(dateString: string): Date {
-    // SharePoint now returns dates in the correct local time since we store them without timezone info
-    // We can parse them directly
-    return new Date(dateString);
+    // SharePoint always returns UTC dates with 'Z' suffix
+    // Standard Date constructor handles this correctly
+    const date = new Date(dateString);
+
+
+
+    // Check if we got a valid date
+    if (isNaN(date.getTime())) {
+      Logger.warn('Invalid date string:', dateString);
+      return new Date(); // Fallback to current date
+    }
+
+    return date;
   }
 
   /**

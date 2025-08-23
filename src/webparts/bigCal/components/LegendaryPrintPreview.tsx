@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { IconButton, PrimaryButton, Stack, DatePicker, ChoiceGroup, IChoiceGroupOption } from '@fluentui/react';
+import { IconButton, PrimaryButton, Stack, DatePicker, ChoiceGroup, IChoiceGroupOption, Toggle } from '@fluentui/react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import * as moment from 'moment';
 import { ICalendarEvent } from './ICalendarEvent';
@@ -24,6 +24,7 @@ export interface ILegendaryPrintPreviewState {
   selectedDate: Date;
   printView: 'month' | 'week' | 'day' | 'agenda';
   isGeneratingPrint: boolean;
+  forceSinglePage: boolean;
 }
 
 export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPreviewProps, ILegendaryPrintPreviewState> {
@@ -35,7 +36,8 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     this.state = {
       selectedDate: props.currentDate || new Date(),
       printView: 'month', // Start with month view - the most requested
-      isGeneratingPrint: false
+      isGeneratingPrint: false,
+      forceSinglePage: false
     };
   }
 
@@ -128,6 +130,35 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       return filteredEvents;
     }
 
+    if (printView === 'week') {
+      const filteredEvents = events.filter(event => {
+        // Use moment.js for ALL date operations
+        const eventStartMoment = moment(event.start);
+        const eventEndMoment = moment(event.end);
+        const selectedMoment = moment(selectedDate);
+
+        // Get the week range (Sunday to Saturday)
+        const startOfWeek = selectedMoment.clone().startOf('week');
+        const endOfWeek = selectedMoment.clone().endOf('week');
+
+        // Include events that start in this week, end in this week, or span across this week
+        const eventStartsInWeek = eventStartMoment.isBetween(startOfWeek, endOfWeek, 'day', '[]');
+        const eventEndsInWeek = eventEndMoment.isBetween(startOfWeek, endOfWeek, 'day', '[]');
+        const eventSpansWeek = eventStartMoment.isBefore(startOfWeek) && eventEndMoment.isAfter(endOfWeek);
+
+        const isInRange = eventStartsInWeek || eventEndsInWeek || eventSpansWeek;
+
+        if (isInRange) {
+          Logger.debug(`Including week event: ${event.title} (${eventStartMoment.format('YYYY-MM-DD')})`);
+        }
+
+        return isInRange;
+      });
+
+      Logger.info(`Filtered week events count: ${filteredEvents.length}`);
+      return filteredEvents;
+    }
+
     // For other views, we'll implement later
     return events;
   };
@@ -137,10 +168,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
     try {
       const filteredEvents = this.getFilteredEvents();
-      const { printView, selectedDate } = this.state;
+      const { printView, selectedDate, forceSinglePage } = this.state;
 
       // Generate the legendary print content
-      const printContent = this.generatePrintHTML(filteredEvents, printView, selectedDate);
+      const printContent = this.generatePrintHTML(filteredEvents, printView, selectedDate, forceSinglePage);
 
       // Open print window with legendary styling
       this.printWindowRef = window.open('', '_blank', 'width=1200,height=800');
@@ -178,14 +209,17 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     }
   };
 
-  private generatePrintHTML = (events: ICalendarEvent[], printView: string, selectedDate: Date): string => {
+  private generatePrintHTML = (events: ICalendarEvent[], printView: string, selectedDate: Date, forceSinglePage: boolean = false): string => {
     const title = `BigCal ${printView.charAt(0).toUpperCase() + printView.slice(1)} View - ${moment(selectedDate).format('MMMM YYYY')}`;
-    
-    // For now, focus on month view - we'll add others later
+
     if (printView === 'month') {
       return this.generateMonthPrintHTML(events, selectedDate, title);
     }
-    
+
+    if (printView === 'week') {
+      return this.generateWeekPrintHTML(events, selectedDate, title, forceSinglePage);
+    }
+
     return `<html><body><h1>Print view ${printView} coming soon!</h1></body></html>`;
   };
 
@@ -308,6 +342,42 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     );
   };
 
+  // 🎯 EXACT COPY of BigCal's EventComponent - adapted for print (no mouse events)
+  private PrintWeekEvent = ({ event }: { event: ICalendarEvent }): React.ReactElement => {
+    // Holiday events get special display
+    if (event.isHoliday) {
+      return (
+        <div className={bigCalStyles.customEvent}>
+          <span
+            className={bigCalStyles.eventIcon}
+            style={{ fontSize: '16px', marginRight: '6px' }}
+          >
+            🏛️
+          </span>
+          <span className={bigCalStyles.eventTitle}>
+            {event.title}
+            {event.isObserved && ' (observed)'}
+          </span>
+        </div>
+      );
+    }
+
+    // Private events get locked icon, regular events get dynamic category icon
+    const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
+
+    return (
+      <div className={bigCalStyles.customEvent}>
+        <span
+          className={bigCalStyles.eventIcon}
+          style={{ fontSize: '16px', marginRight: '6px' }}
+        >
+          {iconEmoji}
+        </span>
+        <span className={bigCalStyles.eventTitle}>{event.title}</span>
+      </div>
+    );
+  };
+
   // 🎯 EXACT COPY of BigCal's getEventIconFromMapping method
   private getEventIconFromMapping = (swimlane: string, status: string): string => {
     // Check for dynamic icon mappings first
@@ -387,6 +457,140 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     return html;
   };
 
+  private generateWeekPrintHTML = (events: ICalendarEvent[], selectedDate: Date, title: string, forceSinglePage: boolean = false): string => {
+    // Generate legendary week view HTML optimized for landscape printing
+    const weekStart = moment(selectedDate).startOf('week');
+    const weekEnd = moment(selectedDate).endOf('week');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @page {
+              size: landscape;
+              margin: 0.5in;
+            }
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              margin: 0;
+              padding: 0;
+              -webkit-print-color-adjust: exact;
+              color-adjust: exact;
+            }
+            .print-header {
+              text-align: center;
+              margin-bottom: 8px;
+              padding: 4px 0;
+            }
+            .print-header p {
+              margin: 0;
+              color: #333;
+              font-size: 14px;
+              font-weight: 500;
+            }
+            .week-grid {
+              width: 100%;
+              border-collapse: collapse;
+              height: ${forceSinglePage ? '680px' : '750px'};
+            }
+            .week-grid th,
+            .week-grid td {
+              border: 1px solid #ccc;
+              padding: ${forceSinglePage ? '2px' : '4px'};
+              vertical-align: top;
+            }
+            .week-grid th {
+              background-color: #0078d4;
+              color: white;
+              text-align: center;
+              font-weight: 600;
+              height: ${forceSinglePage ? '30px' : '40px'};
+              width: 14.28%;
+              font-size: ${forceSinglePage ? '11px' : '14px'};
+            }
+            .week-grid .time-slot {
+              background-color: #f8f9fa;
+              font-size: 11px;
+              text-align: center;
+              width: 60px;
+              font-weight: 600;
+            }
+            .week-event {
+              background-color: #0078d4;
+              color: white;
+              padding: ${forceSinglePage ? '1px 2px' : '2px 4px'};
+              margin: ${forceSinglePage ? '0.5px 0' : '1px 0'};
+              border-radius: 3px;
+              font-size: ${forceSinglePage ? '8px' : '10px'};
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+              line-height: ${forceSinglePage ? '1.1' : '1.2'};
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <p>Week of ${weekStart.format('MMMM D')} - ${weekEnd.format('MMMM D, YYYY')}</p>
+          </div>
+          ${this.generateWeekGrid(events, selectedDate)}
+        </body>
+      </html>
+    `;
+  };
+
+  private generateWeekGrid = (events: ICalendarEvent[], selectedDate: Date): string => {
+    // Generate a simplified week grid for printing
+    const weekStart = moment(selectedDate).startOf('week');
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    let html = '<table class="week-grid">';
+
+    // Header row with days
+    html += '<thead><tr><th>Time</th>';
+    for (let i = 0; i < 7; i++) {
+      const day = weekStart.clone().add(i, 'days');
+      html += `<th>${dayNames[i]}<br/>${day.format('MMM D')}</th>`;
+    }
+    html += '</tr></thead>';
+
+    // Time slots from 7 AM to 6 PM (business hours focus)
+    html += '<tbody>';
+    for (let hour = 7; hour <= 18; hour++) {
+      html += '<tr>';
+      html += `<td class="time-slot">${hour === 12 ? '12:00 PM' : hour > 12 ? `${hour - 12}:00 PM` : `${hour}:00 AM`}</td>`;
+
+      // For each day of the week
+      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        const currentDay = weekStart.clone().add(dayOffset, 'days');
+        const dayEvents = events.filter(event => {
+          const eventStart = moment(event.start);
+          const eventHour = eventStart.hour();
+          return eventStart.isSame(currentDay, 'day') && eventHour === hour;
+        });
+
+        html += '<td>';
+        dayEvents.forEach(event => {
+          const eventStyle = this.props.eventStyleGetter(event);
+          const backgroundColor = eventStyle.style.backgroundColor || '#0078d4';
+          const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
+
+          html += `<div class="week-event" style="background-color: ${backgroundColor};">`;
+          html += `${iconEmoji} ${event.title}`;
+          html += '</div>';
+        });
+        html += '</td>';
+      }
+
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+
+    return html;
+  };
+
   public render(): React.ReactElement<ILegendaryPrintPreviewProps> {
     if (!this.props.isOpen) {
       return <div />;
@@ -417,7 +621,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
               onClick={this.props.onClose}
               className={styles.closeButton}
             />
-            <h2 className={styles.headerTitle}>🖨️ Legendary Print Preview</h2>
+            <h2 className={styles.headerTitle}>⚔️ Legendary Print 🖨️</h2>
           </div>
 
           <div className={styles.headerCenter}>
@@ -452,10 +656,17 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
               onChange={this.onPrintViewChange}
               className={styles.viewSelector}
             />
-            
+
+            <Toggle
+              label="Force Single Page"
+              checked={this.state.forceSinglePage}
+              onChange={(ev, checked) => this.setState({ forceSinglePage: !!checked })}
+              inlineLabel
+              className={styles.singlePageToggle}
+            />
+
             <PrimaryButton
-              text="🚀 Print"
-              iconProps={{ iconName: 'Print' }}
+              text="Legendary Print"
               onClick={this.generateLegendaryPrint}
               disabled={isGeneratingPrint}
               className={styles.printButton}
@@ -485,6 +696,30 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   eventPropGetter={this.props.eventStyleGetter}
                   components={{
                     event: this.PrintMonthEvent
+                  }}
+                  popup
+                  onSelectEvent={() => {}} // Disable event selection for print
+                  onSelectSlot={() => {}} // Disable slot selection for print
+                  onNavigate={() => {}} // Prevent navigation
+                  onView={() => {}} // Prevent view changes
+                />
+              )}
+
+              {printView === 'week' && (
+                <Calendar
+                  localizer={localizer}
+                  events={filteredEvents}
+                  startAccessor="start"
+                  endAccessor="end"
+                  style={{ height: 'calc(100vh - 200px)', width: '100%' }}
+                  views={['week']}
+                  view="week"
+                  date={selectedDate}
+                  toolbar={false}
+                  min={new Date(2000, 0, 1, 7, 0, 0)} // Start at 7:00 AM - LEGENDARY business hours!
+                  eventPropGetter={this.props.eventStyleGetter}
+                  components={{
+                    event: this.PrintWeekEvent
                   }}
                   popup
                   onSelectEvent={() => {}} // Disable event selection for print

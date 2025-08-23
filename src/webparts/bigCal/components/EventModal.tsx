@@ -15,7 +15,7 @@ import {
 } from '@fluentui/react';
 import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
 import { Logger } from '../services/LoggingService';
-import * as moment from 'moment';
+
 import styles from './EventModal.module.scss';
 
 export interface IEventModalProps {
@@ -82,6 +82,8 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
     const startTimeData = this.formatTimeWithAmPm(props.event?.start || defaultStart);
     const endTimeData = this.formatTimeWithAmPm(props.event?.end || defaultEnd);
+
+
 
     this.state = {
       title: props.event?.title || '',
@@ -255,11 +257,11 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
   };
 
   private parseTime = (timeString: string, date: Date, amPm?: 'AM' | 'PM'): Date => {
-    // Use moment.js for proper timezone-agnostic date handling
+    // Parse time components
     const [hours, minutes] = timeString.split(':').map(Number);
 
-    // Create a moment object from the date, preserving the local date
-    const dateMoment = moment(date).startOf('day');
+    // Create a new Date object based on the input date, staying in local time
+    const result = new Date(date.getTime());
 
     if (amPm) {
       // 12-hour format with AM/PM
@@ -269,14 +271,15 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       } else if (amPm === 'PM' && hours !== 12) {
         adjustedHours = hours + 12; // PM hours (except 12 PM)
       }
-      dateMoment.hour(adjustedHours).minute(minutes).second(0).millisecond(0);
+      result.setHours(adjustedHours, minutes, 0, 0);
     } else {
       // 24-hour format (backward compatibility)
-      dateMoment.hour(hours).minute(minutes).second(0).millisecond(0);
+      result.setHours(hours, minutes, 0, 0);
     }
 
-    // Return as JavaScript Date - moment preserves the local timezone context
-    return dateMoment.toDate();
+
+
+    return result;
   };
 
 
@@ -294,6 +297,8 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     try {
       const start = this.parseTime(startTime, startDate, startAmPm);
       const end = this.parseTime(endTime, endDate, endAmPm);
+
+
 
       const eventData: Partial<ICalendarEvent> = {
         id: this.props.event?.id,

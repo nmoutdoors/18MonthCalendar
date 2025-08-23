@@ -156,20 +156,17 @@ export class SharePointService {
   }
 
   /**
-   * Convert Date to SharePoint-compatible string without timezone conversion
-   * SharePoint treats strings without timezone info as local time to the site
+   * Convert Date to SharePoint-compatible UTC string
+   * Following SharePoint golden rule: "Always store UTC to the list"
    */
   private toSharePointDateString(date: Date): string {
-    // Format as ISO string without timezone info (no 'Z' suffix)
-    // This prevents SharePoint from doing timezone conversion
-    const year = date.getFullYear();
-    const month = ('0' + (date.getMonth() + 1)).slice(-2);
-    const day = ('0' + date.getDate()).slice(-2);
-    const hours = ('0' + date.getHours()).slice(-2);
-    const minutes = ('0' + date.getMinutes()).slice(-2);
-    const seconds = ('0' + date.getSeconds()).slice(-2);
+    // Use toISOString() which always returns UTC with 'Z' suffix
+    // This is the SharePoint-recommended approach
+    const result = date.toISOString();
 
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+
+
+    return result;
   }
 
   /**

@@ -1,3 +1,5 @@
+import * as moment from 'moment';
+
 // Type definitions for SharePoint choice fields
 export type SwimlaneType = 'DCDC' | 'DISA' | 'DOD CIO / NSA / USCC' | 'Exec Time' | 'Exercises' | 'FYSA' | 'Joint DISA & DCDC' | 'Mission Partner' | 'Out of Office' | 'Speaking Event' | 'TDY Meetings/Congressional' | 'Transit';
 export type StatusType = 'Confirmed' | 'Tentative' | 'Not Set' | ''; // Include empty string for blank status
@@ -20,12 +22,25 @@ export interface ICalendarEvent {
 
 /**
  * Parse SharePoint date string to JavaScript Date
- * Since we now store dates without timezone info, SharePoint returns them correctly
+ * Handle timezone-safe parsing for local time preservation
  */
 const parseSharePointDate = (dateString: string): Date => {
-  // SharePoint now returns dates in the correct local time since we store them without timezone info
-  // We can parse them directly
-  return new Date(dateString);
+  // If the string has no timezone info (no 'Z' or offset), treat as local time
+  if (dateString && dateString.indexOf('Z') === -1 && !dateString.match(/[+-]\d{2}:\d{2}$/)) {
+    // Parse as local time using moment without timezone conversion
+    return moment(dateString).toDate();
+  }
+
+  // If it has timezone info, use standard parsing
+  const date = new Date(dateString);
+
+  // Check if we got a valid date
+  if (isNaN(date.getTime())) {
+    console.warn('Invalid date string:', dateString);
+    return new Date(); // Fallback to current date
+  }
+
+  return date;
 };
 
 // Helper function to convert SharePoint event to calendar event
