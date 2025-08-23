@@ -5,6 +5,7 @@ import * as moment from 'moment';
 import { ICalendarEvent } from './ICalendarEvent';
 import { Logger } from '../services/LoggingService';
 import styles from './LegendaryPrintPreview.module.scss';
+import bigCalStyles from './BigCal.module.scss';
 
 // Setup the localizer for react-big-calendar
 const localizer = momentLocalizer(moment);
@@ -16,6 +17,7 @@ export interface ILegendaryPrintPreviewProps {
   currentDate?: Date;
   currentView?: View;
   eventStyleGetter: (event: ICalendarEvent) => { style: React.CSSProperties };
+  dynamicIconMappings: Map<string, string>;
 }
 
 export interface ILegendaryPrintPreviewState {
@@ -87,32 +89,12 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     Logger.info(`Filtering events for ${printView} view, selected date: ${selectedDate.toISOString()}`);
     Logger.info(`Total events available: ${events.length}`);
 
-    // 🔍 CRITICAL DEBUG: Check what events we're actually receiving
-    console.log('🔍 PRINT PREVIEW DEBUG - Raw events received:', events.length);
-    console.log('🔍 PRINT PREVIEW DEBUG - Sample events:', events.slice(0, 5).map(e => ({
-      title: e.title,
-      start: e.start,
-      startType: typeof e.start,
-      startIsDate: e.start instanceof Date,
-      month: moment(e.start).format('MMMM YYYY')
-    })));
-
-    // Check for August 2025 events specifically
-    const august2025Events = events.filter(e => moment(e.start).format('MMMM YYYY') === 'August 2025');
-    console.log('🔍 PRINT PREVIEW DEBUG - August 2025 events found:', august2025Events.length);
-
-    // Check for February 2026 events specifically
-    const feb2026Events = events.filter(e => moment(e.start).format('MMMM YYYY') === 'February 2026');
-    console.log('🔍 PRINT PREVIEW DEBUG - February 2026 events found:', feb2026Events.length);
-
     if (printView === 'month') {
       // Get events for the entire month - use proper timezone handling
       const startOfCalendar = moment(selectedDate).startOf('month').startOf('week').startOf('day').toDate();
       const endOfCalendar = moment(selectedDate).endOf('month').endOf('week').endOf('day').toDate();
 
       Logger.debug(`Calendar range: ${startOfCalendar.toISOString()} to ${endOfCalendar.toISOString()}`);
-
-      console.log('🔍 FILTERING DEBUG - Selected month:', moment(selectedDate).format('MMMM YYYY'));
 
       const filteredEvents = events.filter(event => {
         // Use moment.js for ALL date operations - no mixing with Date objects!
@@ -134,11 +116,6 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                                eventEndMoment.isAfter(selectedMoment.clone().endOf('month'));
 
         const isInRange = isInSameMonth || eventEndsInMonth || eventSpansMonth;
-
-        // Debug specific months
-        if (moment(selectedDate).format('MMMM YYYY') === 'August 2025') {
-          console.log('🔧 FIXED FILTER - Event:', event.title, 'Start:', eventStartMoment.format('YYYY-MM-DD'), 'Month:', eventStartMoment.format('MMMM'), 'isInRange:', isInRange);
-        }
 
         if (isInRange) {
           Logger.debug(`Including event: ${event.title} (${eventStartMoment.format('YYYY-MM-DD')})`);
@@ -295,50 +272,61 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     `;
   };
 
-  // Print-specific month event component (similar to BigCal's MonthEvent)
+  // 🎯 EXACT COPY of BigCal's MonthEvent - adapted for print (no mouse events)
   private PrintMonthEvent = ({ event }: { event: ICalendarEvent }): React.ReactElement => {
-    // 🔍 DEBUG: Check if this component is being called
-    console.log('🔍 PrintMonthEvent called for:', event.title, 'Date:', moment(event.start).format('YYYY-MM-DD'));
-
     // Holiday events get special display
     if (event.isHoliday) {
       return (
-        <div style={{
-          fontSize: '11px',
-          padding: '1px 3px',
-          backgroundColor: '#ff9800',
-          color: 'white',
-          border: '2px solid blue',  // 🔍 DEBUG: Make holidays super visible
-          minHeight: '20px',         // 🔍 DEBUG: Ensure minimum height
-          zIndex: 9999,              // 🔍 DEBUG: Bring to front
-          position: 'relative'       // 🔍 DEBUG: Ensure positioning
-        }}>
-          🏛️ {event.title}{event.isObserved && ' (obs)'}
+        <div className={`${bigCalStyles.customEvent} ${bigCalStyles.monthEventItem}`}>
+          <span
+            className={bigCalStyles.eventIcon}
+            style={{ fontSize: '14px', marginRight: '4px' }}
+          >
+            🏛️
+          </span>
+          <span className={bigCalStyles.eventTitle}>
+            {event.title}
+            {event.isObserved && ' (obs)'}
+          </span>
         </div>
       );
     }
 
-    // Get proper event styling instead of hardcoded red
-    const eventStyle = this.props.eventStyleGetter(event);
-    const backgroundColor = eventStyle.style.backgroundColor || '#0078d4';
-
-    // Private events get locked icon
-    const iconEmoji = event.isPrivate ? '🔒' : '';
+    // Private events get locked icon, regular events get dynamic category icon
+    const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
 
     return (
-      <div style={{
-        fontSize: '11px',
-        padding: '1px 3px',
-        backgroundColor,
-        color: 'white',
-        border: '2px solid red',  // 🔍 DEBUG: Make events super visible
-        minHeight: '20px',        // 🔍 DEBUG: Ensure minimum height
-        zIndex: 9999,             // 🔍 DEBUG: Bring to front
-        position: 'relative'      // 🔍 DEBUG: Ensure positioning
-      }}>
-        {iconEmoji} {event.title}
+      <div className={`${bigCalStyles.customEvent} ${bigCalStyles.monthEventItem}`}>
+        <span
+          className={bigCalStyles.eventIcon}
+          style={{ fontSize: '14px', marginRight: '4px' }}
+        >
+          {iconEmoji}
+        </span>
+        <span className={bigCalStyles.eventTitle}>{event.title}</span>
       </div>
     );
+  };
+
+  // 🎯 EXACT COPY of BigCal's getEventIconFromMapping method
+  private getEventIconFromMapping = (swimlane: string, status: string): string => {
+    // Check for dynamic icon mappings first
+    // Priority: Status icon (if Tentative) > Swimlane icon > Static fallback
+    if (status === 'Tentative') {
+      const tentativeIcon = this.props.dynamicIconMappings.get('Tentative');
+      if (tentativeIcon) {
+        return tentativeIcon;
+      }
+    }
+
+    // Check for swimlane icon
+    const swimlaneIcon = this.props.dynamicIconMappings.get(swimlane);
+    if (swimlaneIcon) {
+      return swimlaneIcon;
+    }
+
+    // No fallback - only use Color Palette Studio icons
+    return '';
   };
 
   private generateMonthGrid = (events: ICalendarEvent[], selectedDate: Date): string => {
@@ -410,31 +398,6 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     Logger.info(`Rendering Legendary Print Preview for ${moment(selectedDate).format('MMMM YYYY')}`);
     Logger.info(`Rendering Legendary Print Preview for ${moment(selectedDate).format('MMMM YYYY')}`);
     Logger.info(`Total props events: ${this.props.events.length}, Filtered events: ${filteredEvents.length}`);
-
-    // 🔍 CRITICAL DEBUG: Check what we're passing to react-big-calendar
-    console.log('🔍 REACT-BIG-CALENDAR DEBUG - Events being passed:', filteredEvents.length);
-
-    // 🔍 COMPARE: August 2025 vs February 2026 event data structure
-    const currentMonth = moment(selectedDate).format('MMMM YYYY');
-    console.log('🔍 MONTH COMPARISON - Current month:', currentMonth);
-
-    if (currentMonth === 'August 2025' && filteredEvents.length > 0) {
-      console.log('🔍 AUGUST EVENT STRUCTURE:', filteredEvents[0]);
-    }
-
-    if (currentMonth === 'February 2026' && filteredEvents.length > 0) {
-      console.log('🔍 FEBRUARY EVENT STRUCTURE:', filteredEvents[0]);
-    }
-
-    console.log('🔍 REACT-BIG-CALENDAR DEBUG - First 3 events:', filteredEvents.slice(0, 3).map(e => ({
-      title: e.title,
-      start: e.start,
-      end: e.end,
-      startIsDate: e.start instanceof Date,
-      endIsDate: e.end instanceof Date,
-      startISO: e.start instanceof Date ? e.start.toISOString() : 'NOT A DATE',
-      endISO: e.end instanceof Date ? e.end.toISOString() : 'NOT A DATE'
-    })));
 
     const printViewOptions: IChoiceGroupOption[] = [
       { key: 'month', text: 'Month', iconProps: { iconName: 'Calendar' } },
@@ -520,19 +483,14 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   date={selectedDate}
                   toolbar={false}
                   eventPropGetter={this.props.eventStyleGetter}
-                  className={styles.legendaryCalendar}
+                  components={{
+                    event: this.PrintMonthEvent
+                  }}
+                  popup
+                  onSelectEvent={() => {}} // Disable event selection for print
+                  onSelectSlot={() => {}} // Disable slot selection for print
                   onNavigate={() => {}} // Prevent navigation
                   onView={() => {}} // Prevent view changes
-                  components={{
-                    event: this.PrintMonthEvent,
-                    month: {
-                      dateHeader: ({ date, label }) => (
-                        <div style={{ padding: '8px', fontWeight: 600, fontSize: '14px' }}>
-                          {label}
-                        </div>
-                      )
-                    }
-                  }}
                 />
               )}
               

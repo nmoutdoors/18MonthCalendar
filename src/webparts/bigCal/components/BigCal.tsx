@@ -2175,6 +2175,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           currentDate={currentDate}
           currentView={currentView}
           eventStyleGetter={this.eventStyleGetter}
+          dynamicIconMappings={this.state.dynamicIconMappings}
         />
 
         {/* Event Popover */}
