@@ -46,6 +46,13 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     document.addEventListener('keydown', this.handleKeyDown);
   }
 
+  public componentDidUpdate(prevProps: ILegendaryPrintPreviewProps): void {
+    // If the modal was closed and is now opening, update to current calendar date
+    if (this.props.isOpen && !prevProps.isOpen && this.props.currentDate) {
+      this.setState({ selectedDate: this.props.currentDate });
+    }
+  }
+
   public componentWillUnmount(): void {
     document.removeEventListener('keydown', this.handleKeyDown);
     if (this.printWindowRef) {
@@ -74,14 +81,27 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
   private navigateMonth = (direction: 'prev' | 'next'): void => {
     const { selectedDate } = this.state;
     const newDate = new Date(selectedDate.getTime());
-    
+
     if (direction === 'prev') {
       newDate.setMonth(newDate.getMonth() - 1);
     } else {
       newDate.setMonth(newDate.getMonth() + 1);
     }
-    
+
     this.setState({ selectedDate: newDate });
+  };
+
+  private navigateWeek = (direction: 'prev' | 'next'): void => {
+    const { selectedDate } = this.state;
+    const newDate = moment(selectedDate);
+
+    if (direction === 'prev') {
+      newDate.subtract(1, 'week');
+    } else {
+      newDate.add(1, 'week');
+    }
+
+    this.setState({ selectedDate: newDate.toDate() });
   };
 
   private getFilteredEvents = (): ICalendarEvent[] => {
@@ -628,22 +648,29 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
             <Stack horizontal tokens={{ childrenGap: 15 }} verticalAlign="center">
               <IconButton
                 iconProps={{ iconName: 'ChevronLeft' }}
-                title="Previous Month"
-                onClick={() => this.navigateMonth('prev')}
+                title={printView === 'week' ? 'Previous Week' : 'Previous Month'}
+                onClick={() => printView === 'week' ? this.navigateWeek('prev') : this.navigateMonth('prev')}
                 className={styles.navButton}
               />
-              
+
               <DatePicker
                 value={selectedDate}
                 onSelectDate={this.onDateChange}
-                formatDate={(date) => moment(date).format('MMMM YYYY')}
+                formatDate={(date) => {
+                  if (printView === 'week') {
+                    const weekStart = moment(date).startOf('week');
+                    const weekEnd = moment(date).endOf('week');
+                    return `${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}`;
+                  }
+                  return moment(date).format('MMMM YYYY');
+                }}
                 className={styles.datePicker}
               />
-              
+
               <IconButton
                 iconProps={{ iconName: 'ChevronRight' }}
-                title="Next Month"
-                onClick={() => this.navigateMonth('next')}
+                title={printView === 'week' ? 'Next Week' : 'Next Month'}
+                onClick={() => printView === 'week' ? this.navigateWeek('next') : this.navigateMonth('next')}
                 className={styles.navButton}
               />
             </Stack>
