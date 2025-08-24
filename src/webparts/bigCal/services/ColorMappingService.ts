@@ -20,6 +20,8 @@ interface ISharePointConfigItem {
   OptionValue: string;
   ColorHex: string;
   IconName?: string; // Optional icon name
+  OriginalColorHex?: string; // Original default color for reset functionality
+  OriginalIconName?: string; // Original default icon for reset functionality
   UseDarkText?: boolean; // Optional dark text preference
   IsActive: boolean;
   SortOrder: number;
@@ -129,7 +131,7 @@ export class ColorMappingService {
       }
 
       const itemsPromise = this.sp.web.lists.getByTitle(this.configListName).items
-        .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'UseDarkText', 'IsActive', 'SortOrder', 'Created', 'Modified')
+        .select('Id', 'Title', 'ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'OriginalColorHex', 'OriginalIconName', 'UseDarkText', 'IsActive', 'SortOrder', 'Created', 'Modified')
         .filter("ConfigType eq 'ColorMapping'")
         .orderBy('FieldName', true)
         .orderBy('SortOrder', true)();
@@ -143,6 +145,8 @@ export class ColorMappingService {
         optionValue: item.OptionValue,
         colorHex: item.ColorHex,
         iconName: item.IconName || undefined, // Handle null/empty icon names
+        originalColorHex: item.OriginalColorHex || undefined, // Handle original color for reset
+        originalIconName: item.OriginalIconName || undefined, // Handle original icon for reset
         useDarkText: item.UseDarkText || false, // Handle dark text preference
         isActive: item.IsActive,
         sortOrder: item.SortOrder || 0,
@@ -205,6 +209,8 @@ export class ColorMappingService {
         OptionValue: mapping.optionValue,
         ColorHex: mapping.colorHex,
         IconName: mapping.iconName || null, // Store null if no icon selected
+        OriginalColorHex: mapping.originalColorHex || null, // Store original color for reset
+        OriginalIconName: mapping.originalIconName || null, // Store original icon for reset
         UseDarkText: mapping.useDarkText || false, // Store dark text preference
         IsActive: mapping.isActive,
         SortOrder: mapping.sortOrder
@@ -371,12 +377,17 @@ export class ColorMappingService {
         const swimlaneColorMap = generateColorsForOptions(swimlaneOptionValues, 'Swimlanes');
 
         swimlaneOptions.forEach((option) => {
+          const defaultColor = swimlaneColorMap[option.optionValue];
+          const defaultIcon = getDefaultIcon(option.optionValue);
+
           defaultMappings.push({
             configType: 'ColorMapping',
             fieldName: 'Swimlanes',
             optionValue: option.optionValue,
-            colorHex: swimlaneColorMap[option.optionValue],
-            iconName: getDefaultIcon(option.optionValue),
+            colorHex: defaultColor,
+            iconName: defaultIcon,
+            originalColorHex: defaultColor, // Set original to same as current for new options
+            originalIconName: defaultIcon, // Set original to same as current for new options
             isActive: true,
             sortOrder: sortOrder++
           });
@@ -389,12 +400,17 @@ export class ColorMappingService {
         const statusColorMap = generateColorsForOptions(statusOptionValues, 'Status');
 
         statusOptions.forEach((option) => {
+          const defaultColor = statusColorMap[option.optionValue];
+          const defaultIcon = getDefaultIcon(option.optionValue);
+
           defaultMappings.push({
             configType: 'ColorMapping',
             fieldName: 'Status',
             optionValue: option.optionValue,
-            colorHex: statusColorMap[option.optionValue],
-            iconName: getDefaultIcon(option.optionValue),
+            colorHex: defaultColor,
+            iconName: defaultIcon,
+            originalColorHex: defaultColor, // Set original to same as current for new options
+            originalIconName: defaultIcon, // Set original to same as current for new options
             isActive: true,
             sortOrder: sortOrder++
           });
@@ -772,12 +788,17 @@ export class ColorMappingService {
         const swimlaneColorMap = generateColorsForOptions(swimlaneOptionValues, 'Swimlanes');
 
         swimlaneOptions.forEach((option) => {
+          const defaultColor = swimlaneColorMap[option.optionValue];
+          const defaultIcon = getDefaultIcon(option.optionValue);
+
           allMappings.push({
             configType: 'ColorMapping',
             fieldName: 'Swimlanes',
             optionValue: option.optionValue,
-            colorHex: swimlaneColorMap[option.optionValue],
-            iconName: getDefaultIcon(option.optionValue),
+            colorHex: defaultColor,
+            iconName: defaultIcon,
+            originalColorHex: defaultColor, // Set original to same as current for fresh install
+            originalIconName: defaultIcon, // Set original to same as current for fresh install
             isActive: true,
             sortOrder: sortOrder++
           });
@@ -790,12 +811,17 @@ export class ColorMappingService {
         const statusColorMap = generateColorsForOptions(statusOptionValues, 'Status');
 
         statusOptions.forEach((option) => {
+          const defaultColor = statusColorMap[option.optionValue];
+          const defaultIcon = getDefaultIcon(option.optionValue);
+
           allMappings.push({
             configType: 'ColorMapping',
             fieldName: 'Status',
             optionValue: option.optionValue,
-            colorHex: statusColorMap[option.optionValue],
-            iconName: getDefaultIcon(option.optionValue),
+            colorHex: defaultColor,
+            iconName: defaultIcon,
+            originalColorHex: defaultColor, // Set original to same as current for fresh install
+            originalIconName: defaultIcon, // Set original to same as current for fresh install
             isActive: true,
             sortOrder: sortOrder++
           });

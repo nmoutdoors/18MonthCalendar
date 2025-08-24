@@ -636,7 +636,7 @@ export class SharePointService {
   }
 
   public async validateConfigList(listName: string): Promise<IListValidationResult> {
-    const requiredFields = ['ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'UseDarkText', 'IsActive', 'SortOrder'];
+    const requiredFields = ['ConfigType', 'FieldName', 'OptionValue', 'ColorHex', 'IconName', 'OriginalColorHex', 'OriginalIconName', 'UseDarkText', 'IsActive', 'SortOrder'];
 
     try {
       // Check if list exists
@@ -682,6 +682,8 @@ export class SharePointService {
           '• OptionValue (Single line of text) - The choice value from SharePoint field\n' +
           '• ColorHex (Single line of text) - Hex color code (e.g., "#FF5733")\n' +
           '• IconName (Single line of text) - Icon name for display (optional)\n' +
+          '• OriginalColorHex (Single line of text) - Original default color for reset functionality\n' +
+          '• OriginalIconName (Single line of text) - Original default icon for reset functionality\n' +
           '• UseDarkText (Yes/No field) - Use dark text on light backgrounds (optional)\n' +
           '• IsActive (Yes/No field) - Enable/disable this color mapping\n' +
           '• SortOrder (Number field) - Display order in UI';
@@ -1022,6 +1024,18 @@ export class SharePointService {
           description: 'Icon name for display (optional)'
         },
         {
+          internalName: 'OriginalColorHex',
+          displayName: 'Original Color Hex',
+          fieldType: 'Text',
+          description: 'Original default hex color code for reset functionality'
+        },
+        {
+          internalName: 'OriginalIconName',
+          displayName: 'Original Icon Name',
+          fieldType: 'Text',
+          description: 'Original default icon name for reset functionality (optional)'
+        },
+        {
           internalName: 'UseDarkText',
           displayName: 'Use Dark Text',
           fieldType: 'Boolean',
@@ -1073,7 +1087,7 @@ export class SharePointService {
       }
 
       // Note: Custom view creation will be handled manually in SharePoint
-      // The list will have all required fields: Title, ConfigType, FieldName, OptionValue, ColorHex, IconName, UseDarkText, IsActive, SortOrder
+      // The list will have all required fields: Title, ConfigType, FieldName, OptionValue, ColorHex, IconName, OriginalColorHex, OriginalIconName, UseDarkText, IsActive, SortOrder
       Logger.info('BigCalConfig list created with all required fields');
 
       // Verify the list was created successfully
