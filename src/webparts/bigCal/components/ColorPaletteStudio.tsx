@@ -27,7 +27,7 @@ export interface IColorPaletteStudioProps {
   isLoading: boolean;
   error?: string;
   onSaveColorMappings: (mappings: IColorMapping[]) => Promise<void>;
-  onColorsChanged: () => void; // Real-time UI update callback
+  onColorsChanged: (updatedMappings: IColorMapping[]) => void; // Real-time UI update callback
 }
 
 export interface IColorPaletteStudioState {
@@ -108,11 +108,15 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
 
   public componentDidUpdate(prevProps: IColorPaletteStudioProps): void {
     if (prevProps.colorMappings !== this.props.colorMappings) {
-      // Case 1: Modal just opened - initialize with fresh data from props
+      // Case 1: Modal just opened - initialize with fresh data from props (only if props have data)
       if (!prevProps.isOpen && this.props.isOpen) {
-        this.setState({
-          localMappings: [...this.props.colorMappings]
-        });
+        // DEFENSIVE: Only initialize if we actually have color mappings data
+        if (this.props.colorMappings.length > 0) {
+          this.setState({
+            localMappings: [...this.props.colorMappings]
+          });
+        }
+        // If props are empty but modal is open, wait for data to arrive
       }
       // Case 2: Modal is open and props updated - check if this represents a successful save
       else if (this.props.isOpen && this.propsContainLocalChanges(this.props.colorMappings)) {
@@ -122,6 +126,13 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
         });
       }
       // Case 3: Modal is open but props don't contain local changes - ignore (stale data)
+    }
+
+    // DEFENSIVE: If modal is open but local mappings are empty and props now have data, reinitialize
+    if (this.props.isOpen && this.state.localMappings.length === 0 && this.props.colorMappings.length > 0) {
+      this.setState({
+        localMappings: [...this.props.colorMappings]
+      });
     }
   }
 
@@ -224,7 +235,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     });
 
     // Trigger real-time UI update in calendar
-    this.props.onColorsChanged();
+    this.props.onColorsChanged(updatedMappings);
 
     // Save changes and wait for completion
     try {
@@ -388,7 +399,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
       });
 
       // Trigger real-time UI update
-      this.props.onColorsChanged();
+      this.props.onColorsChanged(restoredMappings);
 
       // Save and wait for completion
       await this.props.onSaveColorMappings(restoredMappings);
@@ -460,7 +471,8 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: shouldHighlight ? '0 0 8px rgba(255, 193, 7, 0.6), inset 0 0 0 2px rgba(255, 193, 7, 0.3)' : 'none',
-            background: shouldHighlight ? 'linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, rgba(255, 193, 7, 0.02) 100%)' : 'transparent'
+            // FIXED: Use background instead of backgroundColor to avoid override, and preserve color when highlighting
+            background: shouldHighlight ? `linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, rgba(255, 193, 7, 0.02) 100%), ${currentColor}` : currentColor
           }}
           onClick={() => this.setState({
             selectedColorOption: option,

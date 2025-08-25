@@ -637,17 +637,15 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   /**
-   * Update dynamic color and icon mappings from current local state
-   * This prevents rollback issues by using local data instead of reloading from SharePoint
+   * Update dynamic color and icon mappings from provided mappings
+   * Used for real-time updates when ColorPaletteStudio makes changes
    */
-  private updateDynamicMappingsFromLocalState = (): void => {
-    const { colorPaletteMappings } = this.state;
-
-    // Build color and icon mappings from current local state
+  private updateDynamicMappingsFromMappings = (mappings: IColorMapping[]): void => {
+    // Build color and icon mappings from provided mappings
     const combinedColorMappings = new Map<string, string>();
     const combinedIconMappings = new Map<string, string>();
 
-    colorPaletteMappings.forEach(mapping => {
+    mappings.forEach(mapping => {
       if (mapping.isActive) {
         // Use the mapping key format that matches the event styling
         const key = mapping.optionValue;
@@ -2411,10 +2409,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           colorMappings={this.state.colorPaletteMappings}
           isLoading={this.state.isColorPaletteLoading}
           onSaveColorMappings={this.saveColorMappings}
-          onColorsChanged={() => {
-            // Update dynamic color and icon mappings from current local state
-            // This prevents the rollback issue where fresh SharePoint data overwrites local changes
-            this.updateDynamicMappingsFromLocalState();
+          onColorsChanged={(updatedMappings: IColorMapping[]) => {
+            // Update dynamic color and icon mappings from the provided local mappings
+            // This ensures we use the latest changes immediately, not stale state
+            this.updateDynamicMappingsFromMappings(updatedMappings);
           }}
         />
 

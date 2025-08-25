@@ -297,8 +297,8 @@ export class ColorMappingService {
       const key = `${result.fieldName}-${result.optionValue}`;
       this.idMappingCache.set(key, result.id!);
 
-      // Mark as recently created for highlighting purposes
-      if (result.id) {
+      // Only mark as recently created if this was a NEW item (not an update)
+      if (result.id && !existingItemId) {
         this.markAsRecentlyCreated(result.id);
       }
 
