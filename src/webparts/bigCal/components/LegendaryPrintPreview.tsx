@@ -10,6 +10,14 @@ import bigCalStyles from './BigCal.module.scss';
 // Setup the localizer for react-big-calendar
 const localizer = momentLocalizer(moment);
 
+interface IEventSpanInfo {
+  event?: ICalendarEvent;
+  colspan?: number;
+  skip?: boolean;
+}
+
+type EventRowCell = IEventSpanInfo | undefined;
+
 export interface ILegendaryPrintPreviewProps {
   events: ICalendarEvent[];
   isOpen: boolean;
@@ -444,7 +452,6 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
             .calendar-grid th,
             .calendar-grid td {
               border: 1px solid #ccc;
-              padding: 4px;
               vertical-align: top;
             }
             .calendar-grid th {
@@ -453,17 +460,26 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
               text-align: center;
               font-weight: 600;
               height: 30px;
+              padding: 8px 4px;
             }
-            .calendar-grid td {
-              height: 85px;
+
+            /* 🏆 LEGENDARY Hybrid Layout */
+
+            /* Day Cells - contain day numbers and single-day events */
+            .day-cell {
               width: 14.28%;
+              height: 85px;
+              padding: 4px;
+              vertical-align: top;
             }
             .day-number {
               font-weight: 600;
               font-size: 14px;
               margin-bottom: 4px;
             }
-            .event-item {
+
+            /* Single-day events within day cells */
+            .single-day-event {
               font-size: 9px;
               margin: 1px 0;
               padding: 1px 3px;
@@ -472,6 +488,32 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
               text-overflow: ellipsis;
               white-space: nowrap;
               line-height: 1.1;
+            }
+
+            /* Spanning Event Rows - for multi-day events only */
+            .spanning-event-row {
+              height: 14px; /* Match single-day event height */
+            }
+            .spanning-cell {
+              height: 14px;
+              padding: 0;
+              border: none !important; /* Completely hide all borders */
+              background: transparent;
+            }
+
+            /* Multi-day spanning events */
+            .multi-day-spanning-event {
+              font-size: 9px; /* Match single-day events */
+              margin: 1px 0;
+              padding: 1px 3px;
+              border-radius: 2px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+              line-height: 1.1;
+              box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+              width: 100%;
+              height: 12px; /* Match single-day event height */
             }
           </style>
         </head>
@@ -724,7 +766,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
   };
 
   private generateMonthGrid = (events: ICalendarEvent[], selectedDate: Date): string => {
-    // Generate the month grid HTML - basic version for now
+    // Generate LEGENDARY month grid HTML with proper multi-day event spanning
     Logger.debug(`Print grid generation - Events received: ${events.length}`);
 
     const startOfMonth = moment(selectedDate).startOf('month');
@@ -733,7 +775,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     const endOfCalendar = moment(endOfMonth).endOf('week');
 
     let html = '<table class="calendar-grid">';
-    
+
     // Header row
     html += '<thead><tr>';
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -742,45 +784,208 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     });
     html += '</tr></thead>';
 
-    // Calendar body
+    // 🏆 LEGENDARY CALENDAR BODY - True multi-day spanning with colspan magic!
     html += '<tbody>';
     const current = moment(startOfCalendar);
-    
+
     while (current.isSameOrBefore(endOfCalendar)) {
-      html += '<tr>';
+      // Build the week row with LEGENDARY multi-day spanning
+      const weekDays: moment.Moment[] = [];
+
+      // Collect all 7 days of this week
       for (let i = 0; i < 7; i++) {
-        const currentDateStr = current.format('YYYY-MM-DD');
-        const dayEvents = events.filter(event => {
-          // Use moment.js consistently for date comparison
-          const eventStartMoment = moment(event.start);
-          const eventDateStr = eventStartMoment.format('YYYY-MM-DD');
-          return eventDateStr === currentDateStr;
+        weekDays.push(current.clone());
+        current.add(1, 'day');
+      }
+
+      // This will be handled in the hybrid layout below
+
+      // 🏆 HYBRID LAYOUT: Day cells with single-day events + spanning rows for multi-day
+
+      // Generate the main row with day numbers AND single-day events
+      html += '<tr class="day-row">';
+      weekDays.forEach(day => {
+        const dayStr = day.format('YYYY-MM-DD');
+
+        // Get single-day events for this day
+        const singleDayEvents = events.filter(event => {
+          const eventStart = moment(event.start);
+          const eventEnd = moment(event.end);
+          const eventStartStr = eventStart.format('YYYY-MM-DD');
+          const eventEndStr = eventEnd.format('YYYY-MM-DD');
+
+          // Single day event that occurs on this day
+          return eventStartStr === eventEndStr && eventStartStr === dayStr;
         });
 
-        // Debug logging for days with events
-        if (dayEvents.length > 0) {
-          Logger.debug(`Print grid - Day ${currentDateStr} has ${dayEvents.length} events`);
-        }
+        html += `<td class="day-cell">`;
+        html += `<div class="day-number">${day.date()}</div>`;
 
-        html += `<td>`;
-        html += `<div class="day-number">${current.date()}</div>`;
-
-        dayEvents.forEach(event => {
+        // Add single-day events directly in the day cell
+        singleDayEvents.forEach(event => {
           const eventStyle = this.props.eventStyleGetter(event);
           const backgroundColor = eventStyle.style.backgroundColor || '#0078d4';
-          // Truncate event titles for consistent print layout
-          const displayTitle = event.title.length > 18 ? `${event.title.substring(0, 18)}...` : event.title;
-          html += `<div class="event-item" style="background-color: ${backgroundColor};">${displayTitle}</div>`;
+          const displayTitle = event.title.length > 18 ?
+            `${event.title.substring(0, 18)}...` : event.title;
+
+          html += `<div class="event-item single-day-event" style="background-color: ${backgroundColor};">`;
+          html += displayTitle;
+          html += `</div>`;
         });
 
         html += `</td>`;
-        current.add(1, 'day');
-      }
+      });
       html += '</tr>';
+
+      // Generate spanning event rows (only for multi-day events)
+      const multiDayEventRows = this.processMultiDayEventsForSpanning(events, weekDays);
+      multiDayEventRows.forEach((eventRow, rowIndex) => {
+        html += `<tr class="spanning-event-row">`;
+
+        let dayIndex = 0;
+        while (dayIndex < 7) {
+          const eventInfo = eventRow[dayIndex];
+
+          if (eventInfo === undefined) {
+            // Empty cell
+            html += '<td class="spanning-cell"></td>';
+            dayIndex++;
+          } else if (eventInfo.skip) {
+            // Skip this cell (part of a spanning event)
+            dayIndex++;
+          } else if (eventInfo.event && eventInfo.colspan) {
+            // Render multi-day event with proper colspan
+            const eventStyle = this.props.eventStyleGetter(eventInfo.event);
+            const backgroundColor = eventStyle.style.backgroundColor || '#0078d4';
+            const displayTitle = eventInfo.event.title.length > 18 ?
+              `${eventInfo.event.title.substring(0, 18)}...` : eventInfo.event.title;
+
+            html += `<td class="spanning-cell" colspan="${eventInfo.colspan}">`;
+            html += `<div class="event-item multi-day-spanning-event" style="background-color: ${backgroundColor};">`;
+            html += displayTitle;
+            html += `</div></td>`;
+
+            dayIndex += eventInfo.colspan;
+          } else {
+            // Fallback for malformed event info
+            html += '<td class="spanning-cell"></td>';
+            dayIndex++;
+          }
+        }
+
+        html += '</tr>';
+      });
     }
     
     html += '</tbody></table>';
     return html;
+  };
+
+
+
+  // 🏆 LEGENDARY HELPER: Process ONLY multi-day events for spanning
+  private processMultiDayEventsForSpanning = (events: ICalendarEvent[], weekDays: moment.Moment[]): EventRowCell[][] => {
+    const eventRows: EventRowCell[][] = [];
+    const processedEvents = new Set<string>();
+
+    // Get only multi-day events that occur during this week
+    const multiDayEvents = events.filter(event => {
+      const eventStart = moment(event.start);
+      const eventEnd = moment(event.end);
+      const weekStart = weekDays[0];
+      const weekEnd = weekDays[6];
+
+      // Must be multi-day AND overlap with this week
+      const isMultiDay = !eventStart.isSame(eventEnd, 'day');
+      const overlapsWeek = eventStart.isSameOrBefore(weekEnd, 'day') && eventEnd.isSameOrAfter(weekStart, 'day');
+
+      return isMultiDay && overlapsWeek;
+    });
+
+    // Sort events by start date, then by duration (longer events first)
+    multiDayEvents.sort((a, b) => {
+      const aStart = moment(a.start);
+      const bStart = moment(b.start);
+      if (!aStart.isSame(bStart, 'day')) {
+        return aStart.diff(bStart);
+      }
+      // Same start date - longer events first
+      const aDuration = moment(a.end).diff(moment(a.start), 'days');
+      const bDuration = moment(b.end).diff(moment(b.start), 'days');
+      return bDuration - aDuration;
+    });
+
+    // Place events in rows without overlapping
+    multiDayEvents.forEach(event => {
+      const eventKey = `${event.title}-${moment(event.start).format('YYYY-MM-DD')}`;
+      if (processedEvents.has(eventKey)) return;
+
+      const eventStart = moment(event.start);
+      const eventEnd = moment(event.end);
+
+      // Calculate which days this event spans within this week
+      let startDayIndex = -1;
+      let endDayIndex = -1;
+
+      for (let i = 0; i < weekDays.length; i++) {
+        if (startDayIndex === -1 && weekDays[i].isSameOrAfter(eventStart, 'day')) {
+          startDayIndex = i;
+        }
+        if (weekDays[i].isSameOrAfter(eventEnd, 'day')) {
+          endDayIndex = i;
+          break;
+        }
+      }
+
+      startDayIndex = Math.max(0, startDayIndex === -1 ? 0 : startDayIndex);
+      const actualEndIndex = endDayIndex === -1 ? 6 : Math.min(6, endDayIndex);
+
+      const colspan = actualEndIndex - startDayIndex + 1;
+
+      if (colspan > 0) {
+        // Find a row where this event can fit
+        let targetRowIndex = -1;
+        for (let rowIndex = 0; rowIndex < eventRows.length; rowIndex++) {
+          let canFit = true;
+          for (let dayIndex = startDayIndex; dayIndex <= actualEndIndex; dayIndex++) {
+            if (eventRows[rowIndex][dayIndex] !== undefined) {
+              canFit = false;
+              break;
+            }
+          }
+          if (canFit) {
+            targetRowIndex = rowIndex;
+            break;
+          }
+        }
+
+        // Create new row if needed
+        if (targetRowIndex === -1) {
+          targetRowIndex = eventRows.length;
+          const newRow: EventRowCell[] = [];
+          for (let i = 0; i < 7; i++) {
+            newRow.push(undefined);
+          }
+          eventRows.push(newRow);
+        }
+
+        // Place the event
+        eventRows[targetRowIndex][startDayIndex] = {
+          event: event,
+          colspan: colspan,
+          skip: false
+        };
+
+        // Mark subsequent cells as skip
+        for (let dayIndex = startDayIndex + 1; dayIndex <= actualEndIndex; dayIndex++) {
+          eventRows[targetRowIndex][dayIndex] = { skip: true };
+        }
+
+        processedEvents.add(eventKey);
+      }
+    });
+
+    return eventRows;
   };
 
   private generateWeekPrintHTML = (events: ICalendarEvent[], selectedDate: Date, title: string, forceSinglePage: boolean = false): string => {
