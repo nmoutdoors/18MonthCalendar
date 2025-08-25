@@ -487,10 +487,16 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     `;
   };
 
-  // 🎯 EXACT COPY of BigCal's MonthEvent - adapted for print (no mouse events)
+  // 🎯 EXACT COPY of BigCal's MonthEvent - adapted for print with TRUNCATION for WYSIWYG
   private PrintMonthEvent = ({ event }: { event: ICalendarEvent }): React.ReactElement => {
+    // Truncate event titles for consistent print layout - similar to MiniCalendarEvent logic
+    const truncateTitle = (title: string, maxLength: number): string => {
+      return title.length > maxLength ? `${title.substring(0, maxLength)}...` : title;
+    };
+
     // Holiday events get special display
     if (event.isHoliday) {
+      const displayTitle = truncateTitle(event.title, 20); // Slightly longer for holidays
       return (
         <div className={`${bigCalStyles.customEvent} ${bigCalStyles.monthEventItem}`}>
           <span
@@ -500,7 +506,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
             🏛️
           </span>
           <span className={bigCalStyles.eventTitle}>
-            {event.title}
+            {displayTitle}
             {event.isObserved && ' (obs)'}
           </span>
         </div>
@@ -510,6 +516,9 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     // Private events get locked icon, regular events get dynamic category icon
     const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
 
+    // Truncate regular event titles to maintain consistent cell widths
+    const displayTitle = truncateTitle(event.title, 18); // Optimal length for print month view
+
     return (
       <div className={`${bigCalStyles.customEvent} ${bigCalStyles.monthEventItem}`}>
         <span
@@ -518,15 +527,21 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         >
           {iconEmoji}
         </span>
-        <span className={bigCalStyles.eventTitle}>{event.title}</span>
+        <span className={bigCalStyles.eventTitle}>{displayTitle}</span>
       </div>
     );
   };
 
   // 🎯 EXACT COPY of BigCal's EventComponent - adapted for print (no mouse events)
   private PrintWeekEvent = ({ event }: { event: ICalendarEvent }): React.ReactElement => {
+    // Truncate event titles for consistent print layout
+    const truncateTitle = (title: string, maxLength: number): string => {
+      return title.length > maxLength ? `${title.substring(0, maxLength)}...` : title;
+    };
+
     // Holiday events get special display
     if (event.isHoliday) {
+      const displayTitle = truncateTitle(event.title, 25); // Longer for week view
       return (
         <div className={bigCalStyles.customEvent}>
           <span
@@ -536,7 +551,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
             🏛️
           </span>
           <span className={bigCalStyles.eventTitle}>
-            {event.title}
+            {displayTitle}
             {event.isObserved && ' (observed)'}
           </span>
         </div>
@@ -545,6 +560,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
     // Private events get locked icon, regular events get dynamic category icon
     const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
+    const displayTitle = truncateTitle(event.title, 22); // Optimal for week view
 
     return (
       <div className={bigCalStyles.customEvent}>
@@ -554,13 +570,15 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         >
           {iconEmoji}
         </span>
-        <span className={bigCalStyles.eventTitle}>{event.title}</span>
+        <span className={bigCalStyles.eventTitle}>{displayTitle}</span>
       </div>
     );
   };
 
   // 🎯 EXACT COPY of BigCal's EventComponent - adapted for Day print view
   private PrintDayEvent = ({ event }: { event: ICalendarEvent }): React.ReactElement => {
+    // Day view shows FULL titles - users expect complete information in detail view
+
     // Holiday events get special display
     if (event.isHoliday) {
       return (
@@ -594,6 +612,8 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
   // 🎯 EXACT COPY of BigCal's EventComponent - adapted for Agenda print view
   private PrintAgendaEvent = ({ event }: { event: ICalendarEvent }): React.ReactElement => {
+    // Agenda view shows FULL titles - this is the detail view where users want complete information
+
     // Holiday events get special display
     if (event.isHoliday) {
       return (
@@ -748,7 +768,9 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         dayEvents.forEach(event => {
           const eventStyle = this.props.eventStyleGetter(event);
           const backgroundColor = eventStyle.style.backgroundColor || '#0078d4';
-          html += `<div class="event-item" style="background-color: ${backgroundColor};">${event.title}</div>`;
+          // Truncate event titles for consistent print layout
+          const displayTitle = event.title.length > 18 ? `${event.title.substring(0, 18)}...` : event.title;
+          html += `<div class="event-item" style="background-color: ${backgroundColor};">${displayTitle}</div>`;
         });
 
         html += `</td>`;
@@ -881,8 +903,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
           const backgroundColor = eventStyle.style.backgroundColor || '#0078d4';
           const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
 
+          // Truncate event titles for consistent print layout
+          const displayTitle = event.title.length > 22 ? `${event.title.substring(0, 22)}...` : event.title;
           html += `<div class="week-event" style="background-color: ${backgroundColor};">`;
-          html += `${iconEmoji} ${event.title}`;
+          html += `${iconEmoji} ${displayTitle}`;
           html += '</div>';
         });
         html += '</td>';
