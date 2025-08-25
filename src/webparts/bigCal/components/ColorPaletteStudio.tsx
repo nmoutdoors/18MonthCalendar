@@ -16,7 +16,7 @@ import {
   Checkbox,
 } from '@fluentui/react';
 import { IColorMapping, IFieldOption, ORIGINAL_COLOR_MAPPINGS, getDefaultIcon } from '../interfaces/IColorMapping';
-import { getContextualIcons, IIconOption } from '../utils/IconMappings';
+import { getContextualIcons, getComprehensiveIcons, IIconOption } from '../utils/IconMappings';
 import styles from './BigCal.module.scss';
 
 export interface IColorPaletteStudioProps {
@@ -441,6 +441,10 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
     const currentIcon = this.getCurrentIcon(option);
     const currentColor = this.getCurrentColor(option);
 
+    // Determine if this option should be highlighted (newly discovered OR recently created)
+    const shouldHighlight = option.isNewlyDiscovered || option.isRecentlyCreated;
+    const highlightLabel = option.isNewlyDiscovered ? 'NEW' : (option.isRecentlyCreated ? 'NEW' : '');
+
     return (
       <Stack key={`${option.fieldName}-${option.optionValue}`} horizontal verticalAlign="center" tokens={{ childrenGap: 12 }}>
         {/* Color Square */}
@@ -455,7 +459,8 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: option.isNewlyDiscovered ? '0 0 8px rgba(255, 193, 7, 0.6)' : 'none'
+            boxShadow: shouldHighlight ? '0 0 8px rgba(255, 193, 7, 0.6), inset 0 0 0 2px rgba(255, 193, 7, 0.3)' : 'none',
+            background: shouldHighlight ? 'linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, rgba(255, 193, 7, 0.02) 100%)' : 'transparent'
           }}
           onClick={() => this.setState({
             selectedColorOption: option,
@@ -463,12 +468,12 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
             selectedColor: getColorFromString(currentColor)!,
             selectedIcon: this.getCurrentIcon(option),
             selectedUseDarkText: this.getCurrentUseDarkText(option),
-            availableIcons: getContextualIcons(option.optionValue)
+            availableIcons: shouldHighlight ? getComprehensiveIcons() : getContextualIcons(option.optionValue)
           })}
           title={`Click to change color for ${option.optionValue}`}
         >
-          {option.isNewlyDiscovered && (
-            <Text style={{ color: 'white', fontSize: '10px', fontWeight: 'bold' }}>NEW</Text>
+          {shouldHighlight && highlightLabel && (
+            <Text style={{ color: 'white', fontSize: '10px', fontWeight: 'bold' }}>{highlightLabel}</Text>
           )}
         </div>
 
@@ -484,7 +489,8 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: '#fafafa',
-            boxShadow: option.isNewlyDiscovered ? '0 0 8px rgba(255, 193, 7, 0.6)' : 'none'
+            boxShadow: shouldHighlight ? '0 0 8px rgba(255, 193, 7, 0.6), inset 0 0 0 2px rgba(255, 193, 7, 0.3)' : 'none',
+            background: shouldHighlight ? 'linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, rgba(255, 193, 7, 0.02) 100%)' : '#fafafa'
           }}
           onClick={() => this.setState({
             selectedColorOption: option,
@@ -492,7 +498,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
             selectedColor: getColorFromString(currentColor)!,
             selectedIcon: this.getCurrentIcon(option),
             selectedUseDarkText: this.getCurrentUseDarkText(option),
-            availableIcons: getContextualIcons(option.optionValue)
+            availableIcons: shouldHighlight ? getComprehensiveIcons() : getContextualIcons(option.optionValue)
           })}
           title={`Click to change icon for ${option.optionValue}`}
         >
@@ -505,7 +511,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
 
         {/* Option Info */}
         <Stack style={{ flex: 1 }}>
-          <Text variant="medium" style={{ fontWeight: option.isNewlyDiscovered ? 'bold' : 'normal' }}>
+          <Text variant="medium" style={{ fontWeight: shouldHighlight ? 'bold' : 'normal' }}>
             {option.optionValue}
           </Text>
           <Text variant="small" style={{ color: '#605e5c' }}>
@@ -518,8 +524,17 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
   };
 
   private renderTwoColumnLayout = (): React.ReactElement => {
-    const allOptions = [...this.props.discoveredOptions];
-    const newOptions = allOptions.filter(o => o.isNewlyDiscovered);
+    // Filter to only show Swimlanes (not Status options) - this prevents Status values like "Tentative" from appearing
+    const swimlaneOptions = this.props.discoveredOptions.filter(o => o.fieldName === 'Swimlanes');
+
+    // Sort options to put newly discovered ones at the bottom for better visibility
+    const existingOptions = swimlaneOptions.filter(o => !o.isNewlyDiscovered);
+    const newOptions = swimlaneOptions.filter(o => o.isNewlyDiscovered);
+
+    // Also identify recently created items for highlighting
+    const recentlyCreatedOptions = swimlaneOptions.filter(o => o.isRecentlyCreated);
+
+    const allOptions = [...existingOptions, ...newOptions];
 
     // Split options into two columns
     const midpoint = Math.ceil(allOptions.length / 2);
@@ -528,10 +543,12 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
 
     return (
       <Stack tokens={{ childrenGap: 16 }}>
-        {newOptions.length > 0 && (
+        {(newOptions.length > 0 || recentlyCreatedOptions.length > 0) && (
           <MessageBar messageBarType={MessageBarType.warning}>
             <Text>
-              {newOptions.length} new option(s) discovered! Assign colors and icons below.
+              {newOptions.length > 0 && `${newOptions.length} new option(s) discovered! `}
+              {recentlyCreatedOptions.length > 0 && `${recentlyCreatedOptions.length} recently added option(s) highlighted. `}
+              Assign colors and icons below.
             </Text>
           </MessageBar>
         )}
@@ -550,7 +567,7 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
 
         {allOptions.length === 0 && (
           <MessageBar messageBarType={MessageBarType.info}>
-            <Text>No options found in your Events list.</Text>
+            <Text>No swimlane options found in your Events list.</Text>
           </MessageBar>
         )}
       </Stack>
@@ -671,7 +688,9 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
           >
             <div className={styles.colorPickerContent}>
               <Stack tokens={{ childrenGap: 16 }}>
-                <Text variant="large">Choose Color & Icon for {selectedColorOption.optionValue}</Text>
+                <Text variant="large">
+                  {(selectedColorOption.isNewlyDiscovered || selectedColorOption.isRecentlyCreated) ? 'Choose Color & Icon for New Lane' : 'Choose Color & Icon for'} {selectedColorOption.optionValue}
+                </Text>
 
                 <Stack horizontal tokens={{ childrenGap: 20 }}>
                   {/* Color Picker */}
@@ -695,7 +714,9 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
                           label: { fontSize: '14px' }
                         }}
                       />
-                      <Text variant="medium">Choose Icon:</Text>
+                      <Text variant="medium">
+                        Choose Icon: {(selectedColorOption.isNewlyDiscovered || selectedColorOption.isRecentlyCreated) && <span style={{ color: '#605e5c', fontSize: '12px' }}>(Comprehensive options available)</span>}
+                      </Text>
                     </Stack>
                     <div style={{
                       display: 'grid',

@@ -26,6 +26,7 @@ export interface IFieldOption {
   isNewlyDiscovered: boolean;
   hasColorMapping: boolean;
   currentColor?: string;
+  isRecentlyCreated?: boolean; // Flag for highlighting recently created items
 }
 
 /**

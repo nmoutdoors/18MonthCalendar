@@ -75,12 +75,20 @@ export class ColorMappingService {
               }
             }
 
+            // Check if this was recently added (within last 5 minutes) for highlighting purposes
+            const isRecentlyAdded = existingMapping && typeof existingMapping.id === 'number' &&
+              this.isRecentlyCreated(existingMapping.id);
+
             discoveredOptions.push({
               fieldName: 'Swimlanes',
               optionValue: choice,
+              // Only show as newly discovered if there's NO mapping at all
+              // Recently added items should NOT be marked as newly discovered
               isNewlyDiscovered: !existingMapping,
               hasColorMapping: !!existingMapping,
-              currentColor: existingMapping?.colorHex
+              currentColor: existingMapping?.colorHex,
+              // Add a separate flag for recently created items for highlighting
+              isRecentlyCreated: isRecentlyAdded === true
             });
           }
         }
@@ -98,12 +106,19 @@ export class ColorMappingService {
               }
             }
 
+            // Check if this was recently added (within last 5 minutes) for highlighting purposes
+            const isRecentlyAdded = existingMapping && typeof existingMapping.id === 'number' &&
+              this.isRecentlyCreated(existingMapping.id);
+
             discoveredOptions.push({
               fieldName: 'Status',
               optionValue: choice,
+              // Only show as newly discovered if there's NO mapping at all
               isNewlyDiscovered: !existingMapping,
               hasColorMapping: !!existingMapping,
-              currentColor: existingMapping?.colorHex
+              currentColor: existingMapping?.colorHex,
+              // Add a separate flag for recently created items for highlighting
+              isRecentlyCreated: isRecentlyAdded === true
             });
           }
         }
@@ -282,6 +297,11 @@ export class ColorMappingService {
       const key = `${result.fieldName}-${result.optionValue}`;
       this.idMappingCache.set(key, result.id!);
 
+      // Mark as recently created for highlighting purposes
+      if (result.id) {
+        this.markAsRecentlyCreated(result.id);
+      }
+
       // Update cache
       this.invalidateCache();
 
@@ -349,6 +369,76 @@ export class ColorMappingService {
     } catch (error) {
       console.error('Error deleting color mapping', error);
       throw new Error(`Failed to delete color mapping: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Clean up orphaned swimlane mappings that no longer exist in the Events list
+   */
+  public async cleanupOrphanedSwimlanes(eventsListName: string): Promise<{ deletedCount: number; deletedSwimlanes: string[] }> {
+    try {
+      Logger.info('Cleaning up orphaned swimlane mappings');
+
+      // Get current swimlane choices from Events list
+      const swimlaneField = await withTimeout(
+        this.sp.web.lists.getByTitle(eventsListName).fields.getByInternalNameOrTitle('Swimlane')(),
+        NETWORK_TIMEOUTS.FAST,
+        `Get Swimlane field from ${eventsListName}`
+      );
+
+      const currentSwimlanes = new Set<string>();
+      if (swimlaneField && swimlaneField.Choices) {
+        swimlaneField.Choices.forEach((choice: string) => {
+          if (choice && choice.trim()) {
+            currentSwimlanes.add(choice.trim());
+          }
+        });
+      }
+
+      // Get all swimlane mappings from BigCalConfig
+      const existingMappings = await this.sp.web.lists.getByTitle(this.configListName).items
+        .select('Id', 'FieldName', 'OptionValue')
+        .filter("ConfigType eq 'ColorMapping' and FieldName eq 'Swimlanes'")();
+
+      const orphanedMappings: { id: number; optionValue: string }[] = [];
+
+      existingMappings.forEach(mapping => {
+        // Skip 'Private Events' - it's a virtual swimlane
+        if (mapping.OptionValue !== 'Private Events' && !currentSwimlanes.has(mapping.OptionValue)) {
+          orphanedMappings.push({
+            id: mapping.Id,
+            optionValue: mapping.OptionValue
+          });
+        }
+      });
+
+      // Delete orphaned mappings
+      const deletedSwimlanes: string[] = [];
+      for (const orphaned of orphanedMappings) {
+        try {
+          await this.sp.web.lists.getByTitle(this.configListName).items.getById(orphaned.id).delete();
+          deletedSwimlanes.push(orphaned.optionValue);
+          Logger.info(`Deleted orphaned swimlane mapping: ${orphaned.optionValue}`);
+        } catch (error) {
+          Logger.error(`Failed to delete orphaned mapping for ${orphaned.optionValue}`, error);
+        }
+      }
+
+      // Clear cache if we deleted anything
+      if (deletedSwimlanes.length > 0) {
+        this.invalidateCache();
+      }
+
+      Logger.info(`Cleanup complete: Deleted ${deletedSwimlanes.length} orphaned swimlane mappings`);
+
+      return {
+        deletedCount: deletedSwimlanes.length,
+        deletedSwimlanes
+      };
+
+    } catch (error) {
+      Logger.error('Error cleaning up orphaned swimlanes', error);
+      throw new Error(`Failed to cleanup orphaned swimlanes: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -742,7 +832,8 @@ export class ColorMappingService {
         optionValue: choice,
         isNewlyDiscovered: true, // Treat as new since we're using fallback
         hasColorMapping: false,
-        currentColor: undefined
+        currentColor: undefined,
+        isRecentlyCreated: false // Fallback options are not recently created
       });
     });
 
@@ -752,7 +843,8 @@ export class ColorMappingService {
       optionValue: 'Private Events',
       isNewlyDiscovered: true,
       hasColorMapping: false,
-      currentColor: undefined
+      currentColor: undefined,
+      isRecentlyCreated: false // Virtual swimlane is not recently created
     });
 
     // Add status options
@@ -762,7 +854,8 @@ export class ColorMappingService {
         optionValue: choice,
         isNewlyDiscovered: true, // Treat as new since we're using fallback
         hasColorMapping: false,
-        currentColor: undefined
+        currentColor: undefined,
+        isRecentlyCreated: false // Fallback options are not recently created
       });
     });
 
@@ -833,6 +926,48 @@ export class ColorMappingService {
     } catch (error) {
       console.error('Error generating all color mappings for options', error);
       throw new Error(`Failed to generate color mappings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Check if a BigCalConfig item was recently created (within last 5 minutes)
+   * This helps maintain highlighting for newly added swimlanes
+   */
+  private isRecentlyCreated(itemId: number): boolean {
+    try {
+      // Check our cache of recently created items
+      const recentlyCreatedKey = `recently_created_${itemId}`;
+      const createdTime = sessionStorage.getItem(recentlyCreatedKey);
+
+      if (createdTime) {
+        const createdTimestamp = parseInt(createdTime, 10);
+        const fiveMinutesAgo = Date.now() - (5 * 60 * 1000); // 5 minutes in milliseconds
+
+        if (createdTimestamp > fiveMinutesAgo) {
+          return true;
+        } else {
+          // Clean up expired entries
+          sessionStorage.removeItem(recentlyCreatedKey);
+        }
+      }
+
+      return false;
+    } catch {
+      // If sessionStorage fails, just return false
+      return false;
+    }
+  }
+
+  /**
+   * Mark an item as recently created for highlighting purposes
+   */
+  private markAsRecentlyCreated(itemId: number): void {
+    try {
+      const recentlyCreatedKey = `recently_created_${itemId}`;
+      sessionStorage.setItem(recentlyCreatedKey, Date.now().toString());
+    } catch (error) {
+      // If sessionStorage fails, just continue - highlighting is not critical
+      Logger.warn('Failed to mark item as recently created', error);
     }
   }
 

@@ -28,6 +28,7 @@ import { Suspense } from 'react';
 import { ColorPaletteStudio } from './ColorPaletteStudio';
 import { LegendaryPrintPreview } from './LegendaryPrintPreview';
 import { GridView } from './GridView';
+import { SwimlanesRefreshModal } from './SwimlanesRefreshModal';
 import { formatMonthYear, withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -71,6 +72,9 @@ interface IBigCalState {
   colorPaletteDiscoveredOptions: IFieldOption[];
   colorPaletteMappings: IColorMapping[];
   isColorPaletteLoading: boolean;
+  // Swimlanes Refresh Modal state
+  isSwimlanesRefreshModalOpen: boolean;
+  missingSwimlanesCount: number;
   // List configuration status
   colorMappingsAvailable: boolean;
   publicEventsListAvailable: boolean;
@@ -80,6 +84,8 @@ interface IBigCalState {
   dynamicColorMappings: Map<string, string>;
   // Dynamic icon mappings from Color Palette Studio
   dynamicIconMappings: Map<string, string>;
+  // Available swimlanes from SharePoint list
+  availableSwimlanes: string[];
 }
 
 export default class BigCal extends React.Component<IBigCalProps, IBigCalState> {
@@ -138,6 +144,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       colorPaletteDiscoveredOptions: [],
       colorPaletteMappings: [],
       isColorPaletteLoading: false,
+      // Swimlanes Refresh Modal state
+      isSwimlanesRefreshModalOpen: false,
+      missingSwimlanesCount: 0,
       // List configuration status
       colorMappingsAvailable: true, // Will be checked on load
       publicEventsListAvailable: true, // Will be checked on load
@@ -146,7 +155,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       // Dynamic color mappings from Color Palette Studio
       dynamicColorMappings: new Map(),
       // Dynamic icon mappings from Color Palette Studio
-      dynamicIconMappings: new Map()
+      dynamicIconMappings: new Map(),
+      // Available swimlanes from SharePoint list
+      availableSwimlanes: []
     };
 
     this.sharePointService = new SharePointService(props.context, props.listName);
@@ -173,7 +184,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     await Promise.all([
       this.checkListConfigurations(),
       this.loadDynamicColorMappings(),
-      this.loadColorPaletteMappings()
+      this.loadColorPaletteMappings(),
+      this.loadAvailableSwimlanes()
     ]);
 
     // Inject dynamic color styles
@@ -273,6 +285,45 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         dynamicColorMappings: staticColorMappings,
         dynamicIconMappings: staticIconMappings
       });
+    }
+  };
+
+  /**
+   * Load available swimlanes from SharePoint list for dynamic dropdowns
+   */
+  private loadAvailableSwimlanes = async (): Promise<void> => {
+    try {
+      const colorMappingService = new ColorMappingService(this.props.context);
+      const discoveredOptions = await colorMappingService.discoverFieldOptions(this.props.listName);
+
+      // Extract swimlane options
+      const swimlanes = discoveredOptions
+        .filter(option => option.fieldName === 'Swimlanes')
+        .map(option => option.optionValue)
+        .sort(); // Sort alphabetically for consistent ordering
+
+      // Update available swimlanes and ensure all are selected in the filter by default
+      const { selectedEventCategories } = this.state;
+      const updatedSelectedCategories = new Set<string>();
+      selectedEventCategories.forEach(category => updatedSelectedCategories.add(category));
+
+      // Add any new swimlanes to the selected categories (except Private Events which is handled separately)
+      swimlanes.forEach(swimlane => {
+        if (swimlane !== 'Private Events') {
+          updatedSelectedCategories.add(swimlane);
+        }
+      });
+
+      this.setState({
+        availableSwimlanes: swimlanes,
+        selectedEventCategories: updatedSelectedCategories
+      });
+
+      Logger.debug('Loaded available swimlanes', { count: swimlanes.length, swimlanes });
+
+    } catch (error) {
+      Logger.warn('Failed to load available swimlanes, using fallback', error);
+      // Don't set state - EventModal will use fallback options
     }
   };
 
@@ -399,24 +450,25 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
 
   private getEventCategoryDropdownOptions = (): IDropdownOption[] => {
-    const { filteredEvents, selectedEventCategories } = this.state;
-    const allCategories = [
-      'DCDC',
-      'DISA',
-      'DOD CIO / NSA / USCC',
-      'Exec Time',
-      'Exercises',
-      'FYSA',
-      'Joint DISA & DCDC',
-      'Mission Partner',
-      'Out of Office',
-      'Speaking Event',
-      'TDY Meetings/Congressional',
-      'Transit'
-    ];
+    const { filteredEvents, selectedEventCategories, availableSwimlanes } = this.state;
 
-    // All categories are now available since we removed the problematic ones
-    const categories = allCategories;
+    // Use dynamic swimlanes if available, otherwise fallback to hardcoded list
+    const categories = availableSwimlanes && availableSwimlanes.length > 0
+      ? availableSwimlanes.filter(swimlane => swimlane !== 'Private Events') // Exclude Private Events from regular categories
+      : [
+          'DCDC',
+          'DISA',
+          'DOD CIO / NSA / USCC',
+          'Exec Time',
+          'Exercises',
+          'FYSA',
+          'Joint DISA & DCDC',
+          'Mission Partner',
+          'Out of Office',
+          'Speaking Event',
+          'TDY Meetings/Congressional',
+          'Transit'
+        ];
 
     const options = categories.map(eventCategory => {
       // Only count regular events, not holidays
@@ -630,21 +682,26 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (option) {
       // Handle Select All/Unselect All toggle
       if (option.key === '__toggle_all_categories__') {
-        // Use the actual swimlanes from the data instead of hardcoded legacy categories
-        const allCategories = [
-          'DCDC',
-          'DISA',
-          'DOD CIO / NSA / USCC',
-          'Exec Time',
-          'Exercises',
-          'FYSA',
-          'Joint DISA & DCDC',
-          'Mission Partner',
-          'Out of Office',
-          'Speaking Event',
-          'TDY Meetings/Congressional',
-          'Transit'
-        ];
+        const { availableSwimlanes } = this.state;
+
+        // Use dynamic swimlanes if available, otherwise fallback to hardcoded list
+        const allCategories = availableSwimlanes && availableSwimlanes.length > 0
+          ? availableSwimlanes.filter(swimlane => swimlane !== 'Private Events')
+          : [
+              'DCDC',
+              'DISA',
+              'DOD CIO / NSA / USCC',
+              'Exec Time',
+              'Exercises',
+              'FYSA',
+              'Joint DISA & DCDC',
+              'Mission Partner',
+              'Out of Office',
+              'Speaking Event',
+              'TDY Meetings/Congressional',
+              'Transit'
+            ];
+
         // Include Private Events in toggle logic for all views now that they have their own dedicated lane
         const allAvailableCategories = [...allCategories, 'Private Events'];
         const allSelected = option.data?.allSelected;
@@ -1462,6 +1519,38 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         'Load Color Palette Studio data'
       );
 
+      // Check for missing swimlanes that need BigCalConfig entries
+      // Only count as missing if they don't have a color mapping (no BigCalConfig entry)
+      const missingSwimlanesCount = discoveredOptions.filter(option =>
+        option.fieldName === 'Swimlanes' &&
+        !option.hasColorMapping && // This is the key - no BigCalConfig entry
+        option.optionValue !== 'Private Events' // Skip virtual swimlane
+      ).length;
+
+      // Also check for orphaned BigCalConfig entries (swimlanes that no longer exist in SharePoint)
+      const currentSwimlanes = new Set(discoveredOptions
+        .filter(option => option.fieldName === 'Swimlanes' && option.optionValue !== 'Private Events')
+        .map(option => option.optionValue)
+      );
+
+      const orphanedSwimlanesCount = colorMappings.filter(mapping =>
+        mapping.fieldName === 'Swimlanes' &&
+        mapping.optionValue !== 'Private Events' &&
+        !currentSwimlanes.has(mapping.optionValue)
+      ).length;
+
+      // If we have missing OR orphaned swimlanes, offer to refresh
+      const totalIssuesCount = missingSwimlanesCount + orphanedSwimlanesCount;
+      if (totalIssuesCount > 0) {
+        this.setState({
+          isColorPaletteStudioOpen: false,
+          isColorPaletteLoading: false,
+          isSwimlanesRefreshModalOpen: true,
+          missingSwimlanesCount: totalIssuesCount // Use total count for display
+        });
+        return;
+      }
+
       this.setState({
         colorPaletteDiscoveredOptions: discoveredOptions,
         colorPaletteMappings: colorMappings,
@@ -1495,6 +1584,104 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       Logger.error('Failed to save color mappings', error);
       throw error; // Re-throw so ColorPaletteStudio can handle the error
     }
+  };
+
+  /**
+   * Open Color Palette Studio with forced cache refresh
+   * Used after refresh operations to ensure fresh data
+   */
+  private openColorPaletteStudioWithCacheRefresh = async (): Promise<void> => {
+    this.setState({ isColorPaletteStudioOpen: true, isColorPaletteLoading: true });
+
+    try {
+      const colorMappingService = new ColorMappingService(this.props.context);
+
+      // Force cache refresh to get latest data after refresh operations
+      const dataPromise = Promise.all([
+        colorMappingService.discoverFieldOptions(this.props.listName),
+        colorMappingService.getColorMappings(true) // Force refresh = true
+      ]);
+
+      const [discoveredOptions, colorMappings] = await withTimeout(
+        dataPromise,
+        NETWORK_TIMEOUTS.STANDARD,
+        'Load Color Palette Studio data with cache refresh'
+      );
+
+      // Check for missing swimlanes that need BigCalConfig entries
+      // Only count as missing if they don't have a color mapping (no BigCalConfig entry)
+      const missingSwimlanesCount = discoveredOptions.filter(option =>
+        option.fieldName === 'Swimlanes' &&
+        !option.hasColorMapping && // This is the key - no BigCalConfig entry
+        option.optionValue !== 'Private Events' // Skip virtual swimlane
+      ).length;
+
+      // Also check for orphaned BigCalConfig entries (swimlanes that no longer exist in SharePoint)
+      const currentSwimlanes = new Set(discoveredOptions
+        .filter(option => option.fieldName === 'Swimlanes' && option.optionValue !== 'Private Events')
+        .map(option => option.optionValue)
+      );
+
+      const orphanedSwimlanesCount = colorMappings.filter(mapping =>
+        mapping.fieldName === 'Swimlanes' &&
+        mapping.optionValue !== 'Private Events' &&
+        !currentSwimlanes.has(mapping.optionValue)
+      ).length;
+
+      // If we still have missing OR orphaned swimlanes after refresh, something went wrong
+      const totalIssuesCount = missingSwimlanesCount + orphanedSwimlanesCount;
+      if (totalIssuesCount > 0) {
+        Logger.warn(`Still detecting ${totalIssuesCount} swimlane issues after refresh operation (${missingSwimlanesCount} missing, ${orphanedSwimlanesCount} orphaned)`);
+        // Show the refresh modal again, but this indicates a potential issue
+        this.setState({
+          isColorPaletteStudioOpen: false,
+          isColorPaletteLoading: false,
+          isSwimlanesRefreshModalOpen: true,
+          missingSwimlanesCount: totalIssuesCount
+        });
+        return;
+      }
+
+      this.setState({
+        colorPaletteDiscoveredOptions: discoveredOptions,
+        colorPaletteMappings: colorMappings,
+        isColorPaletteLoading: false
+      });
+    } catch (error) {
+      Logger.error('Failed to load Color Palette Studio data with cache refresh', error);
+
+      // Provide fallback data so Legend Studio shows something useful instead of being empty
+      const fallbackOptions = this.generateFallbackFieldOptions();
+      const fallbackMappings = this.generateFallbackColorMappings(fallbackOptions);
+
+      this.setState({
+        colorPaletteDiscoveredOptions: fallbackOptions,
+        colorPaletteMappings: fallbackMappings,
+        isColorPaletteLoading: false
+      });
+    }
+  };
+
+  // Swimlanes Refresh Modal Methods
+  private closeSwimlanesRefreshModal = (): void => {
+    this.setState({
+      isSwimlanesRefreshModalOpen: false,
+      missingSwimlanesCount: 0
+    });
+  };
+
+  private handleSwimlanesRefreshComplete = (): void => {
+    // After refresh is complete, reload swimlanes and automatically open Color Palette Studio
+    // Add a small delay to ensure BigCalConfig changes are fully committed
+    setTimeout(async () => {
+      try {
+        await this.loadAvailableSwimlanes();
+        // Force cache refresh when opening Legend Studio after refresh
+        await this.openColorPaletteStudioWithCacheRefresh();
+      } catch (error) {
+        Logger.error('Failed to reload data after swimlanes refresh', error);
+      }
+    }, 500); // 500ms delay to ensure SharePoint consistency
   };
 
   /**
@@ -2100,6 +2287,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           selectedDate={selectedDate}
           dynamicColorMappings={this.state.dynamicColorMappings}
           dynamicIconMappings={this.state.dynamicIconMappings}
+          availableSwimlanes={this.state.availableSwimlanes}
           onSave={this.handleSaveEvent}
           onDelete={selectedEvent ? this.handleDeleteEvent : undefined}
           onClose={this.closeModal}
@@ -2166,6 +2354,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
             // This prevents the rollback issue where fresh SharePoint data overwrites local changes
             this.updateDynamicMappingsFromLocalState();
           }}
+        />
+
+        {/* Swimlanes Refresh Modal */}
+        <SwimlanesRefreshModal
+          isOpen={this.state.isSwimlanesRefreshModalOpen}
+          onDismiss={this.closeSwimlanesRefreshModal}
+          onRefreshComplete={this.handleSwimlanesRefreshComplete}
+          context={this.props.context}
+          eventsListName={this.props.listName}
+          missingSwimlanesCount={this.state.missingSwimlanesCount}
         />
 
         {/* 🚀 LEGENDARY PRINT PREVIEW - The Future of Calendar Printing! */}

@@ -24,6 +24,7 @@ export interface IEventModalProps {
   selectedDate?: Date;
   dynamicColorMappings?: Map<string, string>;
   dynamicIconMappings?: Map<string, string>;
+  availableSwimlanes?: string[]; // Dynamic swimlanes from SharePoint list
   onSave: (event: Partial<ICalendarEvent>) => Promise<void>;
   onDelete?: (eventId: number) => Promise<void>;
   onClose: () => void;
@@ -45,7 +46,8 @@ interface IEventModalState {
   isDeleting: boolean;
 }
 
-const getAllSwimlaneOptions = (): IDropdownOption[] => [
+// Fallback swimlane options for when dynamic loading fails
+const getFallbackSwimlaneOptions = (): IDropdownOption[] => [
   { key: 'DCDC', text: 'DCDC' },
   { key: 'DISA', text: 'DISA' },
   { key: 'DOD CIO / NSA / USCC', text: 'DOD CIO / NSA / USCC' },
@@ -59,11 +61,6 @@ const getAllSwimlaneOptions = (): IDropdownOption[] => [
   { key: 'TDY Meetings/Congressional', text: 'TDY Meetings/Congressional' },
   { key: 'Transit', text: 'Transit' }
 ];
-
-const getFilteredSwimlaneOptions = (): IDropdownOption[] => {
-  // All options are now available since we only use Color Palette Studio
-  return getAllSwimlaneOptions();
-};
 
 const amPmOptions: IDropdownOption[] = [
   { key: 'AM', text: 'AM' },
@@ -203,6 +200,22 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         <span>{selectedOption?.text}</span>
       </div>
     );
+  };
+
+  /**
+   * Get swimlane options dynamically from props or fallback to hardcoded list
+   */
+  private getSwimlaneOptions = (): IDropdownOption[] => {
+    if (this.props.availableSwimlanes && this.props.availableSwimlanes.length > 0) {
+      // Use dynamic swimlanes from SharePoint list
+      return this.props.availableSwimlanes.map(swimlane => ({
+        key: swimlane,
+        text: swimlane
+      }));
+    }
+
+    // Fallback to hardcoded list if dynamic loading failed
+    return getFallbackSwimlaneOptions();
   };
 
   private onRenderStatusOption = (option?: IDropdownOption): JSX.Element => {
@@ -484,7 +497,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                 <Dropdown
                   label="Event Category"
                   selectedKey={swimlane}
-                  options={getFilteredSwimlaneOptions()}
+                  options={this.getSwimlaneOptions()}
                   onChange={(_, option) => this.setState({ swimlane: option?.key as SwimlaneType })}
                   onRenderOption={this.onRenderSwimlaneOption}
                   onRenderTitle={this.onRenderSwimlaneTitle}

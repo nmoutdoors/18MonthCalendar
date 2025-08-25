@@ -40,6 +40,9 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
   private _isCreatingList: boolean = false;
   private _isCreatingPrivateList: boolean = false;
   private _isCreatingConfigList: boolean = false;
+  // COMMENTED OUT: Refresh Swimlanes functionality moved to Legend Studio
+  // private _isRefreshingSwimlanes: boolean = false;
+  // private _refreshSwimlanesMessage: string = '';
 
 
 
@@ -335,6 +338,76 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     }
   }
 
+  // COMMENTED OUT: Refresh Swimlanes functionality moved to Legend Studio
+  /*
+  private async _refreshSwimlanes(): Promise<void> {
+    if (!this._sharePointService || this._isRefreshingSwimlanes) {
+      return;
+    }
+
+    this._isRefreshingSwimlanes = true;
+    this._refreshSwimlanesMessage = '';
+    this.context.propertyPane.refresh();
+
+    try {
+      const colorMappingService = new ColorMappingService(this.context);
+
+      // First, clean up any orphaned swimlane mappings
+      const cleanupResult = await colorMappingService.cleanupOrphanedSwimlanes(this.properties.listName || 'Events');
+
+      // Discover field options from the Events list (same logic as Legend Studio)
+      const discoveredOptions = await colorMappingService.discoverFieldOptions(this.properties.listName || 'Events');
+
+      // Filter to only newly discovered swimlanes (not status options)
+      const newSwimlanes = discoveredOptions.filter(option =>
+        option.fieldName === 'Swimlanes' && option.isNewlyDiscovered
+      );
+
+      // Build comprehensive feedback message
+      const feedbackParts: string[] = [];
+
+      // Report cleanup results
+      if (cleanupResult.deletedCount > 0) {
+        feedbackParts.push(`Removed ${cleanupResult.deletedCount} obsolete swimlane(s): ${cleanupResult.deletedSwimlanes.join(', ')}`);
+      }
+
+      // Report new discoveries
+      if (newSwimlanes.length === 0) {
+        if (cleanupResult.deletedCount === 0) {
+          feedbackParts.push('No changes needed - all swimlanes are up to date');
+        }
+      } else {
+        // Generate default mappings for new swimlanes
+        const newMappings = await colorMappingService.generateDefaultMappings(newSwimlanes);
+
+        if (newMappings.length > 0) {
+          // Save the new mappings to BigCalConfig
+          await colorMappingService.saveBulkColorMappings(newMappings);
+          Logger.info(`Added ${newMappings.length} new swimlane(s) with default colors and icons`);
+
+          const swimlaneNames = newSwimlanes.map(s => s.optionValue).join(', ');
+          feedbackParts.push(`Discovered ${newMappings.length} new swimlane(s): ${swimlaneNames}`);
+        }
+      }
+
+      // Set comprehensive feedback message
+      this._refreshSwimlanesMessage = feedbackParts.length > 0
+        ? feedbackParts.join('. ')
+        : 'Refresh completed - no changes needed';
+
+      // Refresh validation to show updated status
+      this._configListValidationResult = await this._validateConfigList();
+
+    } catch (error) {
+      Logger.error('Error refreshing swimlanes', error);
+      this._refreshSwimlanesMessage = `Error refreshing swimlanes: ${error.message || 'Unknown error'}`;
+    } finally {
+      this._isRefreshingSwimlanes = false;
+      this.context.propertyPane.refresh();
+    }
+  }
+  */
+
   protected onThemeChanged(currentTheme: IReadonlyTheme | undefined): void {
     if (!currentTheme) {
       return;
@@ -565,6 +638,34 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         })
       );
     }
+
+    // COMMENTED OUT: Refresh Swimlanes button - now handled by Legend Studio modal
+    // Legend Studio provides a better UX for swimlane management with immediate feedback
+    /*
+    // Add refresh swimlanes button if BigCalConfig list exists and is valid
+    if (this._configListValidationResult && this._configListValidationResult.isValid) {
+      fields.push(
+        PropertyPaneButton('refreshSwimlanes', {
+          text: this._isRefreshingSwimlanes ? 'Refreshing Swimlanes...' : 'Refresh Swimlanes',
+          buttonType: PropertyPaneButtonType.Normal,
+          onClick: () => {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            this._refreshSwimlanes();
+          },
+          disabled: this._isRefreshingSwimlanes
+        })
+      );
+
+      // Add feedback message if available
+      if (this._refreshSwimlanesMessage) {
+        fields.push(
+          PropertyPaneLabel('refreshSwimlanesMessage', {
+            text: this._refreshSwimlanesMessage
+          })
+        );
+      }
+    }
+    */
 
     return fields;
   }
