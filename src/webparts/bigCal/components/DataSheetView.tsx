@@ -6,7 +6,7 @@ import { Text } from '@fluentui/react/lib/Text';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
-import { Modal, IconButton, IIconProps, PrimaryButton } from '@fluentui/react';
+import { Modal, IconButton, IIconProps, PrimaryButton, TextField } from '@fluentui/react';
 import { ICalendarEvent } from './ICalendarEvent';
 import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
@@ -54,6 +54,80 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
     this.hybridEventsService = new HybridEventsService(props.context, props.listName);
   }
 
+  /**
+   * Detect if content contains HTML markup, CSS, or other formatting
+   */
+  private detectHtmlContent = (content: string): boolean => {
+    if (!content) return false;
+
+    // Check for HTML tags
+    const hasHtmlTags = content.indexOf('<') !== -1 && content.indexOf('>') !== -1;
+
+    // Check for CSS styles
+    const hasCssStyles = content.indexOf('style=') !== -1 ||
+                        content.indexOf('margin') !== -1 ||
+                        content.indexOf('font-') !== -1 ||
+                        content.indexOf('color:') !== -1;
+
+    // Check for HTML entities
+    const hasHtmlEntities = content.indexOf('&') !== -1 && content.indexOf(';') !== -1;
+
+    return hasHtmlTags || hasCssStyles || hasHtmlEntities;
+  };
+
+  /**
+   * Strip HTML tags, CSS styles, and decode HTML entities from Outlook-generated descriptions
+   */
+  private stripHtmlFromDescription = (htmlString: string): string => {
+    if (!htmlString) return '';
+
+    try {
+      // First, remove style attributes and CSS blocks
+      const cleanedHtml = htmlString
+        // Remove style attributes
+        .replace(/\s*style\s*=\s*["'][^"']*["']/gi, '')
+        // Remove CSS blocks
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        // Remove script blocks
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        // Remove HTML comments
+        .replace(/<!--[\s\S]*?-->/g, '')
+        // Remove XML/Office namespace declarations
+        .replace(/\s*xmlns[^=]*=["'][^"']*["']/gi, '')
+        // Remove Office-specific attributes
+        .replace(/\s*o:[^=]*=["'][^"']*["']/gi, '')
+        .replace(/\s*w:[^=]*=["'][^"']*["']/gi, '')
+        .replace(/\s*v:[^=]*=["'][^"']*["']/gi, '');
+
+      // Create a temporary DOM element to parse the cleaned HTML
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = cleanedHtml;
+
+      // Extract text content (automatically strips remaining HTML tags)
+      let textContent = tempDiv.textContent || tempDiv.innerText || '';
+
+      // Clean up common Outlook artifacts and formatting
+      textContent = textContent
+        // Remove multiple whitespace/newlines
+        .replace(/\s+/g, ' ')
+        // Remove common Outlook artifacts
+        .replace(/\u00A0/g, ' ') // Non-breaking spaces
+        .replace(/\u200B/g, '') // Zero-width spaces
+        .replace(/\u2060/g, '') // Word joiners
+        // Clean up punctuation spacing
+        .replace(/\s*([,.!?;:])\s*/g, '$1 ')
+        // Remove leading/trailing whitespace
+        .trim();
+
+      return textContent;
+
+    } catch (error) {
+      Logger.warn('Error stripping HTML from description, returning original text', error);
+      // Fallback: return original string if parsing fails
+      return htmlString;
+    }
+  };
+
   private getStatusOptions = (): IDropdownOption[] => {
     return [
       { key: '', text: '(blank)' },
@@ -91,6 +165,10 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
 
   private handlePrivateChange = (eventId: number | string, isPrivate: boolean): void => {
     this.updateEventField(eventId, 'isPrivate', isPrivate);
+  };
+
+  private handleDescriptionChange = (eventId: number | string, description: string): void => {
+    this.updateEventField(eventId, 'description', description);
   };
 
   private handleModalClose = (): void => {
@@ -298,6 +376,74 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
     );
   };
 
+  private renderDescriptionCell = (item: ICalendarEvent): JSX.Element => {
+    const isUpdating = this.state.isUpdating && this.state.updatingEventId === item.id;
+    const pendingChanges = this.state.pendingChanges.get(item.id);
+    const currentValue = pendingChanges?.description !== undefined ? pendingChanges.description : (item.description || '');
+    const hasChanges = pendingChanges?.description !== undefined;
+
+    // Strip HTML from description for display and editing
+    const cleanDescription = this.stripHtmlFromDescription(currentValue);
+    const hasHtmlContent = this.detectHtmlContent(currentValue);
+
+    // Check if stripping actually cleaned something significant
+    const wasSignificantlyCleaned = currentValue && cleanDescription &&
+      (currentValue.length - cleanDescription.length) > 20;
+
+    return (
+      <div className={styles.editableCell} style={{ width: '100%' }}>
+        {isUpdating ? (
+          <Spinner size={SpinnerSize.xSmall} />
+        ) : (
+          <div style={{ width: '100%' }}>
+            {(hasHtmlContent || wasSignificantlyCleaned) && (
+              <div style={{
+                fontSize: '10px',
+                color: wasSignificantlyCleaned ? '#d13438' : '#ff8c00',
+                fontWeight: 'bold',
+                marginBottom: '4px',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                {wasSignificantlyCleaned ? '🧹 HTML/CSS Cleaned' : '⚠️ HTML Detected'}
+                {wasSignificantlyCleaned && (
+                  <span style={{
+                    fontSize: '9px',
+                    color: '#666',
+                    fontWeight: 'normal',
+                    textTransform: 'none'
+                  }}>
+                    ({currentValue.length - cleanDescription.length} chars removed)
+                  </span>
+                )}
+              </div>
+            )}
+            <TextField
+              value={cleanDescription}
+              onChange={(event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+                this.handleDescriptionChange(item.id, newValue || '');
+              }}
+              multiline
+              rows={2}
+              placeholder="Event description..."
+              styles={{
+                root: { width: '100%' },
+                field: {
+                  fontSize: '12px',
+                  backgroundColor: hasChanges ? '#f3f9ff' : (hasHtmlContent ? '#fff8f0' : 'white'),
+                  border: hasChanges ? '2px solid #0078d4' : '1px solid #edebe9',
+                  borderRadius: '4px'
+                }
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   private getColumns = (): IColumn[] => {
     return [
       {
@@ -407,6 +553,15 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
         maxWidth: 85,
         isResizable: true,
         onRender: this.renderPrivateCell
+      },
+      {
+        key: 'description',
+        name: '📝 Description',
+        fieldName: 'description',
+        minWidth: 200,
+        maxWidth: 300,
+        isResizable: true,
+        onRender: this.renderDescriptionCell
       }
     ];
   };

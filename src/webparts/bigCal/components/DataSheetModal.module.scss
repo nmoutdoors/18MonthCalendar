@@ -1,13 +1,13 @@
 @import '~@fluentui/react/dist/sass/References.scss';
 
 .modalContainer {
-  // Force consistent modal width - much wider than EventModal for table data
+  // Force consistent modal width - extra wide for table data with description field
   :global(.ms-Modal-main),
   :global(.ms-Modal-main *),
   :global(.ms-Modal-scrollableContent) {
-    width: 1200px !important;
-    max-width: 1200px !important;
-    min-width: 1200px !important;
+    width: 1400px !important;
+    max-width: 1400px !important;
+    min-width: 1400px !important;
   }
 
   :global(.ms-Modal-main) {
@@ -29,17 +29,17 @@
   :global(.ms-Modal-scrollableContent) {
     border-radius: 0;
     overflow: hidden;
-    width: 1200px !important;
-    max-width: 1200px !important;
-    min-width: 1200px !important;
+    width: 1400px !important;
+    max-width: 1400px !important;
+    min-width: 1400px !important;
   }
 }
 
 // Additional overrides to ensure consistent modal width
 .modalContent {
-  width: 1200px !important;
-  max-width: 1200px !important;
-  min-width: 1200px !important;
+  width: 1400px !important;
+  max-width: 1400px !important;
+  min-width: 1400px !important;
   box-sizing: border-box;
 }
 

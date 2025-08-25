@@ -43,29 +43,8 @@
   box-sizing: border-box;
 }
 
-// Global overrides for all modal elements
-:global {
-  .ms-Modal-main {
-    width: 690px !important;
-    max-width: 690px !important;
-    min-width: 690px !important;
-  }
-
-  .ms-Modal-scrollableContent {
-    width: 690px !important;
-    max-width: 690px !important;
-    min-width: 690px !important;
-  }
-
-  // Override any responsive behavior
-  @media (max-width: 1400px) {
-    .ms-Modal-main {
-      width: 690px !important;
-      max-width: 690px !important;
-      min-width: 690px !important;
-    }
-  }
-}
+// Removed global overrides - they were polluting SharePoint's page modals
+// EventModal sizing is handled by scoped styles in .modalContainer above
 
 .modalHeader {
   display: flex;

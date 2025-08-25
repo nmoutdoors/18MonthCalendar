@@ -182,7 +182,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                          document.querySelector('[data-automation-id="CanvasComponent"]') as HTMLElement;
 
     if (this.webPartElement && this.state.isFullscreen) {
-      this.enterFullscreen();
+      // Delay fullscreen application to avoid conflicts with SharePoint page rendering
+      setTimeout(() => {
+        this.enterFullscreen();
+      }, 200);
     }
 
     // Check all list configurations and load color mappings
@@ -981,8 +984,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         container.style.padding = '0';
         container.style.margin = '0';
 
-        // Force layout recalculation (critical for SharePoint)
-        window.dispatchEvent(new Event('resize'));
+        // Force layout recalculation (critical for SharePoint) - use requestAnimationFrame for smoother rendering
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('resize'));
+        });
       }
     } catch (error) {
       Logger.error('Error applying fullscreen styles', error);
@@ -1024,8 +1029,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         // Set minimum height for normal mode
         container.style.minHeight = '600px';
 
-        // Force layout recalculation
-        window.dispatchEvent(new Event('resize'));
+        // Force layout recalculation - use requestAnimationFrame for smoother rendering
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('resize'));
+        });
       }
     } catch (error) {
       Logger.error('Error resetting fullscreen styles', error);
@@ -1753,31 +1760,65 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
    */
   private connectToOutlook = async (): Promise<void> => {
     try {
-      // Get list GUID for Outlook connection
-      const listGuid = await this.sharePointService.getListGuid(this.props.listName);
-
       // Get site information
       const siteUrl = this.props.context.pageContext.web.absoluteUrl;
-      const siteName = this.props.context.pageContext.web.title;
+      const listGuid = await this.sharePointService.getListGuid(this.props.listName);
 
-      // Construct list URL (standard SharePoint Events list path)
-      const listUrl = `/Lists/${this.props.listName}/AllItems.aspx`;
+      // Extract server-relative path from site URL
+      const siteUrlObj = new URL(siteUrl);
+      const serverRelativePath = siteUrlObj.pathname;
 
-      // Build stssync URL for Outlook connection
-      const stssyncUrl = `stssync://sts/?ver=1.0&type=calendar&cmd=add-folder` +
+      // Construct proper server-relative list URL
+      const listUrl = `${serverRelativePath}/Lists/${this.props.listName}`;
+
+      // Build stssync URL according to ChatGPT's recommendation
+      const stssyncUrl = `stssync://sts/?ver=1.1&type=calendar&cmd=add-folder` +
         `&base-url=${encodeURIComponent(siteUrl)}` +
         `&list-url=${encodeURIComponent(listUrl)}` +
-        `&guid=${encodeURIComponent(listGuid)}` +
-        `&site-name=${encodeURIComponent(siteName)}` +
-        `&list-name=${encodeURIComponent(this.props.listName)}`;
+        `&guid=${encodeURIComponent(listGuid)}`;
 
-      // Open the stssync URL to trigger Outlook connection
+      Logger.info('Attempting stssync connection', {
+        siteUrl,
+        listUrl,
+        listGuid,
+        stssyncUrl
+      });
+
+      // Try to open the stssync URL directly
       window.location.href = stssyncUrl;
 
     } catch (error) {
-      Logger.error('Error connecting to Outlook', error);
-      // Show user-friendly error message
-      alert('Unable to connect to Outlook. Please ensure Outlook is installed and try again.');
+      Logger.error('Error with stssync approach, falling back to ribbon method', error);
+
+      // Fallback: Open SharePoint list with ribbon focused on Calendar tab
+      try {
+        const siteUrl = this.props.context.pageContext.web.absoluteUrl;
+
+        // Use ChatGPT's ribbon deep-link approach
+        const ribbonUrl = `${siteUrl}/Lists/${this.props.listName}/calendar.aspx` +
+          `?InitialTabId=Ribbon.Calendar&VisibilityContext=WSSTabPersistence`;
+
+        // Show user instructions and open with ribbon focused
+        const userConfirmed = confirm(
+          `BigCal will open the SharePoint calendar with the ribbon ready.\n\n` +
+          `The Calendar ribbon tab will be pre-selected so you can:\n` +
+          `1. Click "Connect to Outlook" in the ribbon\n` +
+          `2. Follow the prompts to sync with Outlook\n\n` +
+          `Click OK to continue.`
+        );
+
+        if (userConfirmed) {
+          window.open(ribbonUrl, '_blank');
+          Logger.info('Opened SharePoint calendar with ribbon focused', {
+            listName: this.props.listName,
+            ribbonUrl
+          });
+        }
+
+      } catch (fallbackError) {
+        Logger.error('Both stssync and ribbon approaches failed', fallbackError);
+        alert('Unable to connect to Outlook automatically. Please manually navigate to the SharePoint list and use the "Connect to Outlook" button in the ribbon.');
+      }
     }
   };
 
