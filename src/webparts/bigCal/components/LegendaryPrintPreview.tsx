@@ -1,7 +1,9 @@
+/* eslint-disable max-lines */
 import * as React from 'react';
 import { IconButton, PrimaryButton, Stack, DatePicker, ChoiceGroup, IChoiceGroupOption, Toggle } from '@fluentui/react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import * as moment from 'moment';
+import html2canvas from 'html2canvas';
 import { ICalendarEvent } from './ICalendarEvent';
 import { Logger } from '../services/LoggingService';
 import styles from './LegendaryPrintPreview.module.scss';
@@ -35,6 +37,8 @@ export interface ILegendaryPrintPreviewState {
   forceSinglePage: boolean;
   agendaStartDate: Date;
   agendaEndDate: Date;
+  capturedImageUrl?: string; // 🏆 LEGENDARY: Captured calendar image
+  isCapturingImage: boolean;
 }
 
 export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPreviewProps, ILegendaryPrintPreviewState> {
@@ -54,7 +58,9 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       isGeneratingPrint: false,
       forceSinglePage: false,
       agendaStartDate: startOfMonth,
-      agendaEndDate: endOfMonth
+      agendaEndDate: endOfMonth,
+      capturedImageUrl: undefined,
+      isCapturingImage: false
     };
   }
 
@@ -342,45 +348,69 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     this.setState({ isGeneratingPrint: true });
 
     try {
-      const filteredEvents = this.getFilteredEvents();
-      const { printView, selectedDate, forceSinglePage } = this.state;
+      const { printView, selectedDate } = this.state;
 
-      // Generate the legendary print content
-      const printContent = this.generatePrintHTML(filteredEvents, printView, selectedDate, forceSinglePage);
+      // 🏆 LEGENDARY: Capture the calendar as high-res image
+      Logger.info('🎨 LEGENDARY: Starting calendar capture for perfect print fidelity...');
+      const capturedImageUrl = await this.captureCalendarImage();
 
-      // Open print window with legendary styling
-      this.printWindowRef = window.open('', '_blank', 'width=1200,height=800');
-      
-      if (this.printWindowRef) {
-        this.printWindowRef.document.write(printContent);
-        this.printWindowRef.document.close();
-        
-        // Wait for content to load, then print
-        this.printWindowRef.onload = () => {
-          if (this.printWindowRef) {
-            this.printWindowRef.focus();
-            this.printWindowRef.print();
-            
-            // Close the print window after printing
-            this.printWindowRef.onafterprint = () => {
-              if (this.printWindowRef) {
-                this.printWindowRef.close();
-                this.printWindowRef = null;
-              }
-            };
-          }
-        };
-
-        Logger.info(`Legendary print generated for ${printView} view`);
-      } else {
-        throw new Error('Unable to open print window. Please check your browser settings.');
+      if (!capturedImageUrl) {
+        Logger.error('❌ LEGENDARY: Calendar capture failed, falling back to HTML table');
+        // Fallback to original HTML table approach
+        const filteredEvents = this.getFilteredEvents();
+        const printContent = this.generatePrintHTML(filteredEvents, printView, selectedDate, false);
+        this.openPrintWindow(printContent);
+        return;
       }
 
+      // Generate title for the captured image
+      let title: string;
+      if (printView === 'day') {
+        title = `BigCal Day View - ${moment(selectedDate).format('dddd, MMMM D, YYYY')}`;
+      } else {
+        title = `BigCal ${printView.charAt(0).toUpperCase() + printView.slice(1)} View - ${moment(selectedDate).format('MMMM YYYY')}`;
+      }
+
+      // 🏆 LEGENDARY: Generate print HTML with captured image
+      const printContent = this.generateLegendaryImagePrintHTML(capturedImageUrl, title);
+      this.openPrintWindow(printContent);
+
+      Logger.info('🏆 LEGENDARY: Image-based print generated successfully!');
     } catch (error) {
-      Logger.error('Error generating legendary print', error);
+      Logger.error('❌ LEGENDARY Print generation failed', error);
       alert('Unable to generate print. Please try again.');
     } finally {
       this.setState({ isGeneratingPrint: false });
+    }
+  };
+
+  // Helper method to open print window
+  private openPrintWindow = (printContent: string): void => {
+    this.printWindowRef = window.open('', '_blank', 'width=1200,height=800');
+
+    if (this.printWindowRef) {
+      this.printWindowRef.document.write(printContent);
+      this.printWindowRef.document.close();
+
+      // Wait for content to load, then print
+      this.printWindowRef.onload = () => {
+        if (this.printWindowRef) {
+          this.printWindowRef.focus();
+          this.printWindowRef.print();
+
+          // Close the print window after printing
+          this.printWindowRef.onafterprint = () => {
+            if (this.printWindowRef) {
+              this.printWindowRef.close();
+              this.printWindowRef = null;
+            }
+          };
+        }
+      };
+
+      Logger.info('🏆 LEGENDARY Print window opened successfully');
+    } else {
+      Logger.error('❌ Failed to open print window - popup blocked?');
     }
   };
 
@@ -412,6 +442,111 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     return `<html><body><h1>Print view ${printView} coming soon!</h1></body></html>`;
   };
 
+  // 🏆 LEGENDARY: Capture calendar as high-res image for perfect print fidelity
+  private captureCalendarImage = async (): Promise<string | null> => {
+    try {
+      this.setState({ isCapturingImage: true });
+      Logger.debug('🎨 LEGENDARY: Starting calendar capture...');
+
+      // Find the hidden capture calendar element (optimally sized for print)
+      const captureElement = document.querySelector('.legendary-capture-calendar') as HTMLElement;
+      if (!captureElement) {
+        Logger.error('❌ Hidden capture calendar not found, falling back to main calendar');
+        // Fallback to main calendar
+        const calendarElement = document.querySelector('.rbc-calendar') as HTMLElement;
+        if (!calendarElement) {
+          Logger.error('❌ No calendar element found for capture');
+          return null;
+        }
+        return this.captureElement(calendarElement);
+      }
+
+      return this.captureElement(captureElement);
+    } catch (error) {
+      Logger.error('❌ LEGENDARY: Calendar capture failed', error);
+      return null;
+    } finally {
+      this.setState({ isCapturingImage: false });
+    }
+  };
+
+  // Helper method to capture any calendar element
+  private captureElement = async (element: HTMLElement): Promise<string | null> => {
+    try {
+      // Configure html2canvas for high-quality capture optimized for print
+      const canvas = await html2canvas(element, {
+        scale: 2, // High DPI for crisp print
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 1100, // Optimal width for landscape print
+        height: 800, // Optimal height for landscape print
+        scrollX: 0,
+        scrollY: 0
+      });
+
+      // Convert to data URL
+      const imageUrl = canvas.toDataURL('image/png', 1.0);
+      Logger.debug('🎯 LEGENDARY: Calendar captured successfully!');
+
+      return imageUrl;
+    } catch (error) {
+      Logger.error('❌ LEGENDARY: Element capture failed', error);
+      return null;
+    }
+  };
+
+  // 🏆 LEGENDARY: Generate print HTML with captured image
+  private generateLegendaryImagePrintHTML = (imageUrl: string, title: string): string => {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @page {
+              size: landscape;
+              margin: 0.5in;
+            }
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              margin: 0;
+              padding: 10px;
+              -webkit-print-color-adjust: exact;
+              color-adjust: exact;
+            }
+            .print-header {
+              text-align: center;
+              margin-bottom: 10px;
+              border-bottom: 2px solid #0078d4;
+              padding-bottom: 5px;
+            }
+            .print-header h1 {
+              margin: 0;
+              color: #0078d4;
+              font-size: 18px;
+              font-weight: 600;
+            }
+            .calendar-image {
+              width: 100%;
+              height: auto;
+              max-height: 90vh;
+              object-fit: contain;
+              border: 1px solid #ddd;
+              border-radius: 4px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <h1>🏆 ${title}</h1>
+          </div>
+          <img src="${imageUrl}" alt="Calendar" class="calendar-image" />
+        </body>
+      </html>
+    `;
+  };
+
   private generateMonthPrintHTML = (events: ICalendarEvent[], selectedDate: Date, title: string): string => {
     // This will be our legendary month print HTML
     // For now, basic structure - we'll enhance this
@@ -434,20 +569,20 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
             }
             .print-header {
               text-align: center;
-              margin-bottom: 20px;
+              margin-bottom: 12px; /* Reduced from 20px */
               border-bottom: 2px solid #0078d4;
-              padding-bottom: 10px;
+              padding-bottom: 6px; /* Reduced from 10px */
             }
             .print-header h1 {
               margin: 0;
               color: #0078d4;
-              font-size: 24px;
+              font-size: 20px; /* Reduced from 24px */
               font-weight: 600;
             }
             .calendar-grid {
               width: 100%;
               border-collapse: collapse;
-              height: 600px;
+              height: 680px; /* Increased from 600px to fit full month */
             }
             .calendar-grid th,
             .calendar-grid td {
@@ -468,7 +603,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
             /* Day Cells - contain day numbers and single-day events */
             .day-cell {
               width: 14.28%;
-              height: 85px;
+              height: 95px; /* Increased from 85px for better fit */
               padding: 4px;
               vertical-align: top;
             }
@@ -1535,7 +1670,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       return <div />;
     }
 
-    const { selectedDate, printView, isGeneratingPrint } = this.state;
+    const { selectedDate, printView, isGeneratingPrint, isCapturingImage } = this.state;
     const filteredEvents = this.getFilteredEvents();
 
     Logger.info(`Rendering Legendary Print Preview for ${moment(selectedDate).format('MMMM YYYY')}`);
@@ -1645,9 +1780,9 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
             />
 
             <PrimaryButton
-              text="Legendary Print"
+              text={isCapturingImage ? "🎨 Capturing..." : isGeneratingPrint ? "🖨️ Printing..." : "🏆 Legendary Print"}
               onClick={this.generateLegendaryPrint}
-              disabled={isGeneratingPrint}
+              disabled={isGeneratingPrint || isCapturingImage}
               className={styles.printButton}
             />
           </div>
@@ -1679,7 +1814,8 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   components={{
                     event: this.PrintMonthEvent
                   }}
-                  popup
+                  popup={false} // 🏆 LEGENDARY: Disable popup to show all events
+                  showAllEvents={true} // 🏆 LEGENDARY: Show all weeks of the month
                   onSelectEvent={() => {}} // Disable event selection for print
                   onSelectSlot={() => {}} // Disable slot selection for print
                   onNavigate={this.onCalendarNavigate}
@@ -1759,6 +1895,109 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
               )}
             </div>
           </div>
+        </div>
+
+        {/* 🏆 LEGENDARY: Hidden capture calendar optimized for print */}
+        <div
+          className="legendary-capture-calendar"
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            top: '-9999px',
+            width: '1100px',
+            height: '800px',
+            backgroundColor: '#ffffff',
+            overflow: 'hidden'
+          }}
+        >
+          {printView === 'month' && (
+            <Calendar
+              localizer={localizer}
+              events={filteredEvents}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: '800px', width: '1100px' }}
+              views={['month']}
+              view="month"
+              date={selectedDate}
+              toolbar={false}
+              eventPropGetter={this.monthEventStyleGetter}
+              components={{
+                event: this.PrintMonthEvent
+              }}
+              popup={false}
+              onSelectEvent={() => {}} // Disable event selection for print
+              onSelectSlot={() => {}} // Disable slot selection for print
+              onNavigate={this.onCalendarNavigate}
+              showAllEvents={true}
+            />
+          )}
+
+          {printView === 'week' && (
+            <Calendar
+              localizer={localizer}
+              events={filteredEvents}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: '800px', width: '1100px' }}
+              views={['week']}
+              view="week"
+              date={selectedDate}
+              toolbar={false}
+              eventPropGetter={this.weekEventStyleGetter}
+              components={{
+                event: this.PrintWeekEvent
+              }}
+              popup={false}
+              onSelectEvent={() => {}} // Disable event selection for print
+              onSelectSlot={() => {}} // Disable slot selection for print
+              onNavigate={this.onCalendarNavigate}
+            />
+          )}
+
+          {printView === 'day' && (
+            <Calendar
+              localizer={localizer}
+              events={filteredEvents}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: '800px', width: '1100px' }}
+              views={['day']}
+              view="day"
+              date={selectedDate}
+              toolbar={false}
+              eventPropGetter={this.dayEventStyleGetter}
+              components={{
+                event: this.PrintDayEvent
+              }}
+              popup={false}
+              onSelectEvent={() => {}} // Disable event selection for print
+              onSelectSlot={() => {}} // Disable slot selection for print
+              onNavigate={this.onCalendarNavigate}
+            />
+          )}
+
+          {printView === 'agenda' && (
+            <Calendar
+              localizer={localizer}
+              events={filteredEvents}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: '800px', width: '1100px' }}
+              views={['agenda']}
+              view="agenda"
+              date={selectedDate}
+              toolbar={false}
+              eventPropGetter={this.agendaEventStyleGetter}
+              components={{
+                event: this.PrintAgendaEvent
+              }}
+              popup
+              onSelectEvent={() => {}} // Disable event selection for print
+              onSelectSlot={() => {}} // Disable slot selection for print
+              onNavigate={this.onCalendarNavigate}
+            />
+          )}
         </div>
       </div>
     );

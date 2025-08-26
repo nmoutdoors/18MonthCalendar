@@ -176,7 +176,7 @@
     .previewContainer {
       width: 100%;
       height: 100%;
-      max-width: 1400px;
+      max-width: 1600px; // 🏆 LEGENDARY: Wider for landscape orientation
       background: white;
       border-radius: 12px;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -378,6 +378,43 @@
       }
     }
   }
+}
 
+// 🏆 LEGENDARY: Print-specific styles for landscape orientation
+@media print {
+  .legendaryPrintPreview {
+    .previewContainer {
+      max-width: none !important;
+      width: 100% !important;
+      height: 100% !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
 
+      .printSimulation {
+        padding: 0.5in !important;
+
+        .legendaryCalendar {
+          :global(.rbc-calendar) {
+            width: 100% !important;
+            height: 100% !important;
+            page-break-inside: avoid;
+          }
+
+          :global(.rbc-month-view) {
+            height: 100% !important;
+          }
+
+          :global(.rbc-month-row) {
+            min-height: 120px !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+// 🏆 LEGENDARY: Ensure landscape orientation in print dialog
+@page {
+  size: landscape;
+  margin: 0.5in;
 }
