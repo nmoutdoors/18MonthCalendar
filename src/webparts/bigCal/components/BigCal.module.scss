@@ -972,12 +972,14 @@
 .gridViewContainer {
   padding: 24px;
   height: 100%;
-  overflow-y: auto;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .gridViewHeader {
   margin-bottom: 20px;
+  flex: none; // Don't allow header to shrink
 
   h2 {
     margin: 0;
@@ -988,11 +990,42 @@
   }
 }
 
+.gridViewScrollArea {
+  flex: 1; // Take remaining space
+  overflow-y: auto; // Allow scrolling within this container
+  overflow-x: hidden; // Hide horizontal scrollbar
+  height: calc(100vh - 180px); // Fit within viewport without causing page scroll
+  max-height: calc(100vh - 180px); // Prevent forcing page scroll
+
+  // Custom scrollbar styling
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: "[theme:neutralLighter, default: #f3f2f1]";
+    background: var(--neutralLighter, #f3f2f1);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: "[theme:neutralTertiary, default: #a19f9d]";
+    background: var(--neutralTertiary, #a19f9d);
+    border-radius: 4px;
+
+    &:hover {
+      background: "[theme:neutralSecondary, default: #605e5c]";
+      background: var(--neutralSecondary, #605e5c);
+    }
+  }
+}
+
 .gridViewContent {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
   gap: 24px;
   width: 100%;
+  padding-bottom: 24px; // Add some bottom padding for better scrolling
 }
 
 .gridCard {
