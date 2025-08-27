@@ -109,7 +109,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       isLoading: true,
       error: undefined,
       currentView: 'month',
-      currentDate: this.getSmartNavigationDate(new Date(2025, 10, 25)), // TEMP TEST: Nov 25, 2025
+      currentDate: this.getSmartNavigationDate(new Date()), // Smart navigation based on current date
       isModalOpen: false,
       selectedEvent: undefined,
       selectedDate: undefined,
@@ -551,9 +551,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
    * Implements smart navigation: shows next month during the last week
    */
   private scrollToCurrentMonth = (): void => {
-    // TEMPORARY TEST: Simulate November 25, 2025 (6 days from end of month)
-    const today = new Date(2025, 10, 25); // November 25, 2025
-    // const today = new Date(); // Uncomment this line to restore normal behavior
+    // Use current date for smart navigation
+    const today = new Date();
 
     // Smart navigation: if we're in the last 7 days of the month, show next month
     const targetDate = this.getSmartNavigationDate(today);
