@@ -606,14 +606,14 @@
 
 
   .miniCalendarScrollArea {
-    flex: none !important; // Remove flex to allow fixed height
+    flex: 1; // Take remaining space like 18-month grid for consistent height
     overflow-y: auto; // Restore internal scrolling for mini calendar
     overflow-x: hidden; // Hide horizontal scrollbar
     padding-right: 8px;
     padding-top: 8px;
-    // Height that fits within viewport without causing page scroll
-    height: calc(100vh - 120px) !important; // Slightly smaller to prevent page scrollbar
-    max-height: calc(100vh - 120px) !important; // Prevent forcing page scroll
+    // Fine-tuning to match 18-month grid positioning
+    height: calc(100vh - 90px); // Full viewport minus 90px
+    max-height: calc(100vh - 90px); // Limit to viewport minus 90px
 
     // Custom scrollbar
     &::-webkit-scrollbar {
@@ -975,6 +975,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden; // Hide any page-level scrollbars when extending beyond viewport
 }
 
 .gridViewHeader {
@@ -994,8 +995,9 @@
   flex: 1; // Take remaining space
   overflow-y: auto; // Allow scrolling within this container
   overflow-x: hidden; // Hide horizontal scrollbar
-  height: calc(100vh - 180px); // Fit within viewport without causing page scroll
-  max-height: calc(100vh - 180px); // Prevent forcing page scroll
+  // Match mini calendar: extend to full visible page height + 20px
+  height: calc(100vh + 20px); // Extend beyond viewport for full coverage
+  max-height: calc(100vh + 20px); // Allow extension beyond viewport
 
   // Custom scrollbar styling
   &::-webkit-scrollbar {
