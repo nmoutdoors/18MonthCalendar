@@ -32,6 +32,7 @@
     "react": "17.0.1",
     "react-big-calendar": "^1.19.4",
     "react-dom": "17.0.1",
+    "scroll-into-view-if-needed": "^3.1.0",
     "tslib": "2.3.1",
     "uuid": "^11.1.0",
     "vis-data": "^8.0.1",

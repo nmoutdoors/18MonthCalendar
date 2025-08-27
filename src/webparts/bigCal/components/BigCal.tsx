@@ -7,6 +7,7 @@ import * as React from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import * as moment from 'moment';
 import { IconButton, IIconProps, Spinner, SpinnerSize, MessageBar, MessageBarType, Icon, SearchBox, Dropdown, IDropdownOption, Pivot, PivotItem } from '@fluentui/react';
+import scrollIntoView from 'scroll-into-view-if-needed';
 import styles from './BigCal.module.scss';
 import type { IBigCalProps } from './IBigCalProps';
 import type { ICalendarEvent } from './ICalendarEvent';
@@ -94,6 +95,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   private hybridEventsService: HybridEventsService;
   private popoverTimeout: number | null = null;
 
+  // Refs for mini calendar auto-scroll functionality
+  private miniCalendarScrollAreaRef = React.createRef<HTMLDivElement>();
+  private miniCalendarRefs = new Map<string, HTMLDivElement>();
+
   constructor(props: IBigCalProps) {
     super(props);
     this.state = {
@@ -104,7 +109,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       isLoading: true,
       error: undefined,
       currentView: 'month',
-      currentDate: new Date(),
+      currentDate: this.getSmartNavigationDate(new Date(2025, 10, 25)), // TEMP TEST: Nov 25, 2025
       isModalOpen: false,
       selectedEvent: undefined,
       selectedDate: undefined,
@@ -201,6 +206,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // Load events from SharePoint
     await this.loadEvents();
+
+    // Auto-scroll to current month after initial render
+    // Use longer timeout to ensure DOM is fully rendered
+    setTimeout(() => {
+      this.scrollToCurrentMonth();
+    }, 500);
   }
 
   /**
@@ -280,9 +291,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   }
 
   /**
-   * Handle property changes - ProgramTracker pattern
+   * Handle property changes and state updates - ProgramTracker pattern
    */
-  public componentDidUpdate(prevProps: IBigCalProps): void {
+  public componentDidUpdate(prevProps: IBigCalProps, prevState: IBigCalState): void {
     // Check if startInFullscreen prop has changed
     if (prevProps.startInFullscreen !== this.props.startInFullscreen) {
       // Update isFullscreen state and apply styles
@@ -293,6 +304,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           this.exitFullscreen();
         }
       });
+    }
+
+    // Auto-scroll to current month when date changes (navigation)
+    if (prevState.currentDate.getTime() !== this.state.currentDate.getTime()) {
+      // Use setTimeout to ensure DOM updates are complete
+      setTimeout(() => {
+        this.scrollToCurrentMonth();
+      }, 50);
     }
 
     // Dynamic styles are handled by Color Palette Studio changes
@@ -477,7 +496,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private handleViewModeChange = (item?: PivotItem): void => {
     if (item?.props.itemKey) {
-      this.setState({ viewMode: item.props.itemKey as 'calendar' | 'grid' | 'timeline' });
+      this.setState({ viewMode: item.props.itemKey as 'calendar' | 'grid' | 'timeline' }, () => {
+        // Maintain mini calendar scroll position when switching views
+        setTimeout(() => {
+          this.scrollToCurrentMonth();
+        }, 50);
+      });
     }
   };
 
@@ -519,6 +543,100 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       months.push(month);
     }
     return months;
+  };
+
+  /**
+   * Auto-scroll to the current month in the mini calendar sidebar
+   * Uses scroll-into-view-if-needed for smooth, intelligent scrolling
+   * Implements smart navigation: shows next month during the last week
+   */
+  private scrollToCurrentMonth = (): void => {
+    // TEMPORARY TEST: Simulate November 25, 2025 (6 days from end of month)
+    const today = new Date(2025, 10, 25); // November 25, 2025
+    // const today = new Date(); // Uncomment this line to restore normal behavior
+
+    // Smart navigation: if we're in the last 7 days of the month, show next month
+    const targetDate = this.getSmartNavigationDate(today);
+    const targetMonthKey = `${targetDate.getFullYear()}-${targetDate.getMonth()}`;
+    const targetMonthElement = this.miniCalendarRefs.get(targetMonthKey);
+
+    // Debug logging
+    const availableKeys: string[] = [];
+    this.miniCalendarRefs.forEach((value, key) => {
+      availableKeys.push(key);
+    });
+
+    console.log('🎯 Auto-scroll Debug:', {
+      today: today.toDateString(),
+      targetDate: targetDate.toDateString(),
+      targetMonthKey,
+      hasTargetElement: !!targetMonthElement,
+      hasScrollContainer: !!this.miniCalendarScrollAreaRef.current,
+      availableRefs: availableKeys
+    });
+
+    if (targetMonthElement && this.miniCalendarScrollAreaRef.current) {
+      console.log('🚀 Executing scroll to:', targetDate.toDateString());
+
+      // Get current scroll position before
+      const scrollContainer = this.miniCalendarScrollAreaRef.current;
+      const beforeScrollTop = scrollContainer.scrollTop;
+
+      console.log('📏 Scroll container info:', {
+        scrollTop: beforeScrollTop,
+        scrollHeight: scrollContainer.scrollHeight,
+        clientHeight: scrollContainer.clientHeight,
+        targetElementOffsetTop: targetMonthElement.offsetTop
+      });
+
+      scrollIntoView(targetMonthElement, {
+        behavior: 'smooth',
+        block: 'start', // Position the target month at the top of the viewport
+        inline: 'nearest',
+        scrollMode: 'always', // Force scroll even if already visible
+        boundary: this.miniCalendarScrollAreaRef.current
+      });
+
+      // Check scroll position after a delay
+      setTimeout(() => {
+        const afterScrollTop = scrollContainer.scrollTop;
+        console.log('📏 After scroll:', {
+          beforeScrollTop,
+          afterScrollTop,
+          scrollChanged: beforeScrollTop !== afterScrollTop
+        });
+      }, 1000);
+    } else {
+      console.warn('❌ Cannot scroll - missing element or container');
+    }
+  };
+
+  /**
+   * Smart navigation logic: anticipate user needs during the last week of the month
+   * Returns the date that should be prominently displayed in mini calendars
+   */
+  private getSmartNavigationDate = (referenceDate: Date): Date => {
+    const lastDayOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0);
+    const daysUntilEndOfMonth = lastDayOfMonth.getDate() - referenceDate.getDate();
+
+    // Debug logging
+    console.log('🧠 Smart Navigation Logic:', {
+      referenceDate: referenceDate.toDateString(),
+      lastDayOfMonth: lastDayOfMonth.toDateString(),
+      daysUntilEndOfMonth,
+      shouldShowNextMonth: daysUntilEndOfMonth < 7
+    });
+
+    // If we're in the last 7 days of the month, show next month
+    if (daysUntilEndOfMonth < 7) {
+      const nextMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 1);
+      console.log('📅 Showing next month:', nextMonth.toDateString());
+      return nextMonth;
+    }
+
+    // Otherwise, show current month
+    console.log('📅 Showing current month:', referenceDate.toDateString());
+    return referenceDate;
   };
 
   private getEventsForMonth = (month: Date): number => {
@@ -2263,16 +2381,27 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
               <div className={styles.leftColumn}>
                 <div className={styles.leftColumnContent}>
                   <div className={styles.miniCalendarContainer}>
-                    <div className={styles.miniCalendarScrollArea}>
+                    <div
+                      className={styles.miniCalendarScrollArea}
+                      ref={this.miniCalendarScrollAreaRef}
+                    >
                       {this.get18MonthRange().map((month, index) => {
                         const monthEvents = this.getEventsForMonth(month);
                         const isCurrentMonth = month.getFullYear() === currentDate.getFullYear() &&
                                              month.getMonth() === currentDate.getMonth();
+                        const monthKey = `${month.getFullYear()}-${month.getMonth()}`;
                         return (
                           <div key={index} className={styles.miniCalendarWrapper}>
                             <div
                               className={`${styles.miniCalendarCard} ${isCurrentMonth ? styles.currentMonth : ''}`}
                               onClick={() => this.handleMonthNavigate(month)}
+                              ref={(el) => {
+                                if (el) {
+                                  this.miniCalendarRefs.set(monthKey, el);
+                                } else {
+                                  this.miniCalendarRefs.delete(monthKey);
+                                }
+                              }}
                             >
                               <div className={styles.miniCalendarTitle}>
                                 {formatMonthYear(month)} ({monthEvents})

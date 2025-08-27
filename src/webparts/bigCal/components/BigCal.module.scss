@@ -606,10 +606,14 @@
 
 
   .miniCalendarScrollArea {
-    flex: 1;
-    overflow-y: auto;
+    flex: none !important; // Remove flex to allow fixed height
+    overflow-y: auto; // Restore internal scrolling for mini calendar
+    overflow-x: hidden; // Hide horizontal scrollbar
     padding-right: 8px;
     padding-top: 8px;
+    // Height that fits within viewport without causing page scroll
+    height: calc(100vh - 120px) !important; // Slightly smaller to prevent page scrollbar
+    max-height: calc(100vh - 120px) !important; // Prevent forcing page scroll
 
     // Custom scrollbar
     &::-webkit-scrollbar {
