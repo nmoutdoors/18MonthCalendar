@@ -536,10 +536,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private get18MonthRange = (): Date[] => {
     const months: Date[] = [];
-    const current = new Date();
+    const startDate = new Date(2025, 7, 1);
 
     for (let i = 0; i < 18; i++) {
-      const month = new Date(current.getFullYear(), current.getMonth() + i, 1);
+      const month = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
       months.push(month);
     }
     return months;

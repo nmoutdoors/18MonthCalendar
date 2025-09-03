@@ -70,6 +70,7 @@ export class GridView extends React.Component<IGridViewProps> {
     }
   };
 
+  /*
   private get18MonthRange = (): Date[] => {
     const months: Date[] = [];
     const current = new Date();
@@ -81,7 +82,18 @@ export class GridView extends React.Component<IGridViewProps> {
     }
     return months;
   };
+  */
+  private get18MonthRange = (): Date[] => {
+    const months: Date[] = [];
+    const startDate = new Date(2025, 7, 1);
 
+    for (let i = 0; i < 18; i++) {
+      const month = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+      months.push(month);
+    }
+    return months;
+  };
+  
   private formatMonthYear = (date: Date): string => {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
