@@ -2521,6 +2521,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           dynamicColorMappings={this.state.dynamicColorMappings}
           dynamicIconMappings={this.state.dynamicIconMappings}
           availableSwimlanes={this.state.availableSwimlanes}
+          sharePointService={this.sharePointService}
           onSave={this.handleSaveEvent}
           onDelete={selectedEvent ? this.handleDeleteEvent : undefined}
           onClose={this.closeModal}

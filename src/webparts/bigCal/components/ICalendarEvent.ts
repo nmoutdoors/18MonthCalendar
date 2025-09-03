@@ -18,6 +18,7 @@ export interface ICalendarEvent {
   isObserved?: boolean;
   isPrivate?: boolean;
   privateEventId?: string; // GUID linking to PrivateEvents list
+  attachmentCount?: number; // Number of attachments for this event
 }
 
 /**

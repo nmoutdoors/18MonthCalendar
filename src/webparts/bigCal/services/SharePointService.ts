@@ -4,6 +4,7 @@ import '@pnp/sp/webs';
 import '@pnp/sp/lists';
 import '@pnp/sp/items';
 import '@pnp/sp/fields';
+import '@pnp/sp/attachments';
 import { Logger } from './LoggingService';
 import '@pnp/sp/content-types';
 import { withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
@@ -43,6 +44,21 @@ export interface IFieldDefinition {
   defaultValue?: string;
 }
 
+export interface IAttachmentInfo {
+  FileName: string;
+  ServerRelativeUrl: string;
+  FileSize?: number;
+  TimeCreated?: string;
+  TimeLastModified?: string;
+}
+
+export interface IAttachmentUploadResult {
+  success: boolean;
+  fileName: string;
+  serverRelativeUrl?: string;
+  errorMessage?: string;
+}
+
 /**
  * SharePoint service for managing lists, fields, and data operations
  * Handles Events list, PrivateEvents list, and BigCalConfig list management
@@ -53,6 +69,7 @@ export interface IFieldDefinition {
 export class SharePointService {
   private sp: ReturnType<typeof spfi>;
   private listName: string;
+  private context: WebPartContext;
 
   // Field definitions for list creation
   // NOTE: For standard SharePoint Events lists, use EventDate and EndDate (built-in fields)
@@ -128,6 +145,7 @@ export class SharePointService {
     // Initialize PnP.js with the SPFx context
     this.sp = spfi().using(SPFx(context));
     this.listName = listName;
+    this.context = context;
   }
 
   /**
@@ -1127,5 +1145,174 @@ export class SharePointService {
       Logger.error(`Error getting GUID for list ${listName}`, error);
       throw new Error(`Failed to get list GUID: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  // ==================== ATTACHMENT METHODS ====================
+
+  /**
+   * Get all attachments for a specific event
+   */
+  public async getEventAttachments(eventId: number): Promise<IAttachmentInfo[]> {
+    try {
+      Logger.debug(`Getting attachments for event ${eventId}`);
+
+      const item = this.sp.web.lists.getByTitle(this.listName).items.getById(eventId);
+      const attachmentsPromise = item.attachmentFiles.select('FileName', 'ServerRelativeUrl', 'Length', 'TimeCreated', 'TimeLastModified')();
+      const attachments = await withTimeout(attachmentsPromise, NETWORK_TIMEOUTS.STANDARD, `Get attachments for event ${eventId}`);
+
+      return attachments.map((att: {
+        FileName: string;
+        ServerRelativeUrl: string;
+        Length?: number;
+        TimeCreated?: string;
+        TimeLastModified?: string;
+      }) => ({
+        FileName: att.FileName,
+        ServerRelativeUrl: att.ServerRelativeUrl,
+        FileSize: att.Length,
+        TimeCreated: att.TimeCreated,
+        TimeLastModified: att.TimeLastModified
+      }));
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error(`Error getting attachments for event ${eventId}`, error);
+      throw new Error(`Failed to get event attachments: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Add an attachment to an event
+   */
+  public async addEventAttachment(eventId: number, fileName: string, fileContent: string | ArrayBuffer | Blob): Promise<IAttachmentUploadResult> {
+    try {
+      Logger.debug(`Adding attachment ${fileName} to event ${eventId}`);
+
+      // Validate file name
+      if (!fileName || fileName.trim().length === 0) {
+        return {
+          success: false,
+          fileName: fileName,
+          errorMessage: 'File name cannot be empty'
+        };
+      }
+
+      // Sanitize file name to prevent issues
+      const sanitizedFileName = fileName.replace(/[<>:"/\\|?*]/g, '_');
+
+      const item = this.sp.web.lists.getByTitle(this.listName).items.getById(eventId);
+      const addPromise = item.attachmentFiles.add(sanitizedFileName, fileContent);
+      const result = await withTimeout(addPromise, NETWORK_TIMEOUTS.SLOW, `Add attachment ${sanitizedFileName} to event ${eventId}`);
+
+      Logger.debug(`Successfully added attachment ${sanitizedFileName} to event ${eventId}`);
+
+      return {
+        success: true,
+        fileName: sanitizedFileName,
+        serverRelativeUrl: (result as { data?: { ServerRelativeUrl?: string }; ServerRelativeUrl?: string }).data?.ServerRelativeUrl ||
+                          (result as { data?: { ServerRelativeUrl?: string }; ServerRelativeUrl?: string }).ServerRelativeUrl
+      };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error(`Error adding attachment ${fileName} to event ${eventId}`, error);
+      return {
+        success: false,
+        fileName: fileName,
+        errorMessage: `Failed to add attachment: ${errorMessage}`
+      };
+    }
+  }
+
+  /**
+   * Delete an attachment from an event
+   */
+  public async deleteEventAttachment(eventId: number, fileName: string): Promise<boolean> {
+    try {
+      Logger.debug(`Deleting attachment ${fileName} from event ${eventId}`);
+
+      const item = this.sp.web.lists.getByTitle(this.listName).items.getById(eventId);
+      const deletePromise = item.attachmentFiles.getByName(fileName).delete();
+      await withTimeout(deletePromise, NETWORK_TIMEOUTS.STANDARD, `Delete attachment ${fileName} from event ${eventId}`);
+
+      Logger.debug(`Successfully deleted attachment ${fileName} from event ${eventId}`);
+      return true;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error(`Error deleting attachment ${fileName} from event ${eventId}`, error);
+      throw new Error(`Failed to delete attachment: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Download attachment content as text
+   */
+  public async downloadAttachmentAsText(eventId: number, fileName: string): Promise<string> {
+    try {
+      Logger.debug(`Downloading attachment ${fileName} as text from event ${eventId}`);
+
+      const item = this.sp.web.lists.getByTitle(this.listName).items.getById(eventId);
+      const textPromise = item.attachmentFiles.getByName(fileName).getText();
+      const content = await withTimeout(textPromise, NETWORK_TIMEOUTS.SLOW, `Download attachment ${fileName} as text from event ${eventId}`);
+
+      return content;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error(`Error downloading attachment ${fileName} as text from event ${eventId}`, error);
+      throw new Error(`Failed to download attachment as text: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Download attachment content as blob (for browser use)
+   */
+  public async downloadAttachmentAsBlob(eventId: number, fileName: string): Promise<Blob> {
+    try {
+      Logger.debug(`Downloading attachment ${fileName} as blob from event ${eventId}`);
+
+      const item = this.sp.web.lists.getByTitle(this.listName).items.getById(eventId);
+      const blobPromise = item.attachmentFiles.getByName(fileName).getBlob();
+      const blob = await withTimeout(blobPromise, NETWORK_TIMEOUTS.SLOW, `Download attachment ${fileName} as blob from event ${eventId}`);
+
+      return blob;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error(`Error downloading attachment ${fileName} as blob from event ${eventId}`, error);
+      throw new Error(`Failed to download attachment as blob: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Get attachment download URL for direct browser download
+   */
+  public getAttachmentDownloadUrl(eventId: number, fileName: string): string {
+    // Construct the direct download URL for SharePoint list item attachment
+    const siteUrl = this.context.pageContext.web.absoluteUrl;
+    const encodedFileName = encodeURIComponent(fileName);
+    return `${siteUrl}/_api/web/lists/getbytitle('${this.listName}')/items(${eventId})/AttachmentFiles('${encodedFileName}')/$value`;
+  }
+
+  /**
+   * Validate file for upload (size, type, etc.)
+   */
+  public validateFileForUpload(file: File): { isValid: boolean; errorMessage?: string } {
+    // File size limit (10MB)
+    const maxSizeBytes = 10 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      return {
+        isValid: false,
+        errorMessage: `File size (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds the 10MB limit`
+      };
+    }
+
+    // Blocked file extensions for security
+    const blockedExtensions = ['.exe', '.bat', '.cmd', '.com', '.pif', '.scr', '.vbs', '.js', '.jar', '.ps1'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    if (blockedExtensions.indexOf(fileExtension) !== -1) {
+      return {
+        isValid: false,
+        errorMessage: `File type ${fileExtension} is not allowed for security reasons`
+      };
+    }
+
+    return { isValid: true };
   }
 }

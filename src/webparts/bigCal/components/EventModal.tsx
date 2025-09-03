@@ -11,9 +11,14 @@ import {
   Text,
   IconButton,
   IIconProps,
-  Checkbox
+  Checkbox,
+  MessageBarType,
+  Separator
 } from '@fluentui/react';
 import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
+import { IAttachmentInfo, SharePointService } from '../services/SharePointService';
+import { AttachmentUploader } from './AttachmentUploader';
+import { AttachmentList } from './AttachmentList';
 import { Logger } from '../services/LoggingService';
 
 import styles from './EventModal.module.scss';
@@ -25,6 +30,7 @@ export interface IEventModalProps {
   dynamicColorMappings?: Map<string, string>;
   dynamicIconMappings?: Map<string, string>;
   availableSwimlanes?: string[]; // Dynamic swimlanes from SharePoint list
+  sharePointService?: SharePointService; // For attachment operations
   onSave: (event: Partial<ICalendarEvent>) => Promise<void>;
   onDelete?: (eventId: number) => Promise<void>;
   onClose: () => void;
@@ -44,6 +50,13 @@ interface IEventModalState {
   isPrivate: boolean;
   isSaving: boolean;
   isDeleting: boolean;
+  // Attachment-related state
+  attachments: IAttachmentInfo[];
+  isLoadingAttachments: boolean;
+  isUploadingAttachment: boolean;
+  attachmentUploadMessage: string;
+  attachmentUploadMessageType: MessageBarType;
+  attachmentError: string;
 }
 
 // Fallback swimlane options for when dynamic loading fails
@@ -95,7 +108,14 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       status: props.event?.status ? props.event.status : 'Not Set', // Show "Not Set" for empty/null status
       isPrivate: props.event?.isPrivate || false,
       isSaving: false,
-      isDeleting: false
+      isDeleting: false,
+      // Attachment-related state
+      attachments: [],
+      isLoadingAttachments: false,
+      isUploadingAttachment: false,
+      attachmentUploadMessage: '',
+      attachmentUploadMessageType: MessageBarType.info,
+      attachmentError: ''
     };
   }
 
@@ -125,7 +145,14 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           status: '', // Default to blank status
           isPrivate: false,
           isSaving: false,
-          isDeleting: false
+          isDeleting: false,
+          // Reset attachment state for create mode
+          attachments: [],
+          isLoadingAttachments: false,
+          isUploadingAttachment: false,
+          attachmentUploadMessage: '',
+          attachmentUploadMessageType: MessageBarType.info,
+          attachmentError: ''
         });
       } else {
         // This is edit mode, initialize with event data
@@ -145,7 +172,19 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           status: this.props.event.status || '', // Keep blank status as empty string
           isPrivate: this.props.event.isPrivate || false,
           isSaving: false,
-          isDeleting: false
+          isDeleting: false,
+          // Reset attachment state for edit mode
+          attachments: [],
+          isLoadingAttachments: false,
+          isUploadingAttachment: false,
+          attachmentUploadMessage: '',
+          attachmentUploadMessageType: MessageBarType.info,
+          attachmentError: ''
+        });
+
+        // Load attachments for edit mode
+        this.loadAttachments().catch(error => {
+          Logger.error('Error loading attachments in componentDidUpdate', error);
         });
       }
     }
@@ -356,9 +395,144 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     }
   };
 
+  // ==================== ATTACHMENT METHODS ====================
+
+  private loadAttachments = async (): Promise<void> => {
+    if (!this.props.event || !this.props.sharePointService) {
+      return;
+    }
+
+    const eventId = this.props.event.id as number;
+    if (!eventId || eventId <= 0) {
+      return;
+    }
+
+    this.setState({
+      isLoadingAttachments: true,
+      attachmentError: ''
+    });
+
+    try {
+      const attachments = await this.props.sharePointService.getEventAttachments(eventId);
+      this.setState({
+        attachments,
+        isLoadingAttachments: false
+      });
+    } catch (error) {
+      Logger.error('Error loading attachments', error);
+      this.setState({
+        attachmentError: 'Failed to load attachments',
+        isLoadingAttachments: false
+      });
+    }
+  };
+
+  private handleFileUpload = async (file: File): Promise<void> => {
+    if (!this.props.event || !this.props.sharePointService) {
+      this.setState({
+        attachmentUploadMessage: 'Cannot upload attachments: Event must be saved first',
+        attachmentUploadMessageType: MessageBarType.warning
+      });
+      return;
+    }
+
+    const eventId = this.props.event.id as number;
+    if (!eventId || eventId <= 0) {
+      this.setState({
+        attachmentUploadMessage: 'Cannot upload attachments: Event must be saved first',
+        attachmentUploadMessageType: MessageBarType.warning
+      });
+      return;
+    }
+
+    // Validate file
+    const validation = this.props.sharePointService.validateFileForUpload(file);
+    if (!validation.isValid) {
+      this.setState({
+        attachmentUploadMessage: validation.errorMessage || 'File validation failed',
+        attachmentUploadMessageType: MessageBarType.error
+      });
+      return;
+    }
+
+    this.setState({
+      isUploadingAttachment: true,
+      attachmentUploadMessage: `Uploading ${file.name}...`,
+      attachmentUploadMessageType: MessageBarType.info
+    });
+
+    try {
+      const result = await this.props.sharePointService.addEventAttachment(eventId, file.name, file);
+
+      if (result.success) {
+        this.setState({
+          attachmentUploadMessage: `Successfully uploaded ${file.name}`,
+          attachmentUploadMessageType: MessageBarType.success,
+          isUploadingAttachment: false
+        });
+
+        // Reload attachments to show the new file
+        await this.loadAttachments();
+
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          this.setState({ attachmentUploadMessage: '' });
+        }, 3000);
+      } else {
+        this.setState({
+          attachmentUploadMessage: result.errorMessage || 'Failed to upload file',
+          attachmentUploadMessageType: MessageBarType.error,
+          isUploadingAttachment: false
+        });
+      }
+    } catch (error) {
+      Logger.error('Error uploading attachment', error);
+      this.setState({
+        attachmentUploadMessage: 'Failed to upload file',
+        attachmentUploadMessageType: MessageBarType.error,
+        isUploadingAttachment: false
+      });
+    }
+  };
+
+  private handleAttachmentDownload = (fileName: string): void => {
+    if (!this.props.event || !this.props.sharePointService) {
+      return;
+    }
+
+    const eventId = this.props.event.id as number;
+    const downloadUrl = this.props.sharePointService.getAttachmentDownloadUrl(eventId, fileName);
+
+    // Open download in new window/tab
+    window.open(downloadUrl, '_blank');
+  };
+
+  private handleAttachmentDelete = async (fileName: string): Promise<void> => {
+    if (!this.props.event || !this.props.sharePointService) {
+      return;
+    }
+
+    const eventId = this.props.event.id as number;
+
+    try {
+      await this.props.sharePointService.deleteEventAttachment(eventId, fileName);
+
+      // Reload attachments to reflect the deletion
+      await this.loadAttachments();
+    } catch (error) {
+      Logger.error('Error deleting attachment', error);
+      throw error; // Let AttachmentList handle the error display
+    }
+  };
+
   public render(): React.ReactElement<IEventModalProps> {
     const { isOpen, event, onClose } = this.props;
-    const { title, description, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, isPrivate, isSaving, isDeleting } = this.state;
+    const {
+      title, description, startDate, endDate, startTime, endTime, startAmPm, endAmPm,
+      swimlane, status, isPrivate, isSaving, isDeleting,
+      attachments, isLoadingAttachments, isUploadingAttachment, attachmentUploadMessage,
+      attachmentUploadMessageType, attachmentError
+    } = this.state;
     
     const closeIcon: IIconProps = { iconName: 'Cancel' };
     const isEditMode = !!event;
@@ -513,6 +687,39 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                   onRenderTitle={this.onRenderStatusTitle}
                 />
               </Stack.Item>
+            </Stack>
+
+            {/* Attachment Section */}
+            <Stack tokens={{ childrenGap: 12 }}>
+              <Separator>
+                <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
+                  Attachments
+                </Text>
+              </Separator>
+
+              {isEditMode ? (
+                <Stack tokens={{ childrenGap: 16 }}>
+                  <AttachmentList
+                    attachments={attachments}
+                    onDownload={this.handleAttachmentDownload}
+                    onDelete={this.handleAttachmentDelete}
+                    isLoading={isLoadingAttachments}
+                    errorMessage={attachmentError}
+                  />
+
+                  <AttachmentUploader
+                    onFileUpload={this.handleFileUpload}
+                    isUploading={isUploadingAttachment}
+                    uploadMessage={attachmentUploadMessage}
+                    uploadMessageType={attachmentUploadMessageType}
+                    maxFileSizeMB={10}
+                  />
+                </Stack>
+              ) : (
+                <Text variant="small" styles={{ root: { color: '#666', fontStyle: 'italic' } }}>
+                  Save the event first to add attachments
+                </Text>
+              )}
             </Stack>
           </Stack>
         </div>
