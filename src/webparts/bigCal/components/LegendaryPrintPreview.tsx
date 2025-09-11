@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import * as React from 'react';
-import { IconButton, PrimaryButton, Stack, DatePicker, ChoiceGroup, IChoiceGroupOption, Toggle } from '@fluentui/react';
+import { IconButton, PrimaryButton, Stack, DatePicker, ChoiceGroup, IChoiceGroupOption, Toggle, Checkbox } from '@fluentui/react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import * as moment from 'moment';
 import html2canvas from 'html2canvas';
@@ -40,6 +40,9 @@ export interface ILegendaryPrintPreviewState {
   agendaEndDate: Date;
   capturedImageUrl?: string; // 🏆 LEGENDARY: Captured calendar image
   isCapturingImage: boolean;
+  // Multi-month print properties
+  isMultiMonth: boolean;     // Controls checkbox and dual picker visibility
+  endDate: Date; // End month for multi-month printing (defaults to same as selectedDate)
 }
 
 export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPreviewProps, ILegendaryPrintPreviewState> {
@@ -61,7 +64,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       agendaStartDate: startOfMonth,
       agendaEndDate: endOfMonth,
       capturedImageUrl: undefined,
-      isCapturingImage: false
+      isCapturingImage: false,
+      // Multi-month print defaults
+      isMultiMonth: false,   // Start with single month picker
+      endDate: currentDate // Default end date same as start (single month)
     };
   }
 
@@ -105,10 +111,21 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       const agendaStartDate = newMonth.clone().startOf('month').toDate();
       const agendaEndDate = newMonth.clone().endOf('month').toDate();
 
+      // 🗓️ MULTI-MONTH: Ensure end date is not before new start date
+      let newEndDate = this.state.endDate;
+      const newStartMonth = moment(date).startOf('month');
+      const currentEndMonth = moment(this.state.endDate).startOf('month');
+
+      if (currentEndMonth.isBefore(newStartMonth)) {
+        // If current end date is before new start date, set end date to new start date
+        newEndDate = date;
+      }
+
       this.setState({
         selectedDate: date,
         agendaStartDate,
-        agendaEndDate
+        agendaEndDate,
+        endDate: newEndDate
       });
     }
   };
@@ -141,7 +158,12 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
   private onPrintViewChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
     if (option) {
-      this.setState({ printView: option.key as 'month' | 'week' | 'day' | 'agenda' });
+      this.setState({
+        printView: option.key as 'month' | 'week' | 'day' | 'agenda',
+        // Reset multi-month state when switching away from month view
+        isMultiMonth: false,
+        endDate: this.state.selectedDate
+      });
     }
   };
 
@@ -155,16 +177,8 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       newDate.setMonth(newDate.getMonth() + 1);
     }
 
-    // Update agenda date range to match the new month
-    const newMonth = moment(newDate);
-    const agendaStartDate = newMonth.clone().startOf('month').toDate();
-    const agendaEndDate = newMonth.clone().endOf('month').toDate();
-
-    this.setState({
-      selectedDate: newDate,
-      agendaStartDate,
-      agendaEndDate
-    });
+    // Use onDateChange which handles end date validation
+    this.onDateChange(newDate);
   };
 
   private navigateWeek = (direction: 'prev' | 'next'): void => {
@@ -210,6 +224,47 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       agendaEndDate
     });
   };
+
+  // 🗓️ MULTI-MONTH PRINT HANDLERS
+  private onMultiMonthToggle = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean): void => {
+    this.setState({
+      isMultiMonth: !!checked,
+      // Reset end date to start date when toggling off
+      endDate: checked ? this.state.endDate : this.state.selectedDate
+    });
+  };
+
+  private onEndDateChange = (date: Date | null | undefined): void => {
+    if (date) {
+      // Ensure end date is not before start date
+      const startDate = moment(this.state.selectedDate).startOf('month');
+      const newEndDate = moment(date).startOf('month');
+
+      if (newEndDate.isBefore(startDate)) {
+        // If user tries to set end date before start date, set it to start date
+        this.setState({ endDate: this.state.selectedDate });
+      } else {
+        this.setState({ endDate: date });
+      }
+    }
+  };
+
+  // Navigation handlers for end date (identical to start date navigation)
+  private navigateEndMonth = (direction: 'prev' | 'next'): void => {
+    const { endDate } = this.state;
+    const newDate = new Date(endDate.getTime());
+
+    if (direction === 'prev') {
+      newDate.setMonth(newDate.getMonth() - 1);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 1);
+    }
+
+    // Use onEndDateChange which handles validation
+    this.onEndDateChange(newDate);
+  };
+
+
 
   private getFilteredEvents = (): ICalendarEvent[] => {
     const { events } = this.props;
@@ -349,9 +404,18 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     this.setState({ isGeneratingPrint: true });
 
     try {
-      const { printView, selectedDate } = this.state;
+      const { printView, selectedDate, endDate } = this.state;
 
-      // 🏆 LEGENDARY: Capture the calendar as high-res image
+      // 🗓️ MULTI-MONTH: Check if checkbox is enabled and end date is different from start date for month view
+      const isMultiMonth = printView === 'month' && this.state.isMultiMonth &&
+        !moment(selectedDate).startOf('month').isSame(moment(endDate).startOf('month'));
+
+      if (isMultiMonth) {
+        await this.generateMultiMonthPrint();
+        return;
+      }
+
+      // 🏆 LEGENDARY: Single month/view print (existing logic)
       Logger.info('🎨 LEGENDARY: Starting calendar capture for perfect print fidelity...');
       const capturedImageUrl = await this.captureCalendarImage();
 
@@ -383,6 +447,60 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     } finally {
       this.setState({ isGeneratingPrint: false });
     }
+  };
+
+  // 🗓️ MULTI-MONTH PRINT: Generate multiple months in sequence
+  private generateMultiMonthPrint = async (): Promise<void> => {
+    const { selectedDate, endDate } = this.state;
+
+    Logger.info(`🗓️ MULTI-MONTH: Generating print from ${moment(selectedDate).format('MMMM YYYY')} to ${moment(endDate).format('MMMM YYYY')}`);
+
+    // Generate sequence of months from start to end
+    const months: Date[] = [];
+    const current = moment(selectedDate).startOf('month');
+    const end = moment(endDate).startOf('month');
+
+    while (current.isSameOrBefore(end)) {
+      months.push(current.toDate());
+      current.add(1, 'month');
+    }
+
+    Logger.info(`🗓️ MULTI-MONTH: Will generate ${months.length} months`);
+
+    // Generate print content for each month
+    const monthContents: string[] = [];
+    const originalSelectedDate = this.state.selectedDate;
+
+    for (let i = 0; i < months.length; i++) {
+      const monthDate = months[i];
+      Logger.info(`🗓️ MULTI-MONTH: Processing month ${i + 1}/${months.length}: ${moment(monthDate).format('MMMM YYYY')}`);
+
+      // Temporarily update selected date for this month
+      this.setState({ selectedDate: monthDate });
+
+      // Wait for state update to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture this month's calendar
+      const capturedImageUrl = await this.captureCalendarImage();
+
+      if (capturedImageUrl) {
+        const title = `BigCal Month View - ${moment(monthDate).format('MMMM YYYY')}`;
+        const monthContent = this.generateLegendaryImagePrintHTML(capturedImageUrl, title, i > 0); // Add page break for subsequent months
+        monthContents.push(monthContent);
+      } else {
+        Logger.warn(`⚠️ MULTI-MONTH: Failed to capture ${moment(monthDate).format('MMMM YYYY')}, skipping`);
+      }
+    }
+
+    // Restore original selected date
+    this.setState({ selectedDate: originalSelectedDate });
+
+    // Combine all month contents into single print document
+    const combinedContent = this.combineMultiMonthContent(monthContents);
+    this.openPrintWindow(combinedContent);
+
+    Logger.info(`🏆 MULTI-MONTH: Successfully generated ${monthContents.length} months for print!`);
   };
 
   // Helper method to open print window
@@ -497,8 +615,43 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     }
   };
 
+  // 🗓️ MULTI-MONTH: Combine multiple month contents into single print document
+  private combineMultiMonthContent = (monthContents: string[]): string => {
+    if (monthContents.length === 0) {
+      return '';
+    }
+
+    // Extract the body content from each month (excluding HTML structure)
+    const bodyContents = monthContents.map((content, index) => {
+      const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      if (bodyMatch) {
+        const bodyContent = bodyMatch[1];
+        // Add page break before each month except the first
+        return index > 0 ? `<div style="page-break-before: always;">${bodyContent}</div>` : bodyContent;
+      }
+      return '';
+    });
+
+    // Use the first month's HTML structure but combine all body contents
+    const firstMonth = monthContents[0];
+    const headMatch = firstMonth.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+    const headContent = headMatch ? headMatch[1] : '';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          ${headContent}
+        </head>
+        <body>
+          ${bodyContents.join('')}
+        </body>
+      </html>
+    `;
+  };
+
   // 🏆 LEGENDARY: Generate print HTML with captured image
-  private generateLegendaryImagePrintHTML = (imageUrl: string, title: string): string => {
+  private generateLegendaryImagePrintHTML = (imageUrl: string, title: string, addPageBreak: boolean = false): string => {
     return `
       <!DOCTYPE html>
       <html>
@@ -539,7 +692,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
           </style>
         </head>
         <body>
-          <div class="print-header">
+          <div class="print-header"${addPageBreak ? ' style="page-break-before: always;"' : ''}>
             <h1>🏆 ${title}</h1>
           </div>
           <img src="${imageUrl}" alt="Calendar" class="calendar-image" />
@@ -1727,7 +1880,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   />
                 </div>
               </Stack>
-            ) : (
+            ) : printView !== 'month' ? (
               <Stack horizontal tokens={{ childrenGap: 15 }} verticalAlign="center">
                 <IconButton
                   iconProps={{ iconName: 'ChevronLeft' }}
@@ -1766,6 +1919,68 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   }}
                   className={styles.navButton}
                 />
+              </Stack>
+            ) : null}
+
+            {/* 🗓️ MULTI-MONTH PRINT CONTROLS - Only show for month view */}
+            {printView === 'month' && (
+              <Stack horizontal tokens={{ childrenGap: 15 }} verticalAlign="center" style={{ marginTop: '2px' }}>
+                {/* Single Month Picker (always visible) */}
+                <IconButton
+                  iconProps={{ iconName: 'ChevronLeft' }}
+                  title="Previous Month"
+                  onClick={() => this.navigateMonth('prev')}
+                  className={styles.navButton}
+                />
+                <DatePicker
+                  value={selectedDate}
+                  onSelectDate={this.onDateChange}
+                  formatDate={(date) => moment(date).format('MMMM YYYY')}
+                  className={styles.datePicker}
+                />
+                <IconButton
+                  iconProps={{ iconName: 'ChevronRight' }}
+                  title="Next Month"
+                  onClick={() => this.navigateMonth('next')}
+                  className={styles.navButton}
+                />
+
+                {/* Print Range Checkbox - Only show when not in multi-month mode */}
+                {!this.state.isMultiMonth && (
+                  <Checkbox
+                    label="Print Range"
+                    checked={this.state.isMultiMonth}
+                    onChange={this.onMultiMonthToggle}
+                    styles={{
+                      root: { marginLeft: '10px' },
+                      label: { fontSize: '14px' }
+                    }}
+                  />
+                )}
+
+                {/* End Month Picker - Only show when checkbox is checked */}
+                {this.state.isMultiMonth && (
+                  <>
+                    <IconButton
+                      iconProps={{ iconName: 'ChevronLeft' }}
+                      title="Previous Month"
+                      onClick={() => this.navigateEndMonth('prev')}
+                      className={styles.navButton}
+                    />
+                    <DatePicker
+                      value={this.state.endDate}
+                      onSelectDate={this.onEndDateChange}
+                      formatDate={(date) => moment(date).format('MMMM YYYY')}
+                      className={styles.datePicker}
+                    />
+                    <IconButton
+                      iconProps={{ iconName: 'ChevronRight' }}
+                      title="Next Month"
+                      onClick={() => this.navigateEndMonth('next')}
+                      className={styles.navButton}
+                    />
+                  </>
+                )}
               </Stack>
             )}
           </div>
