@@ -46,6 +46,9 @@ export interface ILegendaryPrintPreviewState {
   // Multi-week print properties
   isMultiWeek: boolean;      // Controls checkbox and dual week picker visibility
   endWeekDate: Date;         // End week for multi-week printing (defaults to same as selectedDate)
+  // Multi-day print properties
+  isMultiDay: boolean;       // Controls checkbox and dual day picker visibility
+  endDayDate: Date;          // End day for multi-day printing (defaults to same as selectedDate)
 }
 
 export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPreviewProps, ILegendaryPrintPreviewState> {
@@ -73,7 +76,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       endDate: currentDate, // Default end date same as start (single month)
       // Multi-week print defaults
       isMultiWeek: false,    // Start with single week picker
-      endWeekDate: currentDate // Default end week same as start (single week)
+      endWeekDate: currentDate, // Default end week same as start (single week)
+      // Multi-day print defaults
+      isMultiDay: false,     // Start with single day picker
+      endDayDate: currentDate // Default end day same as start (single day)
     };
   }
 
@@ -116,8 +122,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     this.setState({
       isMultiMonth: false,
       isMultiWeek: false,
+      isMultiDay: false,
       endDate: this.state.selectedDate,
-      endWeekDate: this.state.selectedDate
+      endWeekDate: this.state.selectedDate,
+      endDayDate: this.state.selectedDate
     });
 
     // Call parent's onClose
@@ -183,8 +191,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         // Reset multi-range states when switching views
         isMultiMonth: false,
         isMultiWeek: false,
+        isMultiDay: false,
         endDate: this.state.selectedDate,
-        endWeekDate: this.state.selectedDate
+        endWeekDate: this.state.selectedDate,
+        endDayDate: this.state.selectedDate
       });
     }
   };
@@ -244,7 +254,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
   };
 
   private navigateDay = (direction: 'prev' | 'next'): void => {
-    const { selectedDate } = this.state;
+    const { selectedDate, isMultiDay, endDayDate } = this.state;
     const newDate = moment(selectedDate);
 
     if (direction === 'prev') {
@@ -258,10 +268,18 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     const agendaStartDate = newMonth.clone().startOf('month').toDate();
     const agendaEndDate = newMonth.clone().endOf('month').toDate();
 
+    // If in multi-day mode, also update the end day to maintain the same range
+    let newEndDayDate = endDayDate;
+    if (isMultiDay) {
+      const daysDiff = moment(endDayDate).startOf('day').diff(moment(selectedDate).startOf('day'), 'days');
+      newEndDayDate = newDate.clone().add(daysDiff, 'days').toDate();
+    }
+
     this.setState({
       selectedDate: newDate.toDate(),
       agendaStartDate,
-      agendaEndDate
+      agendaEndDate,
+      endDayDate: newEndDayDate
     });
   };
 
@@ -280,6 +298,15 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       isMultiWeek: !!checked,
       // Reset end week date to start date when toggling off
       endWeekDate: checked ? this.state.endWeekDate : this.state.selectedDate
+    });
+  };
+
+  // 📆 MULTI-DAY PRINT HANDLERS
+  private onMultiDayToggle = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean): void => {
+    this.setState({
+      isMultiDay: !!checked,
+      // Reset end day date to start date when toggling off
+      endDayDate: checked ? this.state.endDayDate : this.state.selectedDate
     });
   };
 
@@ -323,6 +350,31 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     }
   };
 
+  private onEndDayDateChange = (date: Date | null | undefined): void => {
+    if (date) {
+      // Ensure end day is not before start day
+      const startDay = moment(this.state.selectedDate).startOf('day');
+      const newEndDay = moment(date).startOf('day');
+
+      if (newEndDay.isBefore(startDay)) {
+        // If user tries to set end day before start day, set it to start day
+        this.setState({ endDayDate: this.state.selectedDate });
+        return;
+      }
+
+      // Check if range exceeds 30 days
+      const daysDiff = newEndDay.diff(startDay, 'days');
+      if (daysDiff > 29) { // 29 days difference = 30 days total (inclusive)
+        // Show alert and auto-adjust to maximum allowed range
+        alert('Maximum range is 30 days. The end date has been adjusted to the maximum allowed range.');
+        const maxEndDay = startDay.clone().add(29, 'days').toDate();
+        this.setState({ endDayDate: maxEndDay });
+      } else {
+        this.setState({ endDayDate: date });
+      }
+    }
+  };
+
   // Navigation handlers for end date (identical to start date navigation)
   private navigateEndMonth = (direction: 'prev' | 'next'): void => {
     const { endDate } = this.state;
@@ -352,7 +404,19 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     this.onEndWeekDateChange(newDate.toDate());
   };
 
+  private navigateEndDay = (direction: 'prev' | 'next'): void => {
+    const { endDayDate } = this.state;
+    const newDate = moment(endDayDate);
 
+    if (direction === 'prev') {
+      newDate.subtract(1, 'day');
+    } else {
+      newDate.add(1, 'day');
+    }
+
+    // Use onEndDayDateChange which handles validation and 30-day limit
+    this.onEndDayDateChange(newDate.toDate());
+  };
 
   private getFilteredEvents = (): ICalendarEvent[] => {
     const { events } = this.props;
@@ -512,6 +576,15 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         return;
       }
 
+      // 📆 MULTI-DAY: Check if checkbox is enabled and end day is different from start day for day view
+      const isMultiDay = printView === 'day' && this.state.isMultiDay &&
+        !moment(selectedDate).startOf('day').isSame(moment(this.state.endDayDate).startOf('day'));
+
+      if (isMultiDay) {
+        await this.generateMultiDayPrint();
+        return;
+      }
+
       // 🏆 LEGENDARY: Single month/view print (existing logic)
       Logger.info('🎨 LEGENDARY: Starting calendar capture for perfect print fidelity...');
       const capturedImageUrl = await this.captureCalendarImage();
@@ -654,6 +727,60 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     this.openPrintWindow(combinedContent);
 
     Logger.info(`🏆 MULTI-WEEK: Successfully generated ${weekContents.length} weeks for print!`);
+  };
+
+  // 📆 MULTI-DAY PRINT: Generate multiple days in sequence
+  private generateMultiDayPrint = async (): Promise<void> => {
+    const { selectedDate, endDayDate } = this.state;
+
+    Logger.info(`📆 MULTI-DAY: Generating print from ${moment(selectedDate).format('dddd, MMM D, YYYY')} to ${moment(endDayDate).format('dddd, MMM D, YYYY')}`);
+
+    // Generate sequence of days from start to end
+    const days: Date[] = [];
+    const current = moment(selectedDate).startOf('day');
+    const end = moment(endDayDate).startOf('day');
+
+    while (current.isSameOrBefore(end)) {
+      days.push(current.toDate());
+      current.add(1, 'day');
+    }
+
+    Logger.info(`📆 MULTI-DAY: Will generate ${days.length} days`);
+
+    // Generate print content for each day
+    const dayContents: string[] = [];
+    const originalSelectedDate = this.state.selectedDate;
+
+    for (let i = 0; i < days.length; i++) {
+      const dayDate = days[i];
+      Logger.info(`📆 MULTI-DAY: Processing day ${i + 1}/${days.length}: ${moment(dayDate).format('dddd, MMM D, YYYY')}`);
+
+      // Temporarily update selected date for this day
+      this.setState({ selectedDate: dayDate });
+
+      // Wait for state update to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture this day's calendar
+      const capturedImageUrl = await this.captureCalendarImage();
+
+      if (capturedImageUrl) {
+        const title = `BigCal Day View - ${moment(dayDate).format('dddd, MMMM D, YYYY')}`;
+        const dayContent = this.generateLegendaryImagePrintHTML(capturedImageUrl, title, i > 0); // Add page break for subsequent days
+        dayContents.push(dayContent);
+      } else {
+        Logger.warn(`⚠️ MULTI-DAY: Failed to capture ${moment(dayDate).format('dddd, MMM D, YYYY')}, skipping`);
+      }
+    }
+
+    // Restore original selected date
+    this.setState({ selectedDate: originalSelectedDate });
+
+    // Combine all day contents into single print document
+    const combinedContent = this.combineMultiDayContent(dayContents);
+    this.openPrintWindow(combinedContent);
+
+    Logger.info(`🏆 MULTI-DAY: Successfully generated ${dayContents.length} days for print!`);
   };
 
   // Helper method to open print window
@@ -823,6 +950,41 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     // Use the first week's HTML structure but combine all body contents
     const firstWeek = weekContents[0];
     const headMatch = firstWeek.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+    const headContent = headMatch ? headMatch[1] : '';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          ${headContent}
+        </head>
+        <body>
+          ${bodyContents.join('')}
+        </body>
+      </html>
+    `;
+  };
+
+  // 📆 MULTI-DAY: Combine multiple day contents into single print document
+  private combineMultiDayContent = (dayContents: string[]): string => {
+    if (dayContents.length === 0) {
+      return '';
+    }
+
+    // Extract the body content from each day (excluding HTML structure)
+    const bodyContents = dayContents.map((content, index) => {
+      const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      if (bodyMatch) {
+        const bodyContent = bodyMatch[1];
+        // Add page break before each day except the first
+        return index > 0 ? `<div style="page-break-before: always;">${bodyContent}</div>` : bodyContent;
+      }
+      return '';
+    });
+
+    // Use the first day's HTML structure but combine all body contents
+    const firstDay = dayContents[0];
+    const headMatch = firstDay.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
     const headContent = headMatch ? headMatch[1] : '';
 
     return `
@@ -2068,29 +2230,6 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   />
                 </div>
               </Stack>
-            ) : printView === 'day' ? (
-              <Stack horizontal tokens={{ childrenGap: 15 }} verticalAlign="center">
-                <IconButton
-                  iconProps={{ iconName: 'ChevronLeft' }}
-                  title="Previous Day"
-                  onClick={() => this.navigateDay('prev')}
-                  className={styles.navButton}
-                />
-
-                <DatePicker
-                  value={selectedDate}
-                  onSelectDate={this.onDateChange}
-                  formatDate={(date) => moment(date).format('dddd, MMMM D, YYYY')}
-                  className={styles.datePicker}
-                />
-
-                <IconButton
-                  iconProps={{ iconName: 'ChevronRight' }}
-                  title="Next Day"
-                  onClick={() => this.navigateDay('next')}
-                  className={styles.navButton}
-                />
-              </Stack>
             ) : null}
 
             {/* 🗓️ MULTI-MONTH PRINT CONTROLS - Only show for month view */}
@@ -2224,6 +2363,68 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                 )}
               </Stack>
             )}
+
+            {/* 📆 MULTI-DAY PRINT CONTROLS - Only show for day view */}
+            {printView === 'day' && (
+              <Stack horizontal tokens={{ childrenGap: 15 }} verticalAlign="center" style={{ marginTop: '2px' }}>
+                {/* Single Day Picker (always visible) */}
+                <IconButton
+                  iconProps={{ iconName: 'ChevronLeft' }}
+                  title="Previous Day"
+                  onClick={() => this.navigateDay('prev')}
+                  className={styles.navButton}
+                />
+                <DatePicker
+                  value={selectedDate}
+                  onSelectDate={this.onDateChange}
+                  formatDate={(date) => moment(date).format('dddd, MMMM D, YYYY')}
+                  className={styles.datePicker}
+                />
+                <IconButton
+                  iconProps={{ iconName: 'ChevronRight' }}
+                  title="Next Day"
+                  onClick={() => this.navigateDay('next')}
+                  className={styles.navButton}
+                />
+
+                {/* Print Range Checkbox - Only show when not in multi-day mode */}
+                {!this.state.isMultiDay && (
+                  <Checkbox
+                    label="Print Range"
+                    checked={this.state.isMultiDay}
+                    onChange={this.onMultiDayToggle}
+                    styles={{
+                      root: { marginLeft: '10px' },
+                      label: { fontSize: '14px' }
+                    }}
+                  />
+                )}
+
+                {/* End Day Picker - Only show when checkbox is checked */}
+                {this.state.isMultiDay && (
+                  <>
+                    <IconButton
+                      iconProps={{ iconName: 'ChevronLeft' }}
+                      title="Previous Day"
+                      onClick={() => this.navigateEndDay('prev')}
+                      className={styles.navButton}
+                    />
+                    <DatePicker
+                      value={this.state.endDayDate}
+                      onSelectDate={this.onEndDayDateChange}
+                      formatDate={(date) => moment(date).format('dddd, MMMM D, YYYY')}
+                      className={styles.datePicker}
+                    />
+                    <IconButton
+                      iconProps={{ iconName: 'ChevronRight' }}
+                      title="Next Day"
+                      onClick={() => this.navigateEndDay('next')}
+                      className={styles.navButton}
+                    />
+                  </>
+                )}
+              </Stack>
+            )}
           </div>
 
           <div className={styles.headerRight}>
@@ -2234,13 +2435,16 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
               className={styles.viewSelector}
             />
 
-            <Toggle
-              label="Force Single Page"
-              checked={this.state.forceSinglePage}
-              onChange={(ev, checked) => this.setState({ forceSinglePage: !!checked })}
-              inlineLabel
-              className={styles.singlePageToggle}
-            />
+            {/* Force Single Page Toggle - Hidden but functionality preserved */}
+            {false && (
+              <Toggle
+                label="Force Single Page"
+                checked={this.state.forceSinglePage}
+                onChange={(ev, checked) => this.setState({ forceSinglePage: !!checked })}
+                inlineLabel
+                className={styles.singlePageToggle}
+              />
+            )}
 
             <PrimaryButton
               text={isCapturingImage ? "🎨 Capturing..." : isGeneratingPrint ? "🖨️ Printing..." : "🏆 Legendary Print"}
