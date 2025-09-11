@@ -812,6 +812,7 @@ export class ColorMappingService {
       'Joint DISA & DCDC',
       'Mission Partner',
       'Out of Office',
+      'Seniors',
       'Speaking Event',
       'TDY Meetings/Congressional',
       'Transit'

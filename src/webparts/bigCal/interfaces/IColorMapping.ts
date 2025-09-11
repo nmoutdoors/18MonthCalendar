@@ -193,6 +193,7 @@ export const SPECIFIC_COLOR_MAPPINGS: { [key: string]: string } = {
   'Joint DISA & DCDC': '#B39DDB',       // Light purple/lavender (from reference image)
   'Mission Partner': '#ff5050',          // Red/Pink (user provided)
   'Out of Office': '#2f5597',           // Blue (user provided)
+  'Seniors': '#ff7f50',                 // Coral/Salmon (unique color for new swimlane)
   'Speaking Event': '#ffff00',          // Yellow (user provided)
   'TDY Meetings/Congressional': '#70ad47', // Green (same as DCDC)
   'Transit': '#17a2b8'                  // Teal/Cyan (from image)

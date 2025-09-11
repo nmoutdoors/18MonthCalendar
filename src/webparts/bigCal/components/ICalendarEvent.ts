@@ -1,7 +1,7 @@
 import * as moment from 'moment';
 
 // Type definitions for SharePoint choice fields
-export type SwimlaneType = 'DCDC' | 'DISA' | 'DOD CIO / NSA / USCC' | 'Exec Time' | 'Exercises' | 'FYSA' | 'Joint DISA & DCDC' | 'Mission Partner' | 'Out of Office' | 'Speaking Event' | 'TDY Meetings/Congressional' | 'Transit';
+export type SwimlaneType = 'DCDC' | 'DISA' | 'DOD CIO / NSA / USCC' | 'Exec Time' | 'Exercises' | 'FYSA' | 'Joint DISA & DCDC' | 'Mission Partner' | 'Out of Office' | 'Seniors' | 'Speaking Event' | 'TDY Meetings/Congressional' | 'Transit';
 export type StatusType = 'Confirmed' | 'Tentative' | 'Not Set' | ''; // Include empty string for blank status
 
 export interface ICalendarEvent {

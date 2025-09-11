@@ -125,6 +125,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         'Joint DISA & DCDC',
         'Mission Partner',
         'Out of Office',
+        'Seniors',
         'Speaking Event',
         'TDY Meetings/Congressional',
         'Transit',
@@ -672,6 +673,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           'Joint DISA & DCDC',
           'Mission Partner',
           'Out of Office',
+          'Seniors',
           'Speaking Event',
           'TDY Meetings/Congressional',
           'Transit'
@@ -887,6 +889,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
               'Joint DISA & DCDC',
               'Mission Partner',
               'Out of Office',
+              'Seniors',
               'Speaking Event',
               'TDY Meetings/Congressional',
               'Transit'
@@ -1654,7 +1657,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     // Standard swimlanes that should always be available
     const standardSwimlanes = [
       'DCDC', 'DISA', 'DOD CIO / NSA / USCG', 'Exec Time', 'Exercises', 'FYSA',
-      'Joint DISA & DCDC', 'Mission Partner', 'Out of Office', 'Speaking Event',
+      'Joint DISA & DCDC', 'Mission Partner', 'Out of Office', 'Seniors', 'Speaking Event',
       'TDY Meetings/Congressional', 'Transit'
     ];
 
@@ -2220,14 +2223,32 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 onChange={this.handleEventCategoryDropdownChange}
                 onRenderOption={this.renderEventCategoryOption}
                 onRenderTitle={this.renderEventCategoryTitle}
+                calloutProps={{
+                  styles: {
+                    root: {
+                      maxHeight: 'none', // Remove height restriction
+                      overflowY: 'visible' // Remove scrollbar
+                    },
+                    calloutMain: {
+                      maxHeight: 'none', // Remove height restriction on main callout
+                      overflowY: 'visible' // Remove scrollbar
+                    }
+                  }
+                }}
                 styles={{
                   root: {
-                    width: '280px',
-                    minWidth: '250px',
-                    maxWidth: '320px',
-                    flex: '1 1 280px'
+                    width: '250px', // Increased from 230px to prevent text wrapping
+                    minWidth: '220px',
+                    maxWidth: '280px',
+                    flex: '1 1 250px'
                   },
-                  title: { fontSize: '13px' }
+                  title: { fontSize: '13px' },
+                  dropdownItemsWrapper: {
+                    maxHeight: 'none' // Remove height restriction on items wrapper
+                  },
+                  dropdownItems: {
+                    maxHeight: 'none' // Remove height restriction on items container
+                  }
                 }}
               />
 

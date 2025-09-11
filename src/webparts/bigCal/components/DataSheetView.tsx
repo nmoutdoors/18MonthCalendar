@@ -149,6 +149,7 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
       { key: 'Joint DISA & DCDC', text: 'Joint DISA & DCDC' },
       { key: 'Mission Partner', text: 'Mission Partner' },
       { key: 'Out of Office', text: 'Out of Office' },
+      { key: 'Seniors', text: 'Seniors' },
       { key: 'Speaking Event', text: 'Speaking Event' },
       { key: 'TDY Meetings/Congressional', text: 'TDY Meetings/Congressional' },
       { key: 'Transit', text: 'Transit' }
