@@ -57,18 +57,19 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
   constructor(props: ILegendaryPrintPreviewProps) {
     super(props);
 
-    // Default agenda range: current month
+    // Default agenda range: current month (consistent with other views)
     const currentDate = props.currentDate || new Date();
-    const startOfMonth = moment(currentDate).startOf('month').toDate();
-    const endOfMonth = moment(currentDate).endOf('month').toDate();
+    const currentMoment = moment(currentDate);
+    const agendaStartDate = currentMoment.clone().startOf('month').toDate();
+    const agendaEndDate = currentMoment.clone().endOf('month').toDate();
 
     this.state = {
       selectedDate: currentDate,
       printView: 'month', // Start with month view - the most requested
       isGeneratingPrint: false,
       forceSinglePage: false,
-      agendaStartDate: startOfMonth,
-      agendaEndDate: endOfMonth,
+      agendaStartDate: agendaStartDate,
+      agendaEndDate: agendaEndDate,
       capturedImageUrl: undefined,
       isCapturingImage: false,
       // Multi-month print defaults
@@ -92,13 +93,17 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     // If the modal was closed and is now opening, update to current calendar date
     if (this.props.isOpen && !prevProps.isOpen && this.props.currentDate) {
       const currentDate = this.props.currentDate;
-      const startOfMonth = moment(currentDate).startOf('month').toDate();
-      const endOfMonth = moment(currentDate).endOf('month').toDate();
+      const currentMoment = moment(currentDate);
+      const agendaStartDate = currentMoment.clone().startOf('month').toDate();
+      const agendaEndDate = currentMoment.clone().endOf('month').toDate();
+
+      // 🎯 AGENDA FIX: Use start of month for selectedDate to ensure agenda view works correctly
+      const selectedDate = agendaStartDate; // Use start of month instead of current date
 
       this.setState({
-        selectedDate: currentDate,
-        agendaStartDate: startOfMonth,
-        agendaEndDate: endOfMonth
+        selectedDate: selectedDate,
+        agendaStartDate: agendaStartDate,
+        agendaEndDate: agendaEndDate
       });
     }
   }
@@ -134,11 +139,6 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
   private onDateChange = (date: Date | null | undefined): void => {
     if (date) {
-      // Update agenda date range to match the new month
-      const newMonth = moment(date);
-      const agendaStartDate = newMonth.clone().startOf('month').toDate();
-      const agendaEndDate = newMonth.clone().endOf('month').toDate();
-
       // 🗓️ MULTI-MONTH: Ensure end date is not before new start date
       let newEndDate = this.state.endDate;
       const newStartMonth = moment(date).startOf('month');
@@ -149,10 +149,24 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         newEndDate = date;
       }
 
+      // 📅 AGENDA FIX: Don't override agenda date range when user has set custom dates
+      // Only update agenda dates for non-agenda views or when agenda dates haven't been customized
+      const { printView, agendaStartDate, agendaEndDate } = this.state;
+      let newAgendaStartDate = agendaStartDate;
+      let newAgendaEndDate = agendaEndDate;
+
+      if (printView !== 'agenda') {
+        // For non-agenda views, update agenda dates to match the new month
+        const newMonth = moment(date);
+        newAgendaStartDate = newMonth.clone().startOf('month').toDate();
+        newAgendaEndDate = newMonth.clone().endOf('month').toDate();
+
+      }
+
       this.setState({
         selectedDate: date,
-        agendaStartDate,
-        agendaEndDate,
+        agendaStartDate: newAgendaStartDate,
+        agendaEndDate: newAgendaEndDate,
         endDate: newEndDate
       });
     }
@@ -160,15 +174,22 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
   // 🔄 NAVIGATION SYNC - Handle navigation from react-big-calendar views
   private onCalendarNavigate = (date: Date): void => {
-    // Update both selectedDate and agenda date range in a single setState call
-    const newMonth = moment(date);
-    const agendaStartDate = newMonth.clone().startOf('month').toDate();
-    const agendaEndDate = newMonth.clone().endOf('month').toDate();
+    // 📅 AGENDA FIX: Don't override agenda date range when in agenda view
+    const { printView, agendaStartDate, agendaEndDate } = this.state;
+    let newAgendaStartDate = agendaStartDate;
+    let newAgendaEndDate = agendaEndDate;
+
+    if (printView !== 'agenda') {
+      // For non-agenda views, update agenda dates to match the new month
+      const newMonth = moment(date);
+      newAgendaStartDate = newMonth.clone().startOf('month').toDate();
+      newAgendaEndDate = newMonth.clone().endOf('month').toDate();
+    }
 
     this.setState({
       selectedDate: date,
-      agendaStartDate,
-      agendaEndDate
+      agendaStartDate: newAgendaStartDate,
+      agendaEndDate: newAgendaEndDate
     });
   };
 
@@ -233,10 +254,17 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       newDate.add(1, 'week');
     }
 
-    // Update agenda date range to match the new month
-    const newMonth = newDate.clone();
-    const agendaStartDate = newMonth.clone().startOf('month').toDate();
-    const agendaEndDate = newMonth.clone().endOf('month').toDate();
+    // 📅 AGENDA FIX: Don't override agenda date range when in agenda view
+    const { printView, agendaStartDate, agendaEndDate } = this.state;
+    let newAgendaStartDate = agendaStartDate;
+    let newAgendaEndDate = agendaEndDate;
+
+    if (printView !== 'agenda') {
+      // For non-agenda views, update agenda dates to match the new month
+      const newMonth = newDate.clone();
+      newAgendaStartDate = newMonth.clone().startOf('month').toDate();
+      newAgendaEndDate = newMonth.clone().endOf('month').toDate();
+    }
 
     // If in multi-week mode, also update the end week to maintain the same range
     let newEndWeekDate = endWeekDate;
@@ -247,8 +275,8 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
     this.setState({
       selectedDate: newDate.toDate(),
-      agendaStartDate,
-      agendaEndDate,
+      agendaStartDate: newAgendaStartDate,
+      agendaEndDate: newAgendaEndDate,
       endWeekDate: newEndWeekDate
     });
   };
@@ -263,10 +291,17 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       newDate.add(1, 'day');
     }
 
-    // Update agenda date range to match the new month
-    const newMonth = newDate.clone();
-    const agendaStartDate = newMonth.clone().startOf('month').toDate();
-    const agendaEndDate = newMonth.clone().endOf('month').toDate();
+    // 📅 AGENDA FIX: Don't override agenda date range when in agenda view
+    const { printView, agendaStartDate, agendaEndDate } = this.state;
+    let newAgendaStartDate = agendaStartDate;
+    let newAgendaEndDate = agendaEndDate;
+
+    if (printView !== 'agenda') {
+      // For non-agenda views, update agenda dates to match the new month
+      const newMonth = newDate.clone();
+      newAgendaStartDate = newMonth.clone().startOf('month').toDate();
+      newAgendaEndDate = newMonth.clone().endOf('month').toDate();
+    }
 
     // If in multi-day mode, also update the end day to maintain the same range
     let newEndDayDate = endDayDate;
@@ -277,8 +312,8 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
     this.setState({
       selectedDate: newDate.toDate(),
-      agendaStartDate,
-      agendaEndDate,
+      agendaStartDate: newAgendaStartDate,
+      agendaEndDate: newAgendaEndDate,
       endDayDate: newEndDayDate
     });
   };
@@ -520,12 +555,15 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
     if (printView === 'agenda') {
       const { agendaStartDate, agendaEndDate } = this.state;
+
+      // Filter events for agenda date range
+
       const filteredEvents = events.filter(event => {
         // Use moment.js for ALL date operations
         const eventStartMoment = moment(event.start);
         const eventEndMoment = moment(event.end);
-        const startRangeMoment = moment(agendaStartDate);
-        const endRangeMoment = moment(agendaEndDate);
+        const startRangeMoment = moment(agendaStartDate).startOf('day');
+        const endRangeMoment = moment(agendaEndDate).endOf('day');
 
         // Include events that start in range, end in range, or span across the range
         const eventStartsInRange = eventStartMoment.isBetween(startRangeMoment, endRangeMoment, 'day', '[]');
@@ -534,9 +572,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
         const isInRange = eventStartsInRange || eventEndsInRange || eventSpansRange;
 
-        if (isInRange) {
-          Logger.debug(`Including agenda event: ${event.title} (${eventStartMoment.format('YYYY-MM-DD')})`);
-        }
+        // Enhanced debugging for agenda filtering
+        Logger.debug(`🔍 Event: "${event.title}" | Start: ${eventStartMoment.format('YYYY-MM-DD')} | End: ${eventEndMoment.format('YYYY-MM-DD')}`);
+        Logger.debug(`   - Starts in range: ${eventStartsInRange} | Ends in range: ${eventEndsInRange} | Spans range: ${eventSpansRange}`);
+        Logger.debug(`   - Result: ${isInRange ? '✅ INCLUDED' : '❌ EXCLUDED'}`);
 
         return isInRange;
       });
@@ -544,7 +583,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       // Sort events chronologically for agenda view
       const sortedEvents = filteredEvents.sort((a, b) => moment(a.start).valueOf() - moment(b.start).valueOf());
 
-      Logger.info(`Filtered agenda events count: ${sortedEvents.length}`);
+      Logger.info(`🏆 AGENDA RESULT: ${sortedEvents.length} events included out of ${events.length} total`);
       return sortedEvents;
     }
 
@@ -553,10 +592,11 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
   };
 
   private generateLegendaryPrint = async (): Promise<void> => {
+    const { printView, selectedDate, endDate } = this.state;
+
     this.setState({ isGeneratingPrint: true });
 
     try {
-      const { printView, selectedDate, endDate } = this.state;
 
       // 🗓️ MULTI-MONTH: Check if checkbox is enabled and end date is different from start date for month view
       const isMultiMonth = printView === 'month' && this.state.isMultiMonth &&
@@ -587,6 +627,9 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
       // 🏆 LEGENDARY: Single month/view print (existing logic)
       Logger.info('🎨 LEGENDARY: Starting calendar capture for perfect print fidelity...');
+
+
+
       const capturedImageUrl = await this.captureCalendarImage();
 
       if (!capturedImageUrl) {
@@ -598,10 +641,25 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         return;
       }
 
+
+
       // Generate title for the captured image
       let title: string;
       if (printView === 'day') {
         title = `BigCal Day View - ${moment(selectedDate).format('dddd, MMMM D, YYYY')}`;
+      } else if (printView === 'agenda') {
+        // 📅 AGENDA FIX: Use agenda date range for title, not selectedDate
+        const { agendaStartDate, agendaEndDate } = this.state;
+        const startMoment = moment(agendaStartDate);
+        const endMoment = moment(agendaEndDate);
+
+        if (startMoment.isSame(endMoment, 'month')) {
+          // Same month range
+          title = `BigCal Agenda View - ${startMoment.format('MMMM YYYY')}`;
+        } else {
+          // Cross-month range
+          title = `BigCal Agenda View - ${startMoment.format('MMM D, YYYY')} to ${endMoment.format('MMM D, YYYY')}`;
+        }
       } else {
         title = `BigCal ${printView.charAt(0).toUpperCase() + printView.slice(1)} View - ${moment(selectedDate).format('MMMM YYYY')}`;
       }
@@ -818,6 +876,19 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
     if (printView === 'day') {
       title = `BigCal Day View - ${moment(selectedDate).format('dddd, MMMM D, YYYY')}`;
+    } else if (printView === 'agenda') {
+      // 📅 AGENDA FIX: Use agenda date range for title, not selectedDate
+      const { agendaStartDate, agendaEndDate } = this.state;
+      const startMoment = moment(agendaStartDate);
+      const endMoment = moment(agendaEndDate);
+
+      if (startMoment.isSame(endMoment, 'month')) {
+        // Same month range
+        title = `BigCal Agenda View - ${startMoment.format('MMMM YYYY')}`;
+      } else {
+        // Cross-month range
+        title = `BigCal Agenda View - ${startMoment.format('MMM D, YYYY')} to ${endMoment.format('MMM D, YYYY')}`;
+      }
     } else {
       title = `BigCal ${printView.charAt(0).toUpperCase() + printView.slice(1)} View - ${moment(selectedDate).format('MMMM YYYY')}`;
     }
@@ -2177,6 +2248,8 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     const { selectedDate, printView, isGeneratingPrint, isCapturingImage } = this.state;
     const filteredEvents = this.getFilteredEvents();
 
+    // Render the appropriate view
+
     Logger.info(`Rendering Legendary Print Preview for ${moment(selectedDate).format('MMMM YYYY')}`);
     Logger.info(`Rendering Legendary Print Preview for ${moment(selectedDate).format('MMMM YYYY')}`);
     Logger.info(`Total props events: ${this.props.events.length}, Filtered events: ${filteredEvents.length}`);
@@ -2547,7 +2620,8 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   style={{ height: 'calc(100vh - 200px)', width: '100%' }}
                   views={['agenda']}
                   view="agenda"
-                  date={selectedDate}
+                  date={this.state.agendaStartDate} // 🎯 Use agenda start date instead of selectedDate
+                  length={moment(this.state.agendaEndDate).diff(moment(this.state.agendaStartDate), 'days') + 1} // Set agenda length in days
                   toolbar={false}
                   eventPropGetter={this.agendaEventStyleGetter}
                   components={{
