@@ -43,6 +43,9 @@ export interface ILegendaryPrintPreviewState {
   // Multi-month print properties
   isMultiMonth: boolean;     // Controls checkbox and dual picker visibility
   endDate: Date; // End month for multi-month printing (defaults to same as selectedDate)
+  // Multi-week print properties
+  isMultiWeek: boolean;      // Controls checkbox and dual week picker visibility
+  endWeekDate: Date;         // End week for multi-week printing (defaults to same as selectedDate)
 }
 
 export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPreviewProps, ILegendaryPrintPreviewState> {
@@ -67,7 +70,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       isCapturingImage: false,
       // Multi-month print defaults
       isMultiMonth: false,   // Start with single month picker
-      endDate: currentDate // Default end date same as start (single month)
+      endDate: currentDate, // Default end date same as start (single month)
+      // Multi-week print defaults
+      isMultiWeek: false,    // Start with single week picker
+      endWeekDate: currentDate // Default end week same as start (single week)
     };
   }
 
@@ -100,8 +106,22 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
   private handleKeyDown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape' && this.props.isOpen) {
-      this.props.onClose();
+      this.handleClose();
     }
+  };
+
+  // Handle close with cleanup of print range flags
+  private handleClose = (): void => {
+    // Reset all print range flags when closing
+    this.setState({
+      isMultiMonth: false,
+      isMultiWeek: false,
+      endDate: this.state.selectedDate,
+      endWeekDate: this.state.selectedDate
+    });
+
+    // Call parent's onClose
+    this.props.onClose();
   };
 
   private onDateChange = (date: Date | null | undefined): void => {
@@ -160,15 +180,17 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     if (option) {
       this.setState({
         printView: option.key as 'month' | 'week' | 'day' | 'agenda',
-        // Reset multi-month state when switching away from month view
+        // Reset multi-range states when switching views
         isMultiMonth: false,
-        endDate: this.state.selectedDate
+        isMultiWeek: false,
+        endDate: this.state.selectedDate,
+        endWeekDate: this.state.selectedDate
       });
     }
   };
 
   private navigateMonth = (direction: 'prev' | 'next'): void => {
-    const { selectedDate } = this.state;
+    const { selectedDate, isMultiMonth, endDate } = this.state;
     const newDate = new Date(selectedDate.getTime());
 
     if (direction === 'prev') {
@@ -177,12 +199,22 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       newDate.setMonth(newDate.getMonth() + 1);
     }
 
-    // Use onDateChange which handles end date validation
-    this.onDateChange(newDate);
+    // If in multi-month mode, also update the end month to maintain the same range
+    if (isMultiMonth) {
+      const monthsDiff = moment(endDate).startOf('month').diff(moment(selectedDate).startOf('month'), 'months');
+      const newEndDate = moment(newDate).add(monthsDiff, 'months').toDate();
+      this.setState({
+        selectedDate: newDate,
+        endDate: newEndDate
+      });
+    } else {
+      // Use onDateChange which handles end date validation
+      this.onDateChange(newDate);
+    }
   };
 
   private navigateWeek = (direction: 'prev' | 'next'): void => {
-    const { selectedDate } = this.state;
+    const { selectedDate, isMultiWeek, endWeekDate } = this.state;
     const newDate = moment(selectedDate);
 
     if (direction === 'prev') {
@@ -196,10 +228,18 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     const agendaStartDate = newMonth.clone().startOf('month').toDate();
     const agendaEndDate = newMonth.clone().endOf('month').toDate();
 
+    // If in multi-week mode, also update the end week to maintain the same range
+    let newEndWeekDate = endWeekDate;
+    if (isMultiWeek) {
+      const weeksDiff = moment(endWeekDate).startOf('week').diff(moment(selectedDate).startOf('week'), 'weeks');
+      newEndWeekDate = newDate.clone().add(weeksDiff, 'weeks').toDate();
+    }
+
     this.setState({
       selectedDate: newDate.toDate(),
       agendaStartDate,
-      agendaEndDate
+      agendaEndDate,
+      endWeekDate: newEndWeekDate
     });
   };
 
@@ -234,6 +274,15 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     });
   };
 
+  // 📅 MULTI-WEEK PRINT HANDLERS
+  private onMultiWeekToggle = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean): void => {
+    this.setState({
+      isMultiWeek: !!checked,
+      // Reset end week date to start date when toggling off
+      endWeekDate: checked ? this.state.endWeekDate : this.state.selectedDate
+    });
+  };
+
   private onEndDateChange = (date: Date | null | undefined): void => {
     if (date) {
       // Ensure end date is not before start date
@@ -245,6 +294,31 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         this.setState({ endDate: this.state.selectedDate });
       } else {
         this.setState({ endDate: date });
+      }
+    }
+  };
+
+  private onEndWeekDateChange = (date: Date | null | undefined): void => {
+    if (date) {
+      // Ensure end week is not before start week
+      const startWeek = moment(this.state.selectedDate).startOf('week');
+      const newEndWeek = moment(date).startOf('week');
+
+      if (newEndWeek.isBefore(startWeek)) {
+        // If user tries to set end week before start week, set it to start week
+        this.setState({ endWeekDate: this.state.selectedDate });
+        return;
+      }
+
+      // Check if range exceeds 8 weeks
+      const weeksDiff = newEndWeek.diff(startWeek, 'weeks');
+      if (weeksDiff > 7) { // 7 weeks difference = 8 weeks total (inclusive)
+        // Show alert and auto-adjust to maximum allowed range
+        alert('Maximum range is 8 weeks. The end date has been adjusted to the maximum allowed range.');
+        const maxEndWeek = startWeek.clone().add(7, 'weeks').toDate();
+        this.setState({ endWeekDate: maxEndWeek });
+      } else {
+        this.setState({ endWeekDate: date });
       }
     }
   };
@@ -262,6 +336,20 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
     // Use onEndDateChange which handles validation
     this.onEndDateChange(newDate);
+  };
+
+  private navigateEndWeek = (direction: 'prev' | 'next'): void => {
+    const { endWeekDate } = this.state;
+    const newDate = moment(endWeekDate);
+
+    if (direction === 'prev') {
+      newDate.subtract(1, 'week');
+    } else {
+      newDate.add(1, 'week');
+    }
+
+    // Use onEndWeekDateChange which handles validation and 8-week limit
+    this.onEndWeekDateChange(newDate.toDate());
   };
 
 
@@ -415,6 +503,15 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         return;
       }
 
+      // 📅 MULTI-WEEK: Check if checkbox is enabled and end week is different from start week for week view
+      const isMultiWeek = printView === 'week' && this.state.isMultiWeek &&
+        !moment(selectedDate).startOf('week').isSame(moment(this.state.endWeekDate).startOf('week'));
+
+      if (isMultiWeek) {
+        await this.generateMultiWeekPrint();
+        return;
+      }
+
       // 🏆 LEGENDARY: Single month/view print (existing logic)
       Logger.info('🎨 LEGENDARY: Starting calendar capture for perfect print fidelity...');
       const capturedImageUrl = await this.captureCalendarImage();
@@ -501,6 +598,62 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     this.openPrintWindow(combinedContent);
 
     Logger.info(`🏆 MULTI-MONTH: Successfully generated ${monthContents.length} months for print!`);
+  };
+
+  // 📅 MULTI-WEEK PRINT: Generate multiple weeks in sequence
+  private generateMultiWeekPrint = async (): Promise<void> => {
+    const { selectedDate, endWeekDate } = this.state;
+
+    Logger.info(`📅 MULTI-WEEK: Generating print from ${moment(selectedDate).format('MMM D, YYYY')} to ${moment(endWeekDate).format('MMM D, YYYY')}`);
+
+    // Generate sequence of weeks from start to end
+    const weeks: Date[] = [];
+    const current = moment(selectedDate).startOf('week');
+    const end = moment(endWeekDate).startOf('week');
+
+    while (current.isSameOrBefore(end)) {
+      weeks.push(current.toDate());
+      current.add(1, 'week');
+    }
+
+    Logger.info(`📅 MULTI-WEEK: Will generate ${weeks.length} weeks`);
+
+    // Generate print content for each week
+    const weekContents: string[] = [];
+    const originalSelectedDate = this.state.selectedDate;
+
+    for (let i = 0; i < weeks.length; i++) {
+      const weekDate = weeks[i];
+      const weekStart = moment(weekDate).startOf('week');
+      const weekEnd = moment(weekDate).endOf('week');
+      Logger.info(`📅 MULTI-WEEK: Processing week ${i + 1}/${weeks.length}: ${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}`);
+
+      // Temporarily update selected date for this week
+      this.setState({ selectedDate: weekDate });
+
+      // Wait for state update to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture this week's calendar
+      const capturedImageUrl = await this.captureCalendarImage();
+
+      if (capturedImageUrl) {
+        const title = `BigCal Week View - ${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}`;
+        const weekContent = this.generateLegendaryImagePrintHTML(capturedImageUrl, title, i > 0); // Add page break for subsequent weeks
+        weekContents.push(weekContent);
+      } else {
+        Logger.warn(`⚠️ MULTI-WEEK: Failed to capture week ${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}, skipping`);
+      }
+    }
+
+    // Restore original selected date
+    this.setState({ selectedDate: originalSelectedDate });
+
+    // Combine all week contents into single print document
+    const combinedContent = this.combineMultiWeekContent(weekContents);
+    this.openPrintWindow(combinedContent);
+
+    Logger.info(`🏆 MULTI-WEEK: Successfully generated ${weekContents.length} weeks for print!`);
   };
 
   // Helper method to open print window
@@ -635,6 +788,41 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     // Use the first month's HTML structure but combine all body contents
     const firstMonth = monthContents[0];
     const headMatch = firstMonth.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+    const headContent = headMatch ? headMatch[1] : '';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          ${headContent}
+        </head>
+        <body>
+          ${bodyContents.join('')}
+        </body>
+      </html>
+    `;
+  };
+
+  // 📅 MULTI-WEEK: Combine multiple week contents into single print document
+  private combineMultiWeekContent = (weekContents: string[]): string => {
+    if (weekContents.length === 0) {
+      return '';
+    }
+
+    // Extract the body content from each week (excluding HTML structure)
+    const bodyContents = weekContents.map((content, index) => {
+      const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      if (bodyMatch) {
+        const bodyContent = bodyMatch[1];
+        // Add page break before each week except the first
+        return index > 0 ? `<div style="page-break-before: always;">${bodyContent}</div>` : bodyContent;
+      }
+      return '';
+    });
+
+    // Use the first week's HTML structure but combine all body contents
+    const firstWeek = weekContents[0];
+    const headMatch = firstWeek.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
     const headContent = headMatch ? headMatch[1] : '';
 
     return `
@@ -1852,7 +2040,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
             <IconButton
               iconProps={{ iconName: 'ChromeClose' }}
               title="Close Print Preview"
-              onClick={this.props.onClose}
+              onClick={this.handleClose}
               className={styles.closeButton}
             />
             <h2 className={styles.headerTitle}>⚔️ Legendary Print 🖨️</h2>
@@ -1880,43 +2068,26 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                   />
                 </div>
               </Stack>
-            ) : printView !== 'month' ? (
+            ) : printView === 'day' ? (
               <Stack horizontal tokens={{ childrenGap: 15 }} verticalAlign="center">
                 <IconButton
                   iconProps={{ iconName: 'ChevronLeft' }}
-                  title={printView === 'day' ? 'Previous Day' : printView === 'week' ? 'Previous Week' : 'Previous Month'}
-                  onClick={() => {
-                    if (printView === 'day') this.navigateDay('prev');
-                    else if (printView === 'week') this.navigateWeek('prev');
-                    else this.navigateMonth('prev');
-                  }}
+                  title="Previous Day"
+                  onClick={() => this.navigateDay('prev')}
                   className={styles.navButton}
                 />
 
                 <DatePicker
                   value={selectedDate}
                   onSelectDate={this.onDateChange}
-                  formatDate={(date) => {
-                    if (printView === 'day') {
-                      return moment(date).format('dddd, MMMM D, YYYY');
-                    } else if (printView === 'week') {
-                      const weekStart = moment(date).startOf('week');
-                      const weekEnd = moment(date).endOf('week');
-                      return `${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}`;
-                    }
-                    return moment(date).format('MMMM YYYY');
-                  }}
+                  formatDate={(date) => moment(date).format('dddd, MMMM D, YYYY')}
                   className={styles.datePicker}
                 />
 
                 <IconButton
                   iconProps={{ iconName: 'ChevronRight' }}
-                  title={printView === 'day' ? 'Next Day' : printView === 'week' ? 'Next Week' : 'Next Month'}
-                  onClick={() => {
-                    if (printView === 'day') this.navigateDay('next');
-                    else if (printView === 'week') this.navigateWeek('next');
-                    else this.navigateMonth('next');
-                  }}
+                  title="Next Day"
+                  onClick={() => this.navigateDay('next')}
                   className={styles.navButton}
                 />
               </Stack>
@@ -1977,6 +2148,76 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
                       iconProps={{ iconName: 'ChevronRight' }}
                       title="Next Month"
                       onClick={() => this.navigateEndMonth('next')}
+                      className={styles.navButton}
+                    />
+                  </>
+                )}
+              </Stack>
+            )}
+
+            {/* 📅 MULTI-WEEK PRINT CONTROLS - Only show for week view */}
+            {printView === 'week' && (
+              <Stack horizontal tokens={{ childrenGap: 15 }} verticalAlign="center" style={{ marginTop: '2px' }}>
+                {/* Single Week Picker (always visible) */}
+                <IconButton
+                  iconProps={{ iconName: 'ChevronLeft' }}
+                  title="Previous Week"
+                  onClick={() => this.navigateWeek('prev')}
+                  className={styles.navButton}
+                />
+                <DatePicker
+                  value={selectedDate}
+                  onSelectDate={this.onDateChange}
+                  formatDate={(date) => {
+                    const weekStart = moment(date).startOf('week');
+                    const weekEnd = moment(date).endOf('week');
+                    return `${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}`;
+                  }}
+                  className={styles.datePicker}
+                />
+                <IconButton
+                  iconProps={{ iconName: 'ChevronRight' }}
+                  title="Next Week"
+                  onClick={() => this.navigateWeek('next')}
+                  className={styles.navButton}
+                />
+
+                {/* Print Range Checkbox - Only show when not in multi-week mode */}
+                {!this.state.isMultiWeek && (
+                  <Checkbox
+                    label="Print Range"
+                    checked={this.state.isMultiWeek}
+                    onChange={this.onMultiWeekToggle}
+                    styles={{
+                      root: { marginLeft: '10px' },
+                      label: { fontSize: '14px' }
+                    }}
+                  />
+                )}
+
+                {/* End Week Picker - Only show when checkbox is checked */}
+                {this.state.isMultiWeek && (
+                  <>
+                    <IconButton
+                      iconProps={{ iconName: 'ChevronLeft' }}
+                      title="Previous Week"
+                      onClick={() => this.navigateEndWeek('prev')}
+                      className={styles.navButton}
+                    />
+                    <DatePicker
+                      value={this.state.endWeekDate}
+                      onSelectDate={this.onEndWeekDateChange}
+                      formatDate={(date) => {
+                        const weekStart = moment(date).startOf('week');
+                        const weekEnd = moment(date).endOf('week');
+                        return `${weekStart.format('MMM D')} - ${weekEnd.format('MMM D, YYYY')}`;
+                      }}
+                      className={styles.datePicker}
+                    />
+                    <IconButton
+                      iconProps={{ iconName: 'ChevronRight' }}
+                      title="Next Week"
+                      onClick={() => this.navigateEndWeek('next')}
                       className={styles.navButton}
                     />
                   </>
