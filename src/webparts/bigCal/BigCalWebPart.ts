@@ -13,7 +13,6 @@ import {
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { IReadonlyTheme } from '@microsoft/sp-component-base';
-import { DisplayMode } from '@microsoft/sp-core-library';
 
 import * as strings from 'BigCalWebPartStrings';
 import BigCal from './components/BigCal';
@@ -28,6 +27,7 @@ export interface IBigCalWebPartProps {
   listName: string;
   showImpersonateButton: boolean;
   showIconSelector: boolean;
+  showTimelineView: boolean;
 }
 
 export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartProps> {
@@ -46,7 +46,10 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
 
 
 
-  public render(): void {
+  public async render(): Promise<void> {
+    // Check user permissions asynchronously
+    const isUserAdmin = await this._checkUserPermissions();
+
     const element: React.ReactElement<IBigCalProps> = React.createElement(
       BigCal,
       {
@@ -55,11 +58,12 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         hasTeamsContext: !!this.context.sdks.microsoftTeams,
         userDisplayName: this.context.pageContext.user.displayName,
         startInFullscreen: this.properties.startInFullscreen !== false, // Default to true
-        isUserAdmin: this._checkUserPermissions(),
+        isUserAdmin: isUserAdmin,
         context: this.context,
         listName: this.properties.listName || 'Events',
         showImpersonateButton: this.properties.showImpersonateButton || false, // Default to false
         showIconSelector: this.properties.showIconSelector || false, // Default to false
+        showTimelineView: this.properties.showTimelineView !== false, // Default to true for backward compatibility
         onConfigureProperties: () => {
           this.context.propertyPane.open();
         }
@@ -106,16 +110,20 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     return Promise.resolve();
   }
 
-  private _checkUserPermissions(): boolean {
-    // Check if user has edit permissions on the page
-    // In SharePoint, users who can edit the page can configure web parts
+  private async _checkUserPermissions(): Promise<boolean> {
+    // Check if user has admin rights to the Public Events list
+    // This is more accurate than page edit permissions for webpart configuration
     try {
-      return this.context.pageContext.legacyPageContext?.canUserEditExperience ||
-             this.context.pageContext.legacyPageContext?.isPageInEditMode ||
-             this.displayMode === DisplayMode.Edit;
+      if (!this._sharePointService) {
+        return false;
+      }
+
+      const isListAdmin = await this._sharePointService.checkUserIsListAdmin(this.properties.listName || 'Events');
+      Logger.debug(`User admin status for Events list: ${isListAdmin}`);
+      return isListAdmin;
     } catch (error) {
       // Fallback: if we can't determine permissions, assume no admin rights
-      Logger.warn('Could not determine user permissions', error);
+      Logger.warn('Could not determine user list permissions', error);
       return false;
     }
   }
@@ -556,6 +564,11 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         label: 'Show Icon Selector (Temporary Feature)',
         onText: 'Visible',
         offText: 'Hidden'
+      }),
+      PropertyPaneToggle('showTimelineView', {
+        label: 'Display Timeline View',
+        onText: 'Enabled',
+        offText: 'Disabled (Performance Optimization)'
       }),
       PropertyPaneTextField('listName', {
         label: 'SharePoint List Name',

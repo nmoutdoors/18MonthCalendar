@@ -1,37 +1,30 @@
 @import '~@fluentui/react/dist/sass/References.scss';
 
 .modalContainer {
-  // Force consistent modal width with multiple selectors
-  :global(.ms-Modal-main),
-  :global(.ms-Modal-main *),
-  :global(.ms-Modal-scrollableContent) {
+  // Scoped modal styling - no global overrides to prevent CSS pollution
+  width: 690px !important;
+  max-width: 690px !important;
+  min-width: 690px !important;
+
+  // Apply styles to the modal content within this container
+  .msModalMain {
     width: 690px !important;
     max-width: 690px !important;
     min-width: 690px !important;
-  }
-
-  :global(.ms-Modal-main) {
     border-radius: 0; // Remove rounded corners to avoid white tips
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
     background: white;
     border: 1px solid "[theme:neutralLight, default: #edebe9]";
     border: 1px solid var(--neutralLight, #edebe9);
     overflow: hidden;
-
-    // Force positioning
-    position: fixed !important;
-    left: 50% !important;
-    top: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    margin: 0 !important;
   }
 
-  :global(.ms-Modal-scrollableContent) {
-    border-radius: 0;
-    overflow: hidden;
+  .msModalScrollableContent {
     width: 690px !important;
     max-width: 690px !important;
     min-width: 690px !important;
+    border-radius: 0;
+    overflow: hidden;
   }
 }
 

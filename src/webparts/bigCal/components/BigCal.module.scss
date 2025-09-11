@@ -1204,9 +1204,9 @@
   font-size: 10px;
 }
 
-// Color Palette Studio Modal Styles
+// Color Palette Studio Modal Styles - Scoped to prevent CSS pollution
 .colorPaletteStudioModal {
-  :global(.ms-Modal-main) {
+  .msModalMain {
     max-width: 800px;
     min-width: 600px;
     max-height: 90vh;
@@ -1220,7 +1220,7 @@
 }
 
 .colorPickerModal {
-  :global(.ms-Modal-main) {
+  .msModalMain {
     max-width: 400px;
     min-width: 350px;
   }

@@ -188,6 +188,30 @@ export class SharePointService {
   }
 
   /**
+   * Check if current user has admin rights to the specified list
+   * Admin rights = can manage list (add/edit/delete items and manage list settings)
+   */
+  public async checkUserIsListAdmin(listName?: string): Promise<boolean> {
+    const targetListName = listName || this.listName;
+
+    try {
+      // Try to access list permissions - this will fail if user doesn't have admin rights
+      await this.sp.web.lists.getByTitle(targetListName).effectiveBasePermissions();
+
+      // Try to access list settings - only admins can do this
+      await this.sp.web.lists.getByTitle(targetListName).select('Title', 'Id')();
+
+      // If we can access both, user likely has admin rights
+      Logger.debug(`User has admin rights to list: ${targetListName}`);
+      return true;
+    } catch (error) {
+      // If any permission check fails, user is not an admin
+      Logger.debug(`User does not have admin rights to list: ${targetListName}`, error);
+      return false;
+    }
+  }
+
+  /**
    * Check if the list has the Private and PrivateEventId fields
    * Enhanced for production environment compatibility
    */

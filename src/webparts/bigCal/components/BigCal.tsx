@@ -21,7 +21,8 @@ import { HolidayService } from '../services/HolidayService';
 import { Logger } from '../services/LoggingService';
 import { EventModal } from './EventModal';
 import { EventPopover } from './EventPopover';
-import { TimelineView } from './TimelineView';
+// Lazy load TimelineView for performance optimization
+const LazyTimelineView = React.lazy(() => import(/* webpackChunkName: 'timeline-view' */ './TimelineView').then(module => ({ default: module.TimelineView })));
 import { ExportManager } from './ExportManager';
 import { LazyComponentErrorBoundary } from './LazyComponentErrorBoundary';
 import { IconSelector } from './IconSelector';
@@ -191,6 +192,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       setTimeout(() => {
         this.enterFullscreen();
       }, 200);
+    }
+
+    // If timeline view is disabled but currently selected, switch to calendar view
+    if (!this.props.showTimelineView && this.state.viewMode === 'timeline') {
+      this.setState({ viewMode: 'calendar' });
     }
 
     // Check all list configurations and load color mappings
@@ -1238,8 +1244,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     const statusClass = `status-${((event.status && event.status !== null) ? event.status : 'notset').toLowerCase().replace(/\s+/g, '')}`;
     const swimlaneClass = `swimlane-${((event.swimlane && event.swimlane !== null) ? event.swimlane : 'fysa').toLowerCase().replace(/\s+/g, '')}`;
 
-    // Check if there are any configuration issues - if so, show all events as gray
-    if (this.state.listConfigurationIssues.length > 0 || !this.state.colorMappingsAvailable) {
+    // Check if there are critical configuration issues that prevent color system from working
+    // Only BigCalConfig missing or Public Events issues should disable colors
+    const hasCriticalIssues = !this.state.colorMappingsAvailable || !this.state.publicEventsListAvailable;
+    if (hasCriticalIssues) {
       return {
         className: `${statusClass} ${swimlaneClass} config-unavailable`,
         style: {
@@ -1359,25 +1367,41 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         Logger.error('Error checking Public Events list', error);
       }
 
-      // Check PrivateEvents list
+      // Check PrivateEvents list - but only report issues to admin users
       try {
         const { SharePointService } = await import(/* webpackChunkName: 'sharepoint-service' */ '../services/SharePointService');
         const sharePointService = new SharePointService(this.props.context, this.props.listName);
-        const privateListValidation = await sharePointService.validateList('PrivateEvents', true);
 
-        privateEventsListAvailable = privateListValidation.isValid;
-        if (!privateEventsListAvailable) {
-          if (!privateListValidation.listExists) {
-            issues.push('PrivateEvents list does not exist - private events will not work');
-          } else if (privateListValidation.missingFields.length > 0) {
-            issues.push(`PrivateEvents list is missing required fields: ${privateListValidation.missingFields.join(', ')}`);
-          } else {
-            issues.push('PrivateEvents list configuration is invalid');
+        // First check if user can access PrivateEvents
+        const canAccessPrivateEvents = await this.hybridEventsService.canUserAccessPrivateEvents();
+
+        if (canAccessPrivateEvents) {
+          // User has access - validate normally
+          const privateListValidation = await sharePointService.validateList('PrivateEvents', true);
+          privateEventsListAvailable = privateListValidation.isValid;
+
+          // Only show PrivateEvents issues to admin users
+          if (!privateEventsListAvailable && this.props.isUserAdmin) {
+            if (!privateListValidation.listExists) {
+              issues.push('PrivateEvents list does not exist - private events will not work');
+            } else if (privateListValidation.missingFields.length > 0) {
+              issues.push(`PrivateEvents list is missing required fields: ${privateListValidation.missingFields.join(', ')}`);
+            } else {
+              issues.push('PrivateEvents list configuration is invalid');
+            }
           }
+        } else {
+          // User doesn't have access to PrivateEvents - this is normal for regular users
+          // Don't add any issues, just mark as unavailable
+          privateEventsListAvailable = false;
+          Logger.debug('User does not have access to PrivateEvents - this is normal for regular users');
         }
       } catch (error) {
         privateEventsListAvailable = false;
-        issues.push('PrivateEvents list validation failed');
+        // Only show PrivateEvents errors to admin users
+        if (this.props.isUserAdmin) {
+          issues.push('PrivateEvents list validation failed');
+        }
         Logger.error('Error checking PrivateEvents list', error);
       }
 
@@ -2263,11 +2287,13 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                     itemKey="grid"
                     itemIcon="GridViewMedium"
                   />
-                  <PivotItem
-                    headerText="Timeline"
-                    itemKey="timeline"
-                    itemIcon="Timeline"
-                  />
+                  {this.props.showTimelineView && (
+                    <PivotItem
+                      headerText="Timeline"
+                      itemKey="timeline"
+                      itemIcon="Timeline"
+                    />
+                  )}
                 </Pivot>
 
                 {/* Reset button - only show when Timeline view is active */}
@@ -2444,7 +2470,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 </MessageBar>
               )}
 
-              {this.state.listConfigurationIssues.length > 0 && (
+              {this.state.listConfigurationIssues.length > 0 && this.props.isUserAdmin && (
                 <MessageBar messageBarType={MessageBarType.warning} isMultiline>
                   <strong>Configuration Issues Found ({this.state.listConfigurationIssues.length}):</strong>
                   <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
@@ -2500,16 +2526,25 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
             </>
           ) : viewMode === 'grid' ? (
             this.renderGridView()
+          ) : viewMode === 'timeline' && this.props.showTimelineView ? (
+            <Suspense fallback={<Spinner size={SpinnerSize.large} label="Loading Timeline View..." />}>
+              <LazyTimelineView
+                events={events}
+                selectedEventCategories={selectedEventCategories}
+                searchText={searchText}
+                selectedStatuses={selectedStatuses}
+                onEventClick={this.openEditModal}
+                onEventDoubleClick={this.openEditModal}
+                dynamicColorMappings={this.state.dynamicColorMappings}
+              />
+            </Suspense>
           ) : (
-            <TimelineView
-              events={events}
-              selectedEventCategories={selectedEventCategories}
-              searchText={searchText}
-              selectedStatuses={selectedStatuses}
-              onEventClick={this.openEditModal}
-              onEventDoubleClick={this.openEditModal}
-              dynamicColorMappings={this.state.dynamicColorMappings}
-            />
+            // Fallback: if timeline is disabled but somehow selected, show message and switch to calendar
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+              <MessageBar messageBarType={MessageBarType.info}>
+                Timeline view is disabled. Please enable it in the webpart properties or switch to Calendar view.
+              </MessageBar>
+            </div>
           )}
         </div>
 

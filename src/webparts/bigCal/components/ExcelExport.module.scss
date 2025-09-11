@@ -7,6 +7,25 @@
   box-sizing: border-box;
   overflow-x: hidden !important;
 
+  // Scoped dialog styling - only affects Excel Export dialog
+  .msDialogMain {
+    min-width: 600px;
+    max-width: 700px;
+    width: 90vw;
+    max-height: 90vh;
+    overflow: hidden !important;
+    box-sizing: border-box;
+  }
+
+  .msDialogContent {
+    padding: 24px;
+    overflow-x: hidden !important;
+    overflow-y: auto;
+    max-height: calc(90vh - 120px); // Account for header and footer
+    box-sizing: border-box;
+    width: 100%;
+  }
+
   // Ensure Stack components don't overflow
   :global(.ms-Stack) {
     max-width: 100%;
@@ -97,25 +116,8 @@
   }
 }
 
-// Ensure dialog has proper spacing and no horizontal scroll
-:global {
-  .ms-Dialog-main {
-    min-width: 600px;
-    max-width: 700px;
-    width: 90vw;
-    max-height: 90vh;
-    overflow: hidden !important;
-    box-sizing: border-box;
-  }
-
-  .ms-Dialog-content {
-    padding: 24px;
-    overflow-x: hidden !important;
-    overflow-y: auto;
-    max-height: calc(90vh - 120px); // Account for header and footer
-    box-sizing: border-box;
-    width: 100%;
-  }
+// Removed global dialog overrides - they were polluting SharePoint's publishing modal
+// Excel Export dialog sizing is handled by scoped styles in .excelExportDialog below
 
 // Spinning animation for import loading
 :global {
@@ -129,23 +131,5 @@
   }
 }
 
-  .ms-Dialog-actions {
-    padding: 16px 24px 24px;
-    border-top: 1px solid #edebe9;
-    flex-shrink: 0;
-    overflow-x: hidden !important;
-    box-sizing: border-box;
-  }
-
-  .ms-Dialog-header {
-    flex-shrink: 0;
-    overflow-x: hidden !important;
-    box-sizing: border-box;
-  }
-
-  // Force all child elements to respect container width
-  .ms-Dialog-content * {
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-}
+// Removed global dialog styling - was polluting SharePoint modals
+// Excel Export dialog styling should be handled by component-specific styles

@@ -11,5 +11,6 @@ export interface IBigCalProps {
   listName: string;
   showImpersonateButton: boolean;
   showIconSelector: boolean;
+  showTimelineView: boolean;
   onConfigureProperties?: () => void;
 }
