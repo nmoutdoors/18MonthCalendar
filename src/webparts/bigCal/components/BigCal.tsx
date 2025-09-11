@@ -2159,8 +2159,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       ? `${styles.bigCal} ${styles.fullScreenMode} ${hasTeamsContext ? styles.teams : ''}`
       : `${styles.bigCal} ${hasTeamsContext ? styles.teams : ''}`;
 
+    // Create dynamic CSS custom properties for grid line opacity
+    const dynamicGridStyles: React.CSSProperties = {
+      '--grid-line-opacity': this.props.gridLineOpacity.toString(),
+      '--grid-border-color': `rgba(153, 153, 153, ${this.props.gridLineOpacity})`, // #999 with dynamic opacity
+    } as React.CSSProperties;
+
     return (
-      <div className={containerClassName}>
+      <div className={containerClassName} style={dynamicGridStyles}>
         {/* Navigation Bar - Conditional based on fullscreen mode */}
         {!isFullscreen ? (
           /* Configuration-focused navbar for non-fullscreen mode */
@@ -2640,6 +2646,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           currentView={currentView}
           eventStyleGetter={this.eventStyleGetter}
           dynamicIconMappings={this.state.dynamicIconMappings}
+          gridLineOpacity={this.props.gridLineOpacity}
         />
 
         {/* Event Popover */}

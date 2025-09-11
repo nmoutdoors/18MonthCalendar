@@ -256,6 +256,12 @@
             }
           }
 
+          // Grid line darkness control - using #999 base color with opacity
+          :global(.rbc-day-bg) {
+            border-bottom: 1px solid var(--grid-border-color, rgba(153, 153, 153, 0.5)) !important;
+            border-right: 1px solid var(--grid-border-color, rgba(153, 153, 153, 0.5)) !important;
+          }
+
           :global(.rbc-off-range-bg) {
             background: #f8f9fa;
             color: #6c757d;

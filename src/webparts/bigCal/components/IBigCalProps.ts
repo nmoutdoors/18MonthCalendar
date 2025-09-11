@@ -12,5 +12,6 @@ export interface IBigCalProps {
   showImpersonateButton: boolean;
   showIconSelector: boolean;
   showTimelineView: boolean;
+  gridLineOpacity: number;
   onConfigureProperties?: () => void;
 }

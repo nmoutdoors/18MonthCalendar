@@ -28,6 +28,7 @@ export interface ILegendaryPrintPreviewProps {
   currentView?: View;
   eventStyleGetter: (event: ICalendarEvent) => { style: React.CSSProperties };
   dynamicIconMappings: Map<string, string>;
+  gridLineOpacity: number;
 }
 
 export interface ILegendaryPrintPreviewState {
@@ -1684,8 +1685,14 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       { key: 'agenda', text: 'Agenda', iconProps: { iconName: 'BulletedList' } }
     ];
 
+    // Create dynamic CSS custom properties for grid line opacity
+    const dynamicGridStyles: React.CSSProperties = {
+      '--grid-line-opacity': this.props.gridLineOpacity.toString(),
+      '--grid-border-color': `rgba(153, 153, 153, ${this.props.gridLineOpacity})`, // #999 with dynamic opacity
+    } as React.CSSProperties;
+
     return (
-      <div className={styles.legendaryPrintContainer}>
+      <div className={styles.legendaryPrintContainer} style={dynamicGridStyles}>
         {/* Compact Header - Minimized but functional */}
         <div className={styles.printHeader}>
           <div className={styles.headerLeft}>

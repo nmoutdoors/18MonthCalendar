@@ -5,7 +5,7 @@ import {
   type IPropertyPaneConfiguration,
   PropertyPaneTextField,
   PropertyPaneToggle,
-
+  PropertyPaneSlider,
   PropertyPaneButton,
   PropertyPaneButtonType,
   PropertyPaneLabel,
@@ -16,7 +16,6 @@ import { IReadonlyTheme } from '@microsoft/sp-component-base';
 
 import * as strings from 'BigCalWebPartStrings';
 import BigCal from './components/BigCal';
-import { IBigCalProps } from './components/IBigCalProps';
 import { SharePointService, IListValidationResult, IListCreationResult } from './services/SharePointService';
 import { ColorMappingService } from './services/ColorMappingService';
 import { Logger } from './services/LoggingService';
@@ -28,6 +27,7 @@ export interface IBigCalWebPartProps {
   showImpersonateButton: boolean;
   showIconSelector: boolean;
   showTimelineView: boolean;
+  gridLineOpacity: number;
 }
 
 export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartProps> {
@@ -50,7 +50,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     // Check user permissions asynchronously
     const isUserAdmin = await this._checkUserPermissions();
 
-    const element: React.ReactElement<IBigCalProps> = React.createElement(
+    const element = React.createElement(
       BigCal,
       {
         description: this.properties.description,
@@ -64,6 +64,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         showImpersonateButton: this.properties.showImpersonateButton || false, // Default to false
         showIconSelector: this.properties.showIconSelector || false, // Default to false
         showTimelineView: this.properties.showTimelineView !== false, // Default to true for backward compatibility
+        gridLineOpacity: this.properties.gridLineOpacity || 0.5, // Default to 50% opacity
         onConfigureProperties: () => {
           this.context.propertyPane.open();
         }
@@ -97,6 +98,11 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     // Set default value for showIconSelector if not already set
     if (this.properties.showIconSelector === undefined) {
       this.properties.showIconSelector = false;  // Default to hidden
+    }
+
+    // Set default value for gridLineOpacity if not already set
+    if (this.properties.gridLineOpacity === undefined) {
+      this.properties.gridLineOpacity = 0.5;  // Default to 50% opacity (medium darkness)
     }
 
     // Initialize SharePoint services
@@ -569,6 +575,14 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         label: 'Display Timeline View',
         onText: 'Enabled',
         offText: 'Disabled (Performance Optimization)'
+      }),
+      PropertyPaneSlider('gridLineOpacity', {
+        label: 'Grid Line Darkness',
+        min: 0.1,
+        max: 1.0,
+        step: 0.1,
+        showValue: true,
+        value: this.properties.gridLineOpacity || 0.5
       }),
       PropertyPaneTextField('listName', {
         label: 'SharePoint List Name',

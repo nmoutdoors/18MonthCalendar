@@ -809,6 +809,12 @@
     background-color: var(--themeLight, #c7e0f4);
   }
 
+  // Grid line darkness control - using #999 base color with opacity
+  .rbc-day-bg {
+    border-bottom: 1px solid var(--grid-border-color, rgba(153, 153, 153, 0.5)) !important;
+    border-right: 1px solid var(--grid-border-color, rgba(153, 153, 153, 0.5)) !important;
+  }
+
   .rbc-event {
     background-color: "[theme:themePrimary, default: #0078d4]";
     background-color: var(--themePrimary, #0078d4);
