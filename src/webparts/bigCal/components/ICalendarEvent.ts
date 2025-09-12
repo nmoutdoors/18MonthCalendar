@@ -3,6 +3,7 @@ import * as moment from 'moment';
 // Type definitions for SharePoint choice fields
 export type SwimlaneType = 'DCDC' | 'DISA' | 'DOD CIO / NSA / USCC' | 'Exec Time' | 'Exercises' | 'FYSA' | 'Joint DISA & DCDC' | 'Mission Partner' | 'Out of Office' | 'Seniors' | 'Speaking Event' | 'TDY Meetings/Congressional' | 'Transit';
 export type StatusType = 'Confirmed' | 'Tentative' | 'Not Set' | ''; // Include empty string for blank status
+export type IMOType = 'IMO 1' | 'IMO 2' | 'IMO 3' | 'IMO 4' | 'IMO 5' | 'IMO 6' | 'IMO 7' | 'IMO 8' | 'Not Set' | ''; // Include empty string and "Not Set" for blank IMO
 
 export interface ICalendarEvent {
   id: number | string;
@@ -13,6 +14,7 @@ export interface ICalendarEvent {
   resource?: unknown;
   swimlane?: SwimlaneType;
   status?: StatusType;
+  imo?: IMOType;
   description?: string;
   isHoliday?: boolean;
   isObserved?: boolean;
@@ -37,7 +39,6 @@ const parseSharePointDate = (dateString: string): Date => {
 
   // Check if we got a valid date
   if (isNaN(date.getTime())) {
-    console.warn('Invalid date string:', dateString);
     return new Date(); // Fallback to current date
   }
 
@@ -45,7 +46,7 @@ const parseSharePointDate = (dateString: string): Date => {
 };
 
 // Helper function to convert SharePoint event to calendar event
-export const convertSharePointEventToCalendarEvent = (spEvent: {Id: number; Title: string; EventDate: string; EndDate: string; Swimlane: string; Status: string; Description: string}): ICalendarEvent => {
+export const convertSharePointEventToCalendarEvent = (spEvent: {Id: number; Title: string; EventDate: string; EndDate: string; Swimlane: string; Status: string; IMO: string; Description: string}): ICalendarEvent => {
   return {
     id: spEvent.Id,
     title: spEvent.Title,
@@ -54,6 +55,7 @@ export const convertSharePointEventToCalendarEvent = (spEvent: {Id: number; Titl
     allDay: false,
     swimlane: spEvent.Swimlane as SwimlaneType,
     status: spEvent.Status as StatusType,
+    imo: (spEvent.IMO === 'null' || spEvent.IMO === null || spEvent.IMO === undefined || spEvent.IMO === '') ? '' : spEvent.IMO as IMOType,
     description: spEvent.Description || '',
     isHoliday: false
   };

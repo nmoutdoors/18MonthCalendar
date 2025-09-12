@@ -750,8 +750,8 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         }
       }
 
-    } catch (error) {
-      console.warn('Cold start detection failed:', error);
+    } catch {
+      // Silently handle cold start detection failures
     }
   }
 }

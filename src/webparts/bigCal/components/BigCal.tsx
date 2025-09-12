@@ -1600,6 +1600,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   private openEditModal = (event: ICalendarEvent): void => {
+    console.log('🔍 BigCal openEditModal - Event clicked:', event.title, 'IMO:', event.imo);
     this.setState({
       isModalOpen: true,
       selectedEvent: event,
@@ -2083,6 +2084,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           eventData.end!,
           eventData.swimlane!,
           eventData.status!,
+          eventData.imo || '',
           eventData.description || '',
           eventData.isPrivate || false
         );
@@ -2104,6 +2106,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           eventData.end!,
           eventData.swimlane!,
           eventData.status!,
+          eventData.imo || '',
           eventData.description || '',
           eventData.isPrivate || false
         );

@@ -401,7 +401,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     });
 
     if (titleIndex === -1 || startIndex === -1) {
-      console.warn('Missing required columns. Title index:', titleIndex, 'Start index:', startIndex);
+      Logger.warn('Missing required columns in Excel import', { titleIndex, startIndex });
       return events; // Need at least title and start date
     }
 

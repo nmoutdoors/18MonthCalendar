@@ -75,7 +75,7 @@ export class PrivateEventsService {
 
     try {
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'Description', 'Private', 'PrivateEventId')
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'Description', 'Private', 'PrivateEventId')
         .orderBy('EventDate', true)
         .top(5000)();
 
@@ -86,6 +86,7 @@ export class PrivateEventsService {
         EndDate: string;
         Swimlane: string;
         Status: string;
+        IMO: string;
         Description: string;
         Private: boolean;
         PrivateEventId: string;
@@ -96,6 +97,7 @@ export class PrivateEventsService {
         EndDate: item.EndDate,
         Swimlane: item.Swimlane,
         Status: item.Status,
+        IMO: item.IMO,
         Description: item.Description || '',
         Private: item.Private || false,
         PrivateEventId: item.PrivateEventId
@@ -116,6 +118,7 @@ export class PrivateEventsService {
     end: Date,
     swimlane: string,
     status: string,
+    imo: string,
     description: string
   ): Promise<IPrivateEventData | undefined> {
     const hasAccess = await this.canUserAccessPrivateEvents();
@@ -130,6 +133,7 @@ export class PrivateEventsService {
         EndDate: this.toSharePointDateString(end),     // Store without timezone conversion
         Swimlane: swimlane,
         Status: status,
+        IMO: imo,
         Description: description,
         Private: true
       });
@@ -141,6 +145,7 @@ export class PrivateEventsService {
         EndDate: result.EndDate,
         Swimlane: result.Swimlane,
         Status: result.Status,
+        IMO: result.IMO,
         Description: result.Description || '',
         Private: result.Private || false
       };
@@ -157,11 +162,12 @@ export class PrivateEventsService {
    */
   public async updatePrivateEvent(
     id: number,
-    title: string, 
-    start: Date, 
-    end: Date, 
-    swimlane?: string, 
-    status?: string, 
+    title: string,
+    start: Date,
+    end: Date,
+    swimlane?: string,
+    status?: string,
+    imo?: string,
     description?: string
   ): Promise<void> {
     const hasAccess = await this.canUserAccessPrivateEvents();
@@ -178,6 +184,7 @@ export class PrivateEventsService {
 
       if (swimlane) updateData.Swimlane = swimlane;
       if (status) updateData.Status = status;
+      if (imo !== undefined) updateData.IMO = imo;
       if (description !== undefined) updateData.Description = description;
 
       await this.sp.web.lists.getByTitle(this.privateListName).items.getById(id).update(updateData);
@@ -218,7 +225,7 @@ export class PrivateEventsService {
 
     try {
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'Description', 'Private', 'PrivateEventId')
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'Description', 'Private', 'PrivateEventId')
         .filter(`PrivateEventId eq '${privateEventId}'`)
         .top(1)();
 
@@ -234,6 +241,7 @@ export class PrivateEventsService {
         EndDate: item.EndDate,
         Swimlane: item.Swimlane,
         Status: item.Status,
+        IMO: item.IMO,
         Description: item.Description || '',
         Private: item.Private || false,
         PrivateEventId: item.PrivateEventId

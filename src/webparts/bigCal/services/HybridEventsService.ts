@@ -2,7 +2,7 @@ import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { SharePointService, ISharePointEvent } from './SharePointService';
 import { PrivateEventsService, IPrivateEventData } from './PrivateEventsService';
 import { Logger } from './LoggingService';
-import { ICalendarEvent, SwimlaneType, StatusType } from '../components/ICalendarEvent';
+import { ICalendarEvent, SwimlaneType, StatusType, IMOType } from '../components/ICalendarEvent';
 
 
 export interface IHybridEventResult {
@@ -60,6 +60,7 @@ export class HybridEventsService {
     end: Date,
     swimlane: string,
     status: string,
+    imo: string,
     description: string,
     isPrivate: boolean = false
   ): Promise<IHybridEventResult> {
@@ -67,7 +68,7 @@ export class HybridEventsService {
       if (!isPrivate) {
         // Create regular public event
         const result = await this.sharePointService.createEvent(
-          title, start, end, swimlane, status, description, false
+          title, start, end, swimlane, status, imo, description, false
         );
 
         return {
@@ -85,6 +86,7 @@ export class HybridEventsService {
           end,
           swimlane,
           status,
+          imo,
           description // Full description
         );
 
@@ -102,6 +104,7 @@ export class HybridEventsService {
           end,
           swimlane, // Keep category for filtering
           status,
+          imo, // Keep IMO for filtering
           '', // No description in placeholder
           true, // Mark as private
           privateEvent.Id.toString() // Store numeric ID as string
@@ -119,7 +122,7 @@ export class HybridEventsService {
 
         // Fallback: Create as private event in main list only (without separate private list)
         const result = await this.sharePointService.createEvent(
-          title, start, end, swimlane, status, description, true // Still mark as private
+          title, start, end, swimlane, status, imo, description, true // Still mark as private
         );
 
         return {
@@ -148,6 +151,7 @@ export class HybridEventsService {
     end: Date,
     swimlane?: string,
     status?: string,
+    imo?: string,
     description?: string,
     isPrivate?: boolean
   ): Promise<IHybridEventResult> {
@@ -178,14 +182,14 @@ export class HybridEventsService {
       // Case 1: Public -> Private conversion
       if (!wasPrivate && willBePrivate) {
         return await this.convertPublicToPrivate(
-          id as number, title, start, end, swimlane!, status!, description || ''
+          id as number, title, start, end, swimlane!, status!, imo!, description || ''
         );
       }
 
       // Case 2: Private -> Public conversion
       if (wasPrivate && !willBePrivate) {
         return await this.convertPrivateToPublic(
-          id as number, title, start, end, swimlane!, status!, description || ''
+          id as number, title, start, end, swimlane!, status!, imo!, description || ''
         );
       }
 
@@ -193,12 +197,12 @@ export class HybridEventsService {
       if (wasPrivate && willBePrivate) {
         // Update private event
         return await this.updatePrivateEvent(
-          id as number, title, start, end, swimlane!, status!, description || ''
+          id as number, title, start, end, swimlane!, status!, imo!, description || ''
         );
       } else {
         // Update public event
         await this.sharePointService.updateEvent(
-          id as number, title, start, end, swimlane!, status!, description, false
+          id as number, title, start, end, swimlane!, status!, imo!, description, false
         );
         return { success: true };
       }
@@ -222,12 +226,13 @@ export class HybridEventsService {
     end: Date,
     swimlane: string,
     status: string,
+    imo: string,
     description: string
   ): Promise<IHybridEventResult> {
 
     // 1. Create private event in PrivateEvents list
     const privateEvent = await this.privateEventsService.createPrivateEvent(
-      title, start, end, swimlane, status, description
+      title, start, end, swimlane, status, imo, description
     );
 
     if (!privateEvent) {
@@ -239,7 +244,7 @@ export class HybridEventsService {
 
     // 2. Update main list event to "Unavailable" placeholder
     await this.sharePointService.updateEvent(
-      id, 'Unavailable', start, end, swimlane, status, '', true, privateEvent.Id.toString()
+      id, 'Unavailable', start, end, swimlane, status, imo, '', true, privateEvent.Id.toString()
     );
 
     return {
@@ -258,6 +263,7 @@ export class HybridEventsService {
     end: Date,
     swimlane: string,
     status: string,
+    imo: string,
     description: string
   ): Promise<IHybridEventResult> {
 
@@ -283,7 +289,7 @@ export class HybridEventsService {
 
     // 2. Update main list event with actual data
     await this.sharePointService.updateEvent(
-      id, title, start, end, swimlane, status, description, false
+      id, title, start, end, swimlane, status, imo, description, false
     );
 
     return {
@@ -302,6 +308,7 @@ export class HybridEventsService {
     end: Date,
     swimlane: string,
     status: string,
+    imo: string,
     description: string
   ): Promise<IHybridEventResult> {
 
@@ -324,12 +331,12 @@ export class HybridEventsService {
 
     // 1. Update private event in PrivateEvents list (convert string ID to number)
     await this.privateEventsService.updatePrivateEvent(
-      parseInt(currentEvent.PrivateEventId, 10), title, start, end, swimlane, status, description
+      parseInt(currentEvent.PrivateEventId, 10), title, start, end, swimlane, status, imo, description
     );
 
     // 2. Update placeholder in main list (keep as "Unavailable" but update times/category)
     await this.sharePointService.updateEvent(
-      id, 'Unavailable', start, end, swimlane, status, '', true, currentEvent.PrivateEventId
+      id, 'Unavailable', start, end, swimlane, status, imo, '', true, currentEvent.PrivateEventId
     );
 
     return { success: true };
@@ -405,6 +412,7 @@ export class HybridEventsService {
       end: this.parseSharePointDate(event.EndDate),
       swimlane: event.Swimlane as SwimlaneType,
       status: event.Status as StatusType,
+      imo: (event.IMO === 'null' || event.IMO === null || event.IMO === undefined || event.IMO === '') ? '' : event.IMO as IMOType,
       description: event.Description,
       isPrivate: event.Private,
       privateEventId: event.PrivateEventId
@@ -422,6 +430,7 @@ export class HybridEventsService {
       end: this.parseSharePointDate(privateEvent.EndDate),
       swimlane: privateEvent.Swimlane as SwimlaneType,
       status: privateEvent.Status as StatusType,
+      imo: (privateEvent.IMO === 'null' || privateEvent.IMO === null || privateEvent.IMO === undefined || privateEvent.IMO === '') ? '' : privateEvent.IMO as IMOType,
       description: privateEvent.Description,
       isPrivate: true,
       privateEventId: privateEvent.PrivateEventId

@@ -15,7 +15,7 @@ import {
   MessageBarType,
   Separator
 } from '@fluentui/react';
-import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
+import { ICalendarEvent, SwimlaneType, StatusType, IMOType } from './ICalendarEvent';
 import { IAttachmentInfo, SharePointService } from '../services/SharePointService';
 import { AttachmentUploader } from './AttachmentUploader';
 import { AttachmentList } from './AttachmentList';
@@ -47,6 +47,7 @@ interface IEventModalState {
   endAmPm: 'AM' | 'PM';
   swimlane: SwimlaneType;
   status: StatusType;
+  imo: IMOType;
   isPrivate: boolean;
   isSaving: boolean;
   isDeleting: boolean;
@@ -81,6 +82,19 @@ const amPmOptions: IDropdownOption[] = [
   { key: 'PM', text: 'PM' }
 ];
 
+// Fallback IMO options
+const getFallbackIMOOptions = (): IDropdownOption[] => [
+  { key: 'Not Set', text: 'Not Set' },
+  { key: 'IMO 1', text: 'IMO 1' },
+  { key: 'IMO 2', text: 'IMO 2' },
+  { key: 'IMO 3', text: 'IMO 3' },
+  { key: 'IMO 4', text: 'IMO 4' },
+  { key: 'IMO 5', text: 'IMO 5' },
+  { key: 'IMO 6', text: 'IMO 6' },
+  { key: 'IMO 7', text: 'IMO 7' },
+  { key: 'IMO 8', text: 'IMO 8' }
+];
+
 // Remove static statusOptions - will be created dynamically in component
 
 export class EventModal extends React.Component<IEventModalProps, IEventModalState> {
@@ -107,6 +121,17 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       endAmPm: endTimeData.amPm,
       swimlane: props.event?.swimlane || 'FYSA',
       status: props.event?.status ? props.event.status : 'Not Set', // Show "Not Set" for empty/null status
+      imo: (() => {
+        // Debug logging to see what we're getting
+        console.log('EventModal - Full event object:', props.event);
+        console.log('EventModal - props.event?.imo:', props.event?.imo, 'Type:', typeof props.event?.imo);
+
+        // Handle IMO field: treat empty string as "Not Set", preserve actual values
+        if (props.event?.imo === undefined || props.event?.imo === null || props.event?.imo === '') {
+          return 'Not Set';
+        }
+        return props.event.imo;
+      })(),
       isPrivate: props.event?.isPrivate || false,
       isSaving: false,
       isDeleting: false,
@@ -124,6 +149,11 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     // If the modal was closed and reopened, or if selectedDate changed, reset the form
     if (this.props.isOpen && !prevProps.isOpen) {
       // Modal just opened
+      console.log('🔍 EventModal componentDidUpdate - Modal opened, event:', this.props.event);
+      if (this.props.event) {
+        console.log('🔍 EventModal componentDidUpdate - Event IMO:', this.props.event.imo, 'Type:', typeof this.props.event.imo);
+      }
+
       if (!this.props.event) {
         // This is create mode, initialize with selectedDate
         const now = new Date();
@@ -171,6 +201,13 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           endAmPm: endTimeData.amPm,
           swimlane: this.props.event.swimlane || 'FYSA',
           status: this.props.event.status || '', // Keep blank status as empty string
+          imo: (() => {
+            // Handle IMO field: treat empty string as "Not Set", preserve actual values
+            if (this.props.event.imo === undefined || this.props.event.imo === null || this.props.event.imo === '') {
+              return 'Not Set';
+            }
+            return this.props.event.imo;
+          })(),
           isPrivate: this.props.event.isPrivate || false,
           isSaving: false,
           isDeleting: false,
@@ -258,6 +295,13 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     return getFallbackSwimlaneOptions();
   };
 
+  /**
+   * Get IMO options - always use fallback list (no dynamic loading for IMO)
+   */
+  private getIMOOptions = (): IDropdownOption[] => {
+    return getFallbackIMOOptions();
+  };
+
   private onRenderStatusOption = (option?: IDropdownOption): JSX.Element => {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -338,7 +382,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
 
   private handleSave = async (): Promise<void> => {
-    const { title, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, isPrivate } = this.state;
+    const { title, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, imo, isPrivate } = this.state;
 
     if (!title.trim()) {
       alert('Please enter a title for the event.');
@@ -361,6 +405,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         end,
         swimlane,
         status: (status === 'Not Set' ? '' : status), // Convert "Not Set" to empty string for storage
+        imo: (imo === 'Not Set' ? '' : imo), // Convert "Not Set" to empty string for storage
         isPrivate
       };
 
@@ -530,7 +575,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     const { isOpen, event, onClose } = this.props;
     const {
       title, description, startDate, endDate, startTime, endTime, startAmPm, endAmPm,
-      swimlane, status, isPrivate, isSaving, isDeleting,
+      swimlane, status, imo, isPrivate, isSaving, isDeleting,
       attachments, isLoadingAttachments, isUploadingAttachment, attachmentUploadMessage,
       attachmentUploadMessageType, attachmentError
     } = this.state;
@@ -686,6 +731,14 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                   onChange={(_, option) => this.setState({ status: option?.key as StatusType })}
                   onRenderOption={this.onRenderStatusOption}
                   onRenderTitle={this.onRenderStatusTitle}
+                />
+              </Stack.Item>
+              <Stack.Item grow>
+                <Dropdown
+                  label="IMO"
+                  selectedKey={imo}
+                  options={this.getIMOOptions()}
+                  onChange={(_, option) => this.setState({ imo: option?.key as IMOType })}
                 />
               </Stack.Item>
             </Stack>

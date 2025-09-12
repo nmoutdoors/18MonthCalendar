@@ -243,6 +243,7 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
             updatedEvent.end,
             updatedEvent.swimlane || '',
             updatedEvent.status || '',
+            updatedEvent.imo || '',
             updatedEvent.description || '',
             updatedEvent.isPrivate || false
           );
@@ -255,6 +256,7 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
             updatedEvent.end,
             updatedEvent.swimlane || '',
             updatedEvent.status || '',
+            updatedEvent.imo || '',
             updatedEvent.description || '',
             updatedEvent.isPrivate || false
           );
