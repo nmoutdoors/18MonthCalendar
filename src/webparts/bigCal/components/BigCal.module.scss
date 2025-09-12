@@ -965,6 +965,62 @@
   visibility: visible !important;
 }
 
+// Search Modal Styles
+.searchModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 100px;
+}
+
+.searchModalBackdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.searchModalContent {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  width: 400px;
+  max-width: 90vw;
+  animation: searchModalSlideIn 0.2s ease-out;
+}
+
+.searchModalHeader {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--neutralLighter, #f3f2f1);
+}
+
+.searchModalBody {
+  padding: 20px;
+}
+
+@keyframes searchModalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 // Global styles for month view hover behavior
 :global {
   // Show +New button when hovering over the month date cell

@@ -170,6 +170,24 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
     ];
   };
 
+  private getOPROptions = (): IDropdownOption[] => {
+    return [
+      { key: '', text: '(select OPR)' },
+      { key: 'J-0', text: 'J-0' },
+      { key: 'J-3/5/7', text: 'J-3/5/7' },
+      { key: 'Industry – EM', text: 'Industry – EM' },
+      { key: 'DAFA – SPIO', text: 'DAFA – SPIO' },
+      { key: 'MILDEPs – SPIO', text: 'MILDEPs – SPIO' },
+      { key: 'International Engagements', text: 'International Engagements' },
+      { key: 'Speaking Engagements – PAO', text: 'Speaking Engagements – PAO' },
+      { key: 'Media Engagements/Queries – PAO', text: 'Media Engagements/Queries – PAO' },
+      { key: 'Conferences and Exhibits – PAO', text: 'Conferences and Exhibits – PAO' },
+      { key: 'J9', text: 'J9' },
+      { key: 'Internal Engagements', text: 'Internal Engagements' },
+      { key: 'OSD/Congress', text: 'OSD/Congress' }
+    ];
+  };
+
   private handleStatusChange = (eventId: number | string, newStatus: string): void => {
     this.updateEventField(eventId, 'status', newStatus);
   };
@@ -180,6 +198,10 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
 
   private handleIMOChange = (eventId: number | string, newIMO: string): void => {
     this.updateEventField(eventId, 'imo', newIMO);
+  };
+
+  private handleOPRChange = (eventId: number | string, newOPR: string): void => {
+    this.updateEventField(eventId, 'opr', newOPR);
   };
 
   private handlePrivateChange = (eventId: number | string, isPrivate: boolean): void => {
@@ -401,6 +423,38 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
     );
   };
 
+  private renderOPRCell = (item: ICalendarEvent): JSX.Element => {
+    const isUpdating = this.state.isUpdating && this.state.updatingEventId === item.id;
+    const pendingChanges = this.state.pendingChanges.get(item.id);
+    const currentValue = pendingChanges?.opr !== undefined ? pendingChanges.opr : (item.opr || '');
+    const hasChanges = pendingChanges?.opr !== undefined;
+
+    return (
+      <div className={styles.editableCell}>
+        {isUpdating ? (
+          <Spinner size={SpinnerSize.xSmall} />
+        ) : (
+          <Dropdown
+            options={this.getOPROptions()}
+            selectedKey={currentValue as string}
+            onChange={(_, option) => {
+              if (option) {
+                this.handleOPRChange(item.id, option.key as string);
+              }
+            }}
+            styles={{
+              dropdown: { minWidth: 120 }, // Wider for longer OPR option names
+              title: {
+                border: hasChanges ? '2px solid #0078d4' : 'none',
+                backgroundColor: hasChanges ? '#f3f9ff' : 'transparent'
+              }
+            }}
+          />
+        )}
+      </div>
+    );
+  };
+
   private renderPrivateCell = (item: ICalendarEvent): JSX.Element => {
     const isUpdating = this.state.isUpdating && this.state.updatingEventId === item.id;
     const pendingChanges = this.state.pendingChanges.get(item.id);
@@ -582,6 +636,15 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
         maxWidth: 120,
         isResizable: true,
         onRender: this.renderIMOCell
+      },
+      {
+        key: 'opr',
+        name: '🏛️ OPR',
+        fieldName: 'opr',
+        minWidth: 140, // Wider for longer OPR option names
+        maxWidth: 180,
+        isResizable: true,
+        onRender: this.renderOPRCell
       },
       {
         key: 'private',

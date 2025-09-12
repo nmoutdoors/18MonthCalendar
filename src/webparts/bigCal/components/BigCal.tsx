@@ -53,9 +53,11 @@ interface IBigCalState {
   selectedEvent?: ICalendarEvent;
   selectedDate?: Date;
   searchText: string;
+  isSearchModalOpen: boolean;
   selectedEventCategories: Set<string>;
   selectedStatuses: Set<string>;
   selectedIMOs: Set<string>;
+  selectedOPRs: Set<string>;
   monthNavigatorExpanded: boolean;
   viewMode: 'calendar' | 'grid' | 'timeline';
   isExportDialogOpen: boolean;
@@ -116,6 +118,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       selectedEvent: undefined,
       selectedDate: undefined,
       searchText: '',
+      isSearchModalOpen: false,
       selectedEventCategories: new Set([
         'DCDC',
         'DISA',
@@ -134,6 +137,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       ]), // All current swimlanes selected by default
       selectedStatuses: new Set(['Confirmed', 'Tentative', 'Not Set']), // All selected by default (Not Set = null/empty status)
       selectedIMOs: new Set(['IMO 1', 'IMO 2', 'IMO 3', 'IMO 4', 'IMO 5', 'IMO 6', 'IMO 7', 'IMO 8', 'Not Set']), // All selected by default
+      selectedOPRs: new Set(['J-0', 'J-3/5/7', 'Industry – EM', 'DAFA – SPIO', 'MILDEPs – SPIO', 'International Engagements', 'Speaking Engagements – PAO', 'Media Engagements/Queries – PAO', 'Conferences and Exhibits – PAO', 'J9', 'Internal Engagements', 'OSD/Congress', 'Not Set']), // All selected by default
       monthNavigatorExpanded: true,
       viewMode: 'calendar',
       isExportDialogOpen: false,
@@ -495,6 +499,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     });
   };
 
+  private toggleSearchModal = (): void => {
+    this.setState({ isSearchModalOpen: !this.state.isSearchModalOpen });
+  };
+
+  private closeSearchModal = (): void => {
+    this.setState({ isSearchModalOpen: false });
+  };
+
 
 
 
@@ -783,8 +795,41 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     return options;
   };
 
+  private getOPRDropdownOptions = (): IDropdownOption[] => {
+    const { filteredEvents, selectedOPRs } = this.state;
+    const allOPRs = ['J-0', 'J-3/5/7', 'Industry – EM', 'DAFA – SPIO', 'MILDEPs – SPIO', 'International Engagements', 'Speaking Engagements – PAO', 'Media Engagements/Queries – PAO', 'Conferences and Exhibits – PAO', 'J9', 'Internal Engagements', 'OSD/Congress', 'Not Set'];
 
+    const options = allOPRs.map(opr => {
+      // Count events with this OPR, including events with no OPR for "Not Set"
+      let count: number;
+      if (opr === 'Not Set') {
+        count = filteredEvents.filter(event => !event.opr || event.opr === 'Not Set' || (event.opr as string) === '').length;
+      } else {
+        count = filteredEvents.filter(event => event.opr === opr).length;
+      }
 
+      return {
+        key: opr,
+        text: `${opr} (${count})`,
+        selected: selectedOPRs.has(opr),
+        data: {
+          color: '', // No color for OPR
+          count: count
+        }
+      };
+    });
+
+    // Add Select All/Unselect All toggle option
+    const allSelected = allOPRs.every((opr: string) => selectedOPRs.has(opr));
+    options.push({
+      key: '__toggle_all_oprs__',
+      text: allSelected ? 'Unselect All' : 'Select All',
+      selected: false, // Toggle options are not selected
+      data: { color: '', count: 0, isToggle: true, allSelected } as { color: string; count: number; isToggle: boolean; allSelected: boolean }
+    });
+
+    return options;
+  };
 
 
 
@@ -850,7 +895,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   private applyFiltersToEvents = (events: ICalendarEvent[]): ICalendarEvent[] => {
-    const { searchText, selectedEventCategories, selectedStatuses, selectedIMOs } = this.state;
+    const { searchText, selectedEventCategories, selectedStatuses, selectedIMOs, selectedOPRs } = this.state;
 
 
 
@@ -903,9 +948,19 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         }
       }
 
+      // Check OPR match, including "Not Set" for events with no OPR
+      let matchesOPR = false;
+      if (selectedOPRs.size > 0) {
+        if (selectedOPRs.has('Not Set') && (!event.opr || event.opr === 'Not Set' || (event.opr as string) === '')) {
+          matchesOPR = true;
+        } else if (event.opr && event.opr !== 'Not Set' && (event.opr as string) !== '' && selectedOPRs.has(event.opr)) {
+          matchesOPR = true;
+        }
+      }
+
       const matchesSearch = !searchText || event.title.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
 
-      return matchesCategory && matchesStatus && matchesIMO && matchesSearch;
+      return matchesCategory && matchesStatus && matchesIMO && matchesOPR && matchesSearch;
     });
 
 
@@ -1023,6 +1078,37 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       }
 
       this.setState({ selectedIMOs: newSelected }, () => {
+        this.applyFilters();
+      });
+    }
+  };
+
+  private handleOPRDropdownChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
+    if (option) {
+      // Handle Select All/Unselect All toggle
+      if (option.key === '__toggle_all_oprs__') {
+        const allOPRs = ['J-0', 'J-3/5/7', 'Industry – EM', 'DAFA – SPIO', 'MILDEPs – SPIO', 'International Engagements', 'Speaking Engagements – PAO', 'Media Engagements/Queries – PAO', 'Conferences and Exhibits – PAO', 'J9', 'Internal Engagements', 'OSD/Congress', 'Not Set'];
+        const allSelected = option.data?.allSelected;
+        const newSelected = allSelected ? new Set<string>() : new Set<string>(allOPRs);
+
+        this.setState({ selectedOPRs: newSelected }, () => {
+          this.applyFilters();
+        });
+        return;
+      }
+
+      // Handle individual OPR selection
+      const { selectedOPRs } = this.state;
+      const newSelected = new Set<string>();
+      selectedOPRs.forEach(item => newSelected.add(item));
+
+      if (option.selected) {
+        newSelected.add(option.key as string);
+      } else {
+        newSelected.delete(option.key as string);
+      }
+
+      this.setState({ selectedOPRs: newSelected }, () => {
         this.applyFilters();
       });
     }
@@ -1169,6 +1255,49 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     return (
       <span style={{ fontSize: '13px' }}>
         IMO
+      </span>
+    );
+  };
+
+  private renderOPROption = (option?: IDropdownOption): React.ReactElement => {
+    if (!option) return <div />;
+
+    // Render toggle button
+    if (option.data?.isToggle) {
+      return (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '8px 0',
+          borderTop: '1px solid #edebe9',
+          marginTop: '4px'
+        }}>
+          <span style={{
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--themePrimary, #0078d4)',
+            cursor: 'pointer'
+          }}>
+            {option.text}
+          </span>
+        </div>
+      );
+    }
+
+    // Render normal option without colored circle (OPR doesn't use colors)
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+        <span style={{ fontSize: '13px' }}>
+          {option.text}
+        </span>
+      </div>
+    );
+  };
+
+  private renderOPRTitle = (options?: IDropdownOption[]): React.ReactElement => {
+    return (
+      <span style={{ fontSize: '13px' }}>
+        OPR
       </span>
     );
   };
@@ -2263,7 +2392,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   public render(): React.ReactElement<IBigCalProps> {
     const { hasTeamsContext } = this.props;
-    const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedEventCategories, selectedStatuses, selectedIMOs, viewMode, isExportDialogOpen, isPrintDialogOpen, isLegendaryPrintOpen, isIconSelectorOpen, isColorPaletteStudioOpen } = this.state;
+    const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, isSearchModalOpen, selectedEventCategories, selectedStatuses, selectedIMOs, selectedOPRs, viewMode, isExportDialogOpen, isPrintDialogOpen, isLegendaryPrintOpen, isIconSelectorOpen, isColorPaletteStudioOpen } = this.state;
 
     // Combine regular events with holiday events and apply filters
     const allEventsWithHolidays = this.getAllEventsWithHolidays();
@@ -2317,18 +2446,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           /* Full navbar with all features for fullscreen mode */
           <div className={styles.navbar}>
             <div className={styles.navbarLeft}>
-              <SearchBox
-                placeholder="Search events..."
-                value={searchText}
-                onChange={(_, newValue) => this.handleSearchChange(newValue || '')}
-                styles={{
-                  root: {
-                    width: '180px',
-                    minWidth: '120px',
-                    maxWidth: '220px',
-                    flex: '1 1 180px'
-                  }
-                }}
+              <IconButton
+                iconProps={{ iconName: 'Search' }}
+                title={searchText ? `Search: "${searchText}"` : 'Search events...'}
+                onClick={this.toggleSearchModal}
+                className={styles.navbarButton}
               />
 
               <Dropdown
@@ -2357,9 +2479,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 }}
                 styles={{
                   root: {
-                    width: '250px', // Increased from 230px to prevent text wrapping
-                    minWidth: '220px',
-                    maxWidth: '280px',
+                    width: '250px', // Increased to prevent "TDY Meetings/Congressional" wrapping
+                    minWidth: '230px',
+                    maxWidth: '270px',
                     flex: '1 1 250px'
                   },
                   title: { fontSize: '13px' },
@@ -2413,6 +2535,29 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                     minWidth: '120px',
                     maxWidth: '160px',
                     flex: '1 1 140px'
+                  },
+                  title: { fontSize: '13px' }
+                }}
+              />
+
+              <Dropdown
+                placeholder="OPR"
+                multiSelect
+                options={this.getOPRDropdownOptions()}
+                selectedKeys={(() => {
+                  const keys: string[] = [];
+                  selectedOPRs.forEach(key => keys.push(key));
+                  return keys;
+                })()}
+                onChange={this.handleOPRDropdownChange}
+                onRenderOption={this.renderOPROption}
+                onRenderTitle={this.renderOPRTitle}
+                styles={{
+                  root: {
+                    width: '290px', // Further optimized - still fits longest option with good margin
+                    minWidth: '260px',
+                    maxWidth: '320px',
+                    flex: '1 1 290px'
                   },
                   title: { fontSize: '13px' }
                 }}
@@ -2823,6 +2968,42 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
             onEdit={this.handlePopoverEdit}
             dynamicIconMappings={this.state.dynamicIconMappings}
           />
+        )}
+
+        {/* Search Modal */}
+        {isSearchModalOpen && (
+          <div className={styles.searchModal}>
+            <div className={styles.searchModalBackdrop} onClick={this.closeSearchModal} />
+            <div className={styles.searchModalContent}>
+              <div className={styles.searchModalHeader}>
+                <Icon iconName="Search" style={{ marginRight: '8px', color: 'var(--themePrimary, #0078d4)' }} />
+                <span style={{ fontWeight: '600', fontSize: '16px' }}>Search Events</span>
+                <IconButton
+                  iconProps={{ iconName: 'Cancel' }}
+                  onClick={this.closeSearchModal}
+                  styles={{
+                    root: { marginLeft: 'auto', width: '32px', height: '32px' }
+                  }}
+                />
+              </div>
+              <div className={styles.searchModalBody}>
+                <SearchBox
+                  placeholder="Search events..."
+                  value={searchText}
+                  onChange={(_, newValue) => this.handleSearchChange(newValue || '')}
+                  autoFocus
+                  styles={{
+                    root: { width: '100%' }
+                  }}
+                />
+                {searchText && (
+                  <div style={{ marginTop: '12px', fontSize: '14px', color: 'var(--neutralSecondary, #605e5c)' }}>
+                    Found {allFilteredEvents.filter(event => event.title.toLowerCase().indexOf(searchText.toLowerCase()) !== -1).length} events matching &ldquo;{searchText}&rdquo;
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     );

@@ -42,25 +42,26 @@ Based on lessons learned from IMO implementation: "Focus on one feature at a tim
 - [x] Update `convertSharePointEventToCalendarEvent()` helper
 - [x] **TEST**: Create/edit events with OPR field via DataSheet
 
-### Phase 3: Event Creation/Editing UI 🚧 IN PROGRESS
+### Phase 3: Event Creation/Editing UI ✅ COMPLETED
 **Goal**: Add OPR dropdown to event forms
 **Estimated Time**: 25 minutes
 - [x] Add OPR dropdown to `EventModal.tsx` (4-column layout: Swimlane | Status | IMO | OPR)
-- [ ] Add OPR column to `DataSheetView.tsx` grid (after IMO column)
-- [ ] Add `getOPROptions()` fallback function
-- [ ] Add `handleOPRChange()` method to DataSheetView
-- [ ] Add `renderOPRCell()` method to DataSheetView
-- [ ] **TEST**: Create/edit events via modal and DataSheet
+- [x] Add OPR column to `DataSheetView.tsx` grid (after IMO column)
+- [x] Add `getOPROptions()` fallback function
+- [x] Add `handleOPRChange()` method to DataSheetView
+- [x] Add `renderOPRCell()` method to DataSheetView
+- [x] **TEST**: Create/edit events via modal and DataSheet
 
-### Phase 4: Main UI Filtering
+### Phase 4: Main UI Filtering ✅ COMPLETED
 **Goal**: Add OPR filter dropdown to main calendar
 **Estimated Time**: 30 minutes
-- [ ] Add OPR dropdown to `BigCal.tsx` filter bar (after IMO)
-- [ ] Set OPR dropdown width to 160px
-- [ ] Add OPR filtering logic to `applyFiltersToEvents()`
-- [ ] Add OPR state management (`selectedOPRs`, `setSelectedOPRs`)
-- [ ] Add OPR to filter reset functionality
-- [ ] **TEST**: Filter events by OPR selection with counts
+- [x] Add OPR dropdown to `BigCal.tsx` filter bar (after IMO)
+- [x] Set OPR dropdown width to 290px (optimized through testing)
+- [x] Add OPR filtering logic to `applyFiltersToEvents()`
+- [x] Add OPR state management (`selectedOPRs`, `setSelectedOPRs`)
+- [x] Add OPR to filter reset functionality
+- [x] **BONUS**: Implemented collapsible search modal for space optimization
+- [x] **TEST**: Filter events by OPR selection with counts
 
 ### Phase 5: Event Popover Integration
 **Goal**: Add OPR to event popover display
