@@ -137,7 +137,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       ]), // All current swimlanes selected by default
       selectedStatuses: new Set(['Confirmed', 'Tentative', 'Not Set']), // All selected by default (Not Set = null/empty status)
       selectedIMOs: new Set(['IMO 1', 'IMO 2', 'IMO 3', 'IMO 4', 'IMO 5', 'IMO 6', 'IMO 7', 'IMO 8', 'Not Set']), // All selected by default
-      selectedOPRs: new Set(['J-0', 'J-3/5/7', 'Industry – EM', 'DAFA – SPIO', 'MILDEPs – SPIO', 'International Engagements', 'Speaking Engagements – PAO', 'Media Engagements/Queries – PAO', 'Conferences and Exhibits – PAO', 'J9', 'Internal Engagements', 'OSD/Congress', 'Not Set']), // All selected by default
+      selectedOPRs: new Set(['J-0', 'J-3/5/7', 'Industry - EM', 'DAFA - SPIO', 'MILDEPs - SPIO', 'International Engagements', 'Speaking Engagements - PAO', 'Media Engagements/Queries - PAO', 'Conferences and Exhibits - PAO', 'J9', 'Internal Engagements', 'OSD/Congress', 'Not Set']), // All selected by default
       monthNavigatorExpanded: true,
       viewMode: 'calendar',
       isExportDialogOpen: false,
@@ -797,7 +797,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private getOPRDropdownOptions = (): IDropdownOption[] => {
     const { filteredEvents, selectedOPRs } = this.state;
-    const allOPRs = ['J-0', 'J-3/5/7', 'Industry – EM', 'DAFA – SPIO', 'MILDEPs – SPIO', 'International Engagements', 'Speaking Engagements – PAO', 'Media Engagements/Queries – PAO', 'Conferences and Exhibits – PAO', 'J9', 'Internal Engagements', 'OSD/Congress', 'Not Set'];
+    const allOPRs = ['J-0', 'J-3/5/7', 'Industry - EM', 'DAFA - SPIO', 'MILDEPs - SPIO', 'International Engagements', 'Speaking Engagements - PAO', 'Media Engagements/Queries - PAO', 'Conferences and Exhibits - PAO', 'J9', 'Internal Engagements', 'OSD/Congress', 'Not Set'];
 
     const options = allOPRs.map(opr => {
       // Count events with this OPR, including events with no OPR for "Not Set"
@@ -1087,7 +1087,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (option) {
       // Handle Select All/Unselect All toggle
       if (option.key === '__toggle_all_oprs__') {
-        const allOPRs = ['J-0', 'J-3/5/7', 'Industry – EM', 'DAFA – SPIO', 'MILDEPs – SPIO', 'International Engagements', 'Speaking Engagements – PAO', 'Media Engagements/Queries – PAO', 'Conferences and Exhibits – PAO', 'J9', 'Internal Engagements', 'OSD/Congress', 'Not Set'];
+        const allOPRs = ['J-0', 'J-3/5/7', 'Industry - EM', 'DAFA - SPIO', 'MILDEPs - SPIO', 'International Engagements', 'Speaking Engagements - PAO', 'Media Engagements/Queries - PAO', 'Conferences and Exhibits - PAO', 'J9', 'Internal Engagements', 'OSD/Congress', 'Not Set'];
         const allSelected = option.data?.allSelected;
         const newSelected = allSelected ? new Set<string>() : new Set<string>(allOPRs);
 

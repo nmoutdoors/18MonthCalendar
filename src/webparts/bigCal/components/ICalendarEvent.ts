@@ -4,7 +4,7 @@ import * as moment from 'moment';
 export type SwimlaneType = 'DCDC' | 'DISA' | 'DOD CIO / NSA / USCC' | 'Exec Time' | 'Exercises' | 'FYSA' | 'Joint DISA & DCDC' | 'Mission Partner' | 'Out of Office' | 'Seniors' | 'Speaking Event' | 'TDY Meetings/Congressional' | 'Transit';
 export type StatusType = 'Confirmed' | 'Tentative' | 'Not Set' | ''; // Include empty string for blank status
 export type IMOType = 'IMO 1' | 'IMO 2' | 'IMO 3' | 'IMO 4' | 'IMO 5' | 'IMO 6' | 'IMO 7' | 'IMO 8' | 'Not Set' | ''; // Include empty string and "Not Set" for blank IMO
-export type OPRType = 'J-0' | 'J-3/5/7' | 'Industry – EM' | 'DAFA – SPIO' | 'MILDEPs – SPIO' | 'International Engagements' | 'Speaking Engagements – PAO' | 'Media Engagements/Queries – PAO' | 'Conferences and Exhibits – PAO' | 'J9' | 'Internal Engagements' | 'OSD/Congress' | 'Not Set' | ''; // Include empty string and "Not Set" for blank OPR
+export type OPRType = 'J-0' | 'J-3/5/7' | 'Industry - EM' | 'DAFA - SPIO' | 'MILDEPs - SPIO' | 'International Engagements' | 'Speaking Engagements - PAO' | 'Media Engagements/Queries - PAO' | 'Conferences and Exhibits - PAO' | 'J9' | 'Internal Engagements' | 'OSD/Congress' | 'Not Set' | ''; // Include empty string and "Not Set" for blank OPR
 
 export interface ICalendarEvent {
   id: number | string;

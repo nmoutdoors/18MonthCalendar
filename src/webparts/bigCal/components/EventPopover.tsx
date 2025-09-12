@@ -138,6 +138,12 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
                 </div>
               )}
 
+              {event.opr && event.opr.trim() && (
+                <div className={styles.oprRow}>
+                  <span className={styles.oprLabel}>OPR: {event.opr}</span>
+                </div>
+              )}
+
               {event.description && event.description.trim() && (
                 <div className={styles.descriptionRow}>
                   <Icon iconName="Info" className={styles.detailIcon} />
