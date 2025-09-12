@@ -150,7 +150,7 @@ export class SharePointService {
       internalName: 'OPR',
       displayName: 'OPR',
       fieldType: 'Choice',
-      required: true,
+      required: false, // Not required in SharePoint list (Outlook sync compatibility)
       choices: [
         'J-0',
         'J-3/5/7',
@@ -165,7 +165,7 @@ export class SharePointService {
         'Internal Engagements',
         'OSD/Congress'
       ],
-      defaultValue: 'J-0'
+      defaultValue: '' // No default - allow blank/null for Outlook compatibility
     },
     {
       internalName: 'Private',
