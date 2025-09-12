@@ -156,12 +156,30 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
     ];
   };
 
+  private getIMOOptions = (): IDropdownOption[] => {
+    return [
+      { key: '', text: '(select IMO)' },
+      { key: 'IMO 1', text: 'IMO 1' },
+      { key: 'IMO 2', text: 'IMO 2' },
+      { key: 'IMO 3', text: 'IMO 3' },
+      { key: 'IMO 4', text: 'IMO 4' },
+      { key: 'IMO 5', text: 'IMO 5' },
+      { key: 'IMO 6', text: 'IMO 6' },
+      { key: 'IMO 7', text: 'IMO 7' },
+      { key: 'IMO 8', text: 'IMO 8' }
+    ];
+  };
+
   private handleStatusChange = (eventId: number | string, newStatus: string): void => {
     this.updateEventField(eventId, 'status', newStatus);
   };
 
   private handleSwimlaneChange = (eventId: number | string, newSwimlane: string): void => {
     this.updateEventField(eventId, 'swimlane', newSwimlane);
+  };
+
+  private handleIMOChange = (eventId: number | string, newIMO: string): void => {
+    this.updateEventField(eventId, 'imo', newIMO);
   };
 
   private handlePrivateChange = (eventId: number | string, isPrivate: boolean): void => {
@@ -349,6 +367,38 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
     );
   };
 
+  private renderIMOCell = (item: ICalendarEvent): JSX.Element => {
+    const isUpdating = this.state.isUpdating && this.state.updatingEventId === item.id;
+    const pendingChanges = this.state.pendingChanges.get(item.id);
+    const currentValue = pendingChanges?.imo !== undefined ? pendingChanges.imo : (item.imo || '');
+    const hasChanges = pendingChanges?.imo !== undefined;
+
+    return (
+      <div className={styles.editableCell}>
+        {isUpdating ? (
+          <Spinner size={SpinnerSize.xSmall} />
+        ) : (
+          <Dropdown
+            options={this.getIMOOptions()}
+            selectedKey={currentValue as string}
+            onChange={(_, option) => {
+              if (option) {
+                this.handleIMOChange(item.id, option.key as string);
+              }
+            }}
+            styles={{
+              dropdown: { minWidth: 100 },
+              title: {
+                border: hasChanges ? '2px solid #0078d4' : 'none',
+                backgroundColor: hasChanges ? '#f3f9ff' : 'transparent'
+              }
+            }}
+          />
+        )}
+      </div>
+    );
+  };
+
   private renderPrivateCell = (item: ICalendarEvent): JSX.Element => {
     const isUpdating = this.state.isUpdating && this.state.updatingEventId === item.id;
     const pendingChanges = this.state.pendingChanges.get(item.id);
@@ -464,10 +514,10 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
       },
       {
         key: 'start',
-        name: 'Start Date',
+        name: 'Start',
         fieldName: 'start',
-        minWidth: 90,
-        maxWidth: 110,
+        minWidth: 140,
+        maxWidth: 160,
         isResizable: true,
         onRender: (item: ICalendarEvent) => (
           <Text variant="small">
@@ -475,20 +525,7 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
               month: '2-digit',
               day: '2-digit',
               year: 'numeric'
-            })}
-          </Text>
-        )
-      },
-      {
-        key: 'startTime',
-        name: 'Start Time',
-        fieldName: 'startTime',
-        minWidth: 75,
-        maxWidth: 90,
-        isResizable: true,
-        onRender: (item: ICalendarEvent) => (
-          <Text variant="small">
-            {item.start.toLocaleTimeString('en-US', {
+            })} {item.start.toLocaleTimeString('en-US', {
               hour: 'numeric',
               minute: '2-digit',
               hour12: true
@@ -498,35 +535,22 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
       },
       {
         key: 'end',
-        name: 'End Date',
+        name: 'End',
         fieldName: 'end',
-        minWidth: 90,
-        maxWidth: 110,
+        minWidth: 140,
+        maxWidth: 160,
         isResizable: true,
         onRender: (item: ICalendarEvent) => (
           <Text variant="small">
-            {item.end ? item.end.toLocaleDateString('en-US', {
+            {item.end ? `${item.end.toLocaleDateString('en-US', {
               month: '2-digit',
               day: '2-digit',
               year: 'numeric'
-            }) : '—'}
-          </Text>
-        )
-      },
-      {
-        key: 'endTime',
-        name: 'End Time',
-        fieldName: 'endTime',
-        minWidth: 75,
-        maxWidth: 90,
-        isResizable: true,
-        onRender: (item: ICalendarEvent) => (
-          <Text variant="small">
-            {item.end ? item.end.toLocaleTimeString('en-US', {
+            })} ${item.end.toLocaleTimeString('en-US', {
               hour: 'numeric',
               minute: '2-digit',
               hour12: true
-            }) : '—'}
+            })}` : '—'}
           </Text>
         )
       },
@@ -547,6 +571,15 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
         maxWidth: 120,
         isResizable: true,
         onRender: this.renderStatusCell
+      },
+      {
+        key: 'imo',
+        name: '🏢 IMO',
+        fieldName: 'imo',
+        minWidth: 100,
+        maxWidth: 120,
+        isResizable: true,
+        onRender: this.renderIMOCell
       },
       {
         key: 'private',
@@ -603,15 +636,8 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
           onDismiss={this.handleModalClose}
           isBlocking={false}
           containerClassName={modalStyles.modalContainer}
-          styles={{
-            main: {
-              width: '1200px !important',
-              maxWidth: '1200px !important',
-              minWidth: '1200px !important'
-            }
-          }}
         >
-          <div style={{ width: '1200px', maxWidth: '1200px', minWidth: '1200px' }}>
+          <div>
             <div className={modalStyles.modalHeader}>
               <Text variant="xLarge" as="h2">
                 DataSheet View

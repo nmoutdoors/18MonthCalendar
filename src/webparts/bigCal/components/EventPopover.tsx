@@ -74,7 +74,6 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
 
     // Private events get locked icon, regular events get category icon
     const iconEmoji = event.isPrivate ? '🔒' : this.getEventCategoryIcon(event.swimlane!);
-    const statusColor = '#6c757d'; // Gray fallback - colors are now handled by Color Palette Studio
     const isAllDay = this.isAllDayEvent(event);
     const isSameDayEvent = this.isSameDay(event.start, event.end);
 
@@ -133,12 +132,11 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
                 </Text>
               </div>
 
-              <div className={styles.detailRow}>
-                <Icon iconName="CircleFill" className={styles.detailIcon} style={{ color: statusColor }} />
-                <Text variant="small" className={styles.detailText}>
-                  {event.status}
-                </Text>
-              </div>
+              {event.imo && event.imo.trim() && (
+                <div className={styles.imoRow}>
+                  <span className={styles.imoLabel}>{event.imo}</span>
+                </div>
+              )}
 
               {event.description && event.description.trim() && (
                 <div className={styles.descriptionRow}>

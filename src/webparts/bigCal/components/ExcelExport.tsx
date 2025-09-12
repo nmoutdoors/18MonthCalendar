@@ -9,7 +9,7 @@ import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Pivot, PivotItem } from '@fluentui/react/lib/Pivot';
 import { Icon } from '@fluentui/react/lib/Icon';
 import * as XLSX from 'xlsx';
-import { ICalendarEvent, SwimlaneType, StatusType } from './ICalendarEvent';
+import { ICalendarEvent, SwimlaneType, StatusType, IMOType } from './ICalendarEvent';
 import { Logger } from '../services/LoggingService';
 import { withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
 import styles from './ExcelExport.module.scss';
@@ -370,6 +370,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     let endIndex = -1;
     let swimlaneIndex = -1;
     let statusIndex = -1;
+    let imoIndex = -1;
     let privateIndex = -1;
 
     for (let i = 0; i < headers.length; i++) {
@@ -383,6 +384,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
                     header.toLowerCase().indexOf('event category') !== -1 ||
                     header.toLowerCase().indexOf('category') !== -1)) swimlaneIndex = i;
       if (header && header.toLowerCase().indexOf('status') !== -1) statusIndex = i;
+      if (header && header.toLowerCase().indexOf('imo') !== -1) imoIndex = i;
       if (header && header.toLowerCase().indexOf('private') !== -1) privateIndex = i;
     }
 
@@ -396,6 +398,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       endIndex,
       swimlaneIndex,
       statusIndex,
+      imoIndex,
       privateIndex,
       totalRows: rawData.length
     });
@@ -431,6 +434,10 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         const statusRaw = statusIndex !== -1 && row[statusIndex] ? row[statusIndex].toString().trim() : '';
         const status = statusRaw ? statusRaw as StatusType : undefined;
 
+        // Parse IMO
+        const imoRaw = imoIndex !== -1 && row[imoIndex] ? row[imoIndex].toString().trim() : '';
+        const imo = imoRaw ? imoRaw as IMOType : '';
+
         // Parse private field
         const privateRaw = privateIndex !== -1 && row[privateIndex] ? row[privateIndex].toString().trim().toLowerCase() : '';
         const isPrivate = privateRaw === 'true' || privateRaw === '1' || privateRaw === 'yes';
@@ -446,6 +453,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
           swimlane: (swimlaneIndex !== -1 && row[swimlaneIndex] ?
             row[swimlaneIndex].toString().trim() : 'FYSA') as SwimlaneType,
           status: status,
+          imo: imo,
           isPrivate: isPrivate
         };
 
@@ -728,6 +736,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       agendaWorksheet['!cols'] = [
         { width: 15 }, // Date column
         { width: 20 }, // Time column
+        { width: 12 }, // IMO column
         { width: 50 }  // Event column
       ];
       XLSX.utils.book_append_sheet(workbook, agendaWorksheet, 'Agenda');
@@ -774,7 +783,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     const data: string[][] = [];
     
     // Add header row
-    data.push(['Date', 'Time', 'Event']);
+    data.push(['Date', 'Time', 'IMO', 'Event']);
     
     let currentDate = '';
     
@@ -827,7 +836,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       
       // Add special indicator for holiday events
       const eventTitle = (event as ICalendarEvent & { isHoliday?: boolean }).isHoliday ? `🏛️ ${event.title}` : event.title;
-      data.push([dateToShow, timeStr, eventTitle]);
+      const imoDisplay = event.imo || '';
+      data.push([dateToShow, timeStr, imoDisplay, eventTitle]);
     });
     
     return data;
@@ -837,7 +847,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     const data: string[][] = [];
 
     // Add header row matching SharePoint list structure
-    data.push(['Title', 'Description', 'Start', 'End', 'Event Category', 'Status', 'Private']);
+    data.push(['Title', 'Description', 'Start', 'End', 'Event Category', 'Status', 'IMO', 'Private']);
 
     events.forEach(event => {
       // Use MM/DD/YYYY HH:MM AM/PM format for better readability while maintaining precision
@@ -875,6 +885,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         endFormatted,
         event.swimlane || '',
         event.status || '',
+        event.imo || '',
         event.isPrivate ? 'TRUE' : 'FALSE'
       ]);
     });

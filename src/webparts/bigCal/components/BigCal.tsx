@@ -55,6 +55,7 @@ interface IBigCalState {
   searchText: string;
   selectedEventCategories: Set<string>;
   selectedStatuses: Set<string>;
+  selectedIMOs: Set<string>;
   monthNavigatorExpanded: boolean;
   viewMode: 'calendar' | 'grid' | 'timeline';
   isExportDialogOpen: boolean;
@@ -132,6 +133,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         'Private Events'
       ]), // All current swimlanes selected by default
       selectedStatuses: new Set(['Confirmed', 'Tentative', 'Not Set']), // All selected by default (Not Set = null/empty status)
+      selectedIMOs: new Set(['IMO 1', 'IMO 2', 'IMO 3', 'IMO 4', 'IMO 5', 'IMO 6', 'IMO 7', 'IMO 8', 'Not Set']), // All selected by default
       monthNavigatorExpanded: true,
       viewMode: 'calendar',
       isExportDialogOpen: false,
@@ -747,6 +749,40 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     return options;
   };
 
+  private getIMODropdownOptions = (): IDropdownOption[] => {
+    const { filteredEvents, selectedIMOs } = this.state;
+    const allIMOs = ['IMO 1', 'IMO 2', 'IMO 3', 'IMO 4', 'IMO 5', 'IMO 6', 'IMO 7', 'IMO 8', 'Not Set'];
+
+    const options = allIMOs.map(imo => {
+      // Count events with this IMO, including events with no IMO for "Not Set"
+      let count: number;
+      if (imo === 'Not Set') {
+        count = filteredEvents.filter(e => !e.isHoliday && (!e.imo || e.imo === 'Not Set' || (e.imo as string) === '')).length;
+      } else {
+        count = filteredEvents.filter(e => !e.isHoliday && e.imo === imo).length;
+      }
+
+      return {
+        key: imo,
+        text: `${imo} (${count})`,
+        data: {
+          color: 'transparent', // IMO doesn't use colors
+          count
+        }
+      };
+    });
+
+    // Add Select All/Unselect All toggle option
+    const allSelected = allIMOs.every((imo: string) => selectedIMOs.has(imo));
+    options.push({
+      key: '__toggle_all_imos__',
+      text: allSelected ? 'Unselect All' : 'Select All',
+      data: { color: '', count: 0, isToggle: true, allSelected } as { color: string; count: number; isToggle: boolean; allSelected: boolean }
+    });
+
+    return options;
+  };
+
 
 
 
@@ -814,7 +850,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   private applyFiltersToEvents = (events: ICalendarEvent[]): ICalendarEvent[] => {
-    const { searchText, selectedEventCategories, selectedStatuses } = this.state;
+    const { searchText, selectedEventCategories, selectedStatuses, selectedIMOs } = this.state;
 
 
 
@@ -842,10 +878,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           matchesCategory = true;
         } else if (!event.isPrivate && event.swimlane && selectedEventCategories.has(event.swimlane)) {
           matchesCategory = true;
-        } else if (!event.isPrivate && !event.swimlane) {
-          // Events with null swimlane (need configuration) always pass category filter
-          matchesCategory = true;
         }
+        // Note: Events with null swimlane (need configuration) should NOT automatically pass
+        // They should only show if user explicitly selects appropriate category
       }
 
       // Check status match, including "Not Set" for events with no status
@@ -853,16 +888,24 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       if (selectedStatuses.size > 0) {
         if (selectedStatuses.has('Not Set') && (!event.status || event.status === 'Not Set')) {
           matchesStatus = true;
-        } else if (event.status && selectedStatuses.has(event.status)) {
-          matchesStatus = true;
-        } else if (!event.status) {
-          // Events with null status (need configuration) always pass status filter
+        } else if (event.status && event.status !== 'Not Set' && selectedStatuses.has(event.status)) {
           matchesStatus = true;
         }
       }
+
+      // Check IMO match, including "Not Set" for events with no IMO
+      let matchesIMO = false;
+      if (selectedIMOs.size > 0) {
+        if (selectedIMOs.has('Not Set') && (!event.imo || event.imo === 'Not Set' || (event.imo as string) === '')) {
+          matchesIMO = true;
+        } else if (event.imo && event.imo !== 'Not Set' && (event.imo as string) !== '' && selectedIMOs.has(event.imo)) {
+          matchesIMO = true;
+        }
+      }
+
       const matchesSearch = !searchText || event.title.toLowerCase().indexOf(searchText.toLowerCase()) !== -1;
 
-      return matchesCategory && matchesStatus && matchesSearch;
+      return matchesCategory && matchesStatus && matchesIMO && matchesSearch;
     });
 
 
@@ -949,6 +992,37 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       }
 
       this.setState({ selectedStatuses: newSelected }, () => {
+        this.applyFilters();
+      });
+    }
+  };
+
+  private handleIMODropdownChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
+    if (option) {
+      // Handle Select All/Unselect All toggle
+      if (option.key === '__toggle_all_imos__') {
+        const allIMOs = ['IMO 1', 'IMO 2', 'IMO 3', 'IMO 4', 'IMO 5', 'IMO 6', 'IMO 7', 'IMO 8', 'Not Set'];
+        const allSelected = option.data?.allSelected;
+        const newSelected = allSelected ? new Set<string>() : new Set<string>(allIMOs);
+
+        this.setState({ selectedIMOs: newSelected }, () => {
+          this.applyFilters();
+        });
+        return;
+      }
+
+      // Handle individual IMO selection
+      const { selectedIMOs } = this.state;
+      const newSelected = new Set<string>();
+      selectedIMOs.forEach(item => newSelected.add(item));
+
+      if (option.selected) {
+        newSelected.add(option.key as string);
+      } else {
+        newSelected.delete(option.key as string);
+      }
+
+      this.setState({ selectedIMOs: newSelected }, () => {
         this.applyFilters();
       });
     }
@@ -1053,6 +1127,48 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     return (
       <span style={{ fontSize: '13px' }}>
         Status
+      </span>
+    );
+  };
+  private renderIMOOption = (option?: IDropdownOption): React.ReactElement => {
+    if (!option) return <div />;
+
+    // Render toggle button
+    if (option.data?.isToggle) {
+      return (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '8px 0',
+          borderTop: '1px solid #edebe9',
+          marginTop: '4px'
+        }}>
+          <span style={{
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--themePrimary, #0078d4)',
+            cursor: 'pointer'
+          }}>
+            {option.text}
+          </span>
+        </div>
+      );
+    }
+
+    // Render normal option without colored circle (IMO doesn't use colors)
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+        <span style={{ fontSize: '13px' }}>
+          {option.text}
+        </span>
+      </div>
+    );
+  };
+
+  private renderIMOTitle = (options?: IDropdownOption[]): React.ReactElement => {
+    return (
+      <span style={{ fontSize: '13px' }}>
+        IMO
       </span>
     );
   };
@@ -1600,7 +1716,6 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   private openEditModal = (event: ICalendarEvent): void => {
-    console.log('🔍 BigCal openEditModal - Event clicked:', event.title, 'IMO:', event.imo);
     this.setState({
       isModalOpen: true,
       selectedEvent: event,
@@ -2146,7 +2261,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   public render(): React.ReactElement<IBigCalProps> {
     const { hasTeamsContext } = this.props;
-    const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedEventCategories, selectedStatuses, viewMode, isExportDialogOpen, isPrintDialogOpen, isLegendaryPrintOpen, isIconSelectorOpen, isColorPaletteStudioOpen } = this.state;
+    const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, selectedEventCategories, selectedStatuses, selectedIMOs, viewMode, isExportDialogOpen, isPrintDialogOpen, isLegendaryPrintOpen, isIconSelectorOpen, isColorPaletteStudioOpen } = this.state;
 
     // Combine regular events with holiday events and apply filters
     const allEventsWithHolidays = this.getAllEventsWithHolidays();
@@ -2269,10 +2384,33 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 onRenderTitle={this.renderStatusTitle}
                 styles={{
                   root: {
-                    width: '170px',
+                    width: '140px',
                     minWidth: '120px',
-                    maxWidth: '190px',
-                    flex: '1 1 170px'
+                    maxWidth: '160px',
+                    flex: '1 1 140px'
+                  },
+                  title: { fontSize: '13px' }
+                }}
+              />
+
+              <Dropdown
+                placeholder="IMO"
+                multiSelect
+                options={this.getIMODropdownOptions()}
+                selectedKeys={(() => {
+                  const keys: string[] = [];
+                  selectedIMOs.forEach(key => keys.push(key));
+                  return keys;
+                })()}
+                onChange={this.handleIMODropdownChange}
+                onRenderOption={this.renderIMOOption}
+                onRenderTitle={this.renderIMOTitle}
+                styles={{
+                  root: {
+                    width: '140px',
+                    minWidth: '120px',
+                    maxWidth: '160px',
+                    flex: '1 1 140px'
                   },
                   title: { fontSize: '13px' }
                 }}
@@ -2599,7 +2737,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
               <LazyDataSheetView
                 context={this.props.context}
                 listName={this.props.listName}
-                events={allFilteredEvents}
+                events={allEventsWithHolidays}
                 isLoading={isLoading}
                 onEventsUpdated={this.loadEvents}
                 isModal={true}

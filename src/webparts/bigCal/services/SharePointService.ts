@@ -504,10 +504,18 @@ export class SharePointService {
         EventDate: this.toSharePointDateString(start), // Store without timezone conversion
         EndDate: this.toSharePointDateString(end),     // Store without timezone conversion
         Swimlane: swimlane,
-        Status: status,
-        IMO: imo,
         Description: description
       };
+
+      // Only add Status if it's provided (not undefined/null/empty)
+      if (status && status.trim()) {
+        itemData.Status = status;
+      }
+
+      // Only add IMO if it's provided (not undefined/null/empty)
+      if (imo && imo.trim()) {
+        itemData.IMO = imo;
+      }
 
       // Only add Private fields if they exist in the list
       if (hasPrivateFields) {

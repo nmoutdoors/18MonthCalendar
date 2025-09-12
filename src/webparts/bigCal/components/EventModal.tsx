@@ -122,10 +122,6 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       swimlane: props.event?.swimlane || 'FYSA',
       status: props.event?.status ? props.event.status : 'Not Set', // Show "Not Set" for empty/null status
       imo: (() => {
-        // Debug logging to see what we're getting
-        console.log('EventModal - Full event object:', props.event);
-        console.log('EventModal - props.event?.imo:', props.event?.imo, 'Type:', typeof props.event?.imo);
-
         // Handle IMO field: treat empty string as "Not Set", preserve actual values
         if (props.event?.imo === undefined || props.event?.imo === null || props.event?.imo === '') {
           return 'Not Set';
@@ -149,10 +145,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     // If the modal was closed and reopened, or if selectedDate changed, reset the form
     if (this.props.isOpen && !prevProps.isOpen) {
       // Modal just opened
-      console.log('🔍 EventModal componentDidUpdate - Modal opened, event:', this.props.event);
-      if (this.props.event) {
-        console.log('🔍 EventModal componentDidUpdate - Event IMO:', this.props.event.imo, 'Type:', typeof this.props.event.imo);
-      }
+
 
       if (!this.props.event) {
         // This is create mode, initialize with selectedDate
