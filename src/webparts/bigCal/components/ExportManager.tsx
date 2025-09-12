@@ -80,6 +80,7 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
             event.swimlane || 'FYSA',
             event.status || '',
             event.imo || '',
+            event.opr || '',
             event.description || '',
             true // isPrivate
           );
@@ -92,6 +93,7 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
             event.swimlane || 'FYSA',
             event.status || '',
             event.imo || '',
+            event.opr || '',
             event.description || '',
             false // isPrivate
           );

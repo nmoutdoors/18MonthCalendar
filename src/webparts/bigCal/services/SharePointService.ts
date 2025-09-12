@@ -17,6 +17,7 @@ export interface ISharePointEvent {
   Swimlane: string;
   Status: string;
   IMO: string;
+  OPR: string;
   Description: string;
   Private: boolean;
   PrivateEventId?: string;
@@ -144,6 +145,27 @@ export class SharePointService {
         'IMO 8'
       ],
       defaultValue: '' // No default - allow blank/null
+    },
+    {
+      internalName: 'OPR',
+      displayName: 'OPR',
+      fieldType: 'Choice',
+      required: true,
+      choices: [
+        'J-0',
+        'J-3/5/7',
+        'Industry – EM',
+        'DAFA – SPIO',
+        'MILDEPs – SPIO',
+        'International Engagements',
+        'Speaking Engagements – PAO',
+        'Media Engagements/Queries – PAO',
+        'Conferences and Exhibits – PAO',
+        'J9',
+        'Internal Engagements',
+        'OSD/Congress'
+      ],
+      defaultValue: 'J-0'
     },
     {
       internalName: 'Private',
@@ -303,7 +325,7 @@ export class SharePointService {
 
       // Use PnP.js to get items from the Events list
       // Increase limit to handle large datasets (default is 100)
-      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,Description';
+      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description';
 
       // Enhanced field selection for production environments
       if (hasPrivateFields) {
@@ -360,6 +382,7 @@ export class SharePointService {
         Swimlane: string;
         Status: string;
         IMO: string;
+        OPR: string;
         Description?: string;
         Private?: unknown;
         PrivateEventId?: string;
@@ -375,6 +398,7 @@ export class SharePointService {
           Swimlane: item.Swimlane,
           Status: item.Status,
           IMO: item.IMO === 'null' || item.IMO === null || item.IMO === undefined ? '' : item.IMO,
+          OPR: item.OPR === 'null' || item.OPR === null || item.OPR === undefined ? '' : item.OPR,
           Description: item.Description || '',
           Private: isPrivate,
           PrivateEventId: item.PrivateEventId
@@ -410,6 +434,7 @@ export class SharePointService {
     swimlane: string;
     status?: string; // Make status optional
     imo?: string; // Make IMO optional
+    opr?: string; // Make OPR optional
     description: string;
     isPrivate?: boolean;
     privateEventId?: string;
@@ -438,6 +463,11 @@ export class SharePointService {
         // Only add IMO if it's provided (not undefined/null/empty)
         if (event.imo && event.imo.trim()) {
           itemData.IMO = event.imo;
+        }
+
+        // Only add OPR if it's provided (not undefined/null/empty)
+        if (event.opr && event.opr.trim()) {
+          itemData.OPR = event.opr;
         }
 
         // Only add Private fields if they exist in the list
@@ -474,6 +504,7 @@ export class SharePointService {
           Swimlane: itemData_result.Swimlane,
           Status: itemData_result.Status,
           IMO: itemData_result.IMO,
+          OPR: itemData_result.OPR,
           Description: itemData_result.Description || '',
           Private: itemData_result.Private || false,
           PrivateEventId: itemData_result.PrivateEventId || undefined
@@ -491,7 +522,7 @@ export class SharePointService {
     }
   }
 
-  public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', imo: string = '', description: string = '', isPrivate: boolean = false, privateEventId?: string): Promise<ISharePointEvent> {
+  public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', imo: string = '', opr: string = '', description: string = '', isPrivate: boolean = false, privateEventId?: string): Promise<ISharePointEvent> {
     try {
       Logger.debug('Creating event', { title, isPrivate });
 
@@ -515,6 +546,11 @@ export class SharePointService {
       // Only add IMO if it's provided (not undefined/null/empty)
       if (imo && imo.trim()) {
         itemData.IMO = imo;
+      }
+
+      // Only add OPR if it's provided (not undefined/null/empty)
+      if (opr && opr.trim()) {
+        itemData.OPR = opr;
       }
 
       // Only add Private fields if they exist in the list
@@ -541,6 +577,7 @@ export class SharePointService {
         Swimlane: result.Swimlane,
         Status: result.Status,
         IMO: result.IMO,
+        OPR: result.OPR,
         Description: result.Description || '',
         Private: result.Private || false,
         PrivateEventId: result.PrivateEventId || undefined
@@ -553,7 +590,7 @@ export class SharePointService {
     }
   }
 
-  public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string, imo?: string, description?: string, isPrivate?: boolean, privateEventId?: string): Promise<void> {
+  public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string, imo?: string, opr?: string, description?: string, isPrivate?: boolean, privateEventId?: string): Promise<void> {
     try {
       // Check if the list has the new Private fields
       const hasPrivateFields = await this.checkForPrivateFields();
@@ -567,6 +604,7 @@ export class SharePointService {
       if (swimlane) updateData.Swimlane = swimlane;
       if (status) updateData.Status = status;
       if (imo !== undefined) updateData.IMO = imo;
+      if (opr !== undefined) updateData.OPR = opr;
       if (description !== undefined) updateData.Description = description;
 
       // Only add Private fields if they exist in the list
@@ -635,7 +673,7 @@ export class SharePointService {
       }
 
       // For Events lists (template 106), use the built-in field names
-      const coreFields = ['EventDate', 'EndDate', 'Description', 'Swimlane', 'Status', 'IMO'];
+      const coreFields = ['EventDate', 'EndDate', 'Description', 'Swimlane', 'Status', 'IMO', 'OPR'];
       requiredFields = coreFields.concat(requirePrivateFields ? privateFields : []);
 
       // Get all fields in the list

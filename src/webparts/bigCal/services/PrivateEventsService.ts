@@ -75,7 +75,7 @@ export class PrivateEventsService {
 
     try {
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'Description', 'Private', 'PrivateEventId')
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Private', 'PrivateEventId')
         .orderBy('EventDate', true)
         .top(5000)();
 
@@ -87,6 +87,7 @@ export class PrivateEventsService {
         Swimlane: string;
         Status: string;
         IMO: string;
+        OPR: string;
         Description: string;
         Private: boolean;
         PrivateEventId: string;
@@ -98,6 +99,7 @@ export class PrivateEventsService {
         Swimlane: item.Swimlane,
         Status: item.Status,
         IMO: item.IMO,
+        OPR: item.OPR,
         Description: item.Description || '',
         Private: item.Private || false,
         PrivateEventId: item.PrivateEventId
@@ -119,6 +121,7 @@ export class PrivateEventsService {
     swimlane: string,
     status: string,
     imo: string,
+    opr: string,
     description: string
   ): Promise<IPrivateEventData | undefined> {
     const hasAccess = await this.canUserAccessPrivateEvents();
@@ -134,6 +137,7 @@ export class PrivateEventsService {
         Swimlane: swimlane,
         Status: status,
         IMO: imo,
+        OPR: opr,
         Description: description,
         Private: true
       });
@@ -146,6 +150,7 @@ export class PrivateEventsService {
         Swimlane: result.Swimlane,
         Status: result.Status,
         IMO: result.IMO,
+        OPR: result.OPR,
         Description: result.Description || '',
         Private: result.Private || false
       };
@@ -168,6 +173,7 @@ export class PrivateEventsService {
     swimlane?: string,
     status?: string,
     imo?: string,
+    opr?: string,
     description?: string
   ): Promise<void> {
     const hasAccess = await this.canUserAccessPrivateEvents();
@@ -185,6 +191,7 @@ export class PrivateEventsService {
       if (swimlane) updateData.Swimlane = swimlane;
       if (status) updateData.Status = status;
       if (imo !== undefined) updateData.IMO = imo;
+      if (opr !== undefined) updateData.OPR = opr;
       if (description !== undefined) updateData.Description = description;
 
       await this.sp.web.lists.getByTitle(this.privateListName).items.getById(id).update(updateData);
@@ -225,7 +232,7 @@ export class PrivateEventsService {
 
     try {
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'Description', 'Private', 'PrivateEventId')
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Private', 'PrivateEventId')
         .filter(`PrivateEventId eq '${privateEventId}'`)
         .top(1)();
 
@@ -242,6 +249,7 @@ export class PrivateEventsService {
         Swimlane: item.Swimlane,
         Status: item.Status,
         IMO: item.IMO,
+        OPR: item.OPR,
         Description: item.Description || '',
         Private: item.Private || false,
         PrivateEventId: item.PrivateEventId

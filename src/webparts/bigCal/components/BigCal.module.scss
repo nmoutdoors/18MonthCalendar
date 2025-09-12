@@ -531,7 +531,7 @@
 }
 
 .leftColumnContent {
-  padding: 20px 24px;
+  padding: 20px 0px 5px 10px;
 
   h3 {
     margin: 0 0 12px 0;
@@ -841,7 +841,7 @@
 
   // Add left padding to calendar cells to accommodate icons
   .rbc-month-view .rbc-date-cell {
-    padding-left: 35px !important;
+    padding-left: 5px;
   }
 
   .rbc-slot-selection {

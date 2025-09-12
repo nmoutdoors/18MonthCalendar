@@ -15,7 +15,7 @@ import {
   MessageBarType,
   Separator
 } from '@fluentui/react';
-import { ICalendarEvent, SwimlaneType, StatusType, IMOType } from './ICalendarEvent';
+import { ICalendarEvent, SwimlaneType, StatusType, IMOType, OPRType } from './ICalendarEvent';
 import { IAttachmentInfo, SharePointService } from '../services/SharePointService';
 import { AttachmentUploader } from './AttachmentUploader';
 import { AttachmentList } from './AttachmentList';
@@ -48,6 +48,7 @@ interface IEventModalState {
   swimlane: SwimlaneType;
   status: StatusType;
   imo: IMOType;
+  opr: OPRType;
   isPrivate: boolean;
   isSaving: boolean;
   isDeleting: boolean;
@@ -95,6 +96,23 @@ const getFallbackIMOOptions = (): IDropdownOption[] => [
   { key: 'IMO 8', text: 'IMO 8' }
 ];
 
+// Fallback OPR options
+const getFallbackOPROptions = (): IDropdownOption[] => [
+  { key: 'Not Set', text: 'Not Set' },
+  { key: 'J-0', text: 'J-0' },
+  { key: 'J-3/5/7', text: 'J-3/5/7' },
+  { key: 'Industry – EM', text: 'Industry – EM' },
+  { key: 'DAFA – SPIO', text: 'DAFA – SPIO' },
+  { key: 'MILDEPs – SPIO', text: 'MILDEPs – SPIO' },
+  { key: 'International Engagements', text: 'International Engagements' },
+  { key: 'Speaking Engagements – PAO', text: 'Speaking Engagements – PAO' },
+  { key: 'Media Engagements/Queries – PAO', text: 'Media Engagements/Queries – PAO' },
+  { key: 'Conferences and Exhibits – PAO', text: 'Conferences and Exhibits – PAO' },
+  { key: 'J9', text: 'J9' },
+  { key: 'Internal Engagements', text: 'Internal Engagements' },
+  { key: 'OSD/Congress', text: 'OSD/Congress' }
+];
+
 // Remove static statusOptions - will be created dynamically in component
 
 export class EventModal extends React.Component<IEventModalProps, IEventModalState> {
@@ -127,6 +145,13 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           return 'Not Set';
         }
         return props.event.imo;
+      })(),
+      opr: (() => {
+        // Handle OPR field: treat empty string as "Not Set", preserve actual values
+        if (props.event?.opr === undefined || props.event?.opr === null || props.event?.opr === '') {
+          return 'Not Set';
+        }
+        return props.event.opr;
       })(),
       isPrivate: props.event?.isPrivate || false,
       isSaving: false,
@@ -167,6 +192,8 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           endAmPm: endTimeData.amPm,
           swimlane: 'FYSA',
           status: '', // Default to blank status
+          imo: 'Not Set',
+          opr: 'J-0', // Default to first OPR option since it's mandatory
           isPrivate: false,
           isSaving: false,
           isDeleting: false,
@@ -200,6 +227,13 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
               return 'Not Set';
             }
             return this.props.event.imo;
+          })(),
+          opr: (() => {
+            // Handle OPR field: treat empty string as "Not Set", preserve actual values
+            if (this.props.event.opr === undefined || this.props.event.opr === null || this.props.event.opr === '') {
+              return 'Not Set';
+            }
+            return this.props.event.opr;
           })(),
           isPrivate: this.props.event.isPrivate || false,
           isSaving: false,
@@ -295,6 +329,13 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     return getFallbackIMOOptions();
   };
 
+  /**
+   * Get OPR options - always use fallback list (no dynamic loading for OPR)
+   */
+  private getOPROptions = (): IDropdownOption[] => {
+    return getFallbackOPROptions();
+  };
+
   private onRenderStatusOption = (option?: IDropdownOption): JSX.Element => {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -375,7 +416,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
 
   private handleSave = async (): Promise<void> => {
-    const { title, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, imo, isPrivate } = this.state;
+    const { title, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, imo, opr, isPrivate } = this.state;
 
     if (!title.trim()) {
       alert('Please enter a title for the event.');
@@ -399,6 +440,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         swimlane,
         status: (status === 'Not Set' ? '' : status), // Convert "Not Set" to empty string for storage
         imo: (imo === 'Not Set' ? '' : imo), // Convert "Not Set" to empty string for storage
+        opr: (opr === 'Not Set' ? '' : opr), // Convert "Not Set" to empty string for storage
         isPrivate
       };
 
@@ -568,7 +610,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     const { isOpen, event, onClose } = this.props;
     const {
       title, description, startDate, endDate, startTime, endTime, startAmPm, endAmPm,
-      swimlane, status, imo, isPrivate, isSaving, isDeleting,
+      swimlane, status, imo, opr, isPrivate, isSaving, isDeleting,
       attachments, isLoadingAttachments, isUploadingAttachment, attachmentUploadMessage,
       attachmentUploadMessageType, attachmentError
     } = this.state;
@@ -604,9 +646,9 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         </div>
 
         <div className={styles.modalBody}>
-          <Stack tokens={{ childrenGap: 16 }}>
-            {/* Private Event Checkbox - Top Center */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+          <Stack tokens={{ childrenGap: 12 }}>
+            {/* Private Event Checkbox - Reduced margin */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
               <Checkbox
                 label="Private Event"
                 checked={isPrivate}
@@ -614,7 +656,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                 styles={{
                   root: {
                     backgroundColor: isPrivate ? '#fff4e6' : 'transparent',
-                    padding: '8px 16px',
+                    padding: '6px 12px',
                     borderRadius: '4px',
                     border: isPrivate ? '1px solid #d83b01' : '1px solid transparent'
                   },
@@ -643,10 +685,11 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
               value={description}
               onChange={(_, newValue) => this.setState({ description: newValue || '' })}
               multiline
-              rows={3}
+              rows={2}
               placeholder="Enter event description (optional)"
             />
 
+            {/* Start Date and Time Row */}
             <Stack horizontal tokens={{ childrenGap: 16 }}>
               <Stack.Item grow>
                 <DatePicker
@@ -676,6 +719,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
               </Stack.Item>
             </Stack>
 
+            {/* End Date and Time Row */}
             <Stack horizontal tokens={{ childrenGap: 16 }}>
               <Stack.Item grow>
                 <DatePicker
@@ -705,8 +749,9 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
               </Stack.Item>
             </Stack>
 
+            {/* Event Category and Status Row */}
             <Stack horizontal tokens={{ childrenGap: 16 }}>
-              <Stack.Item grow>
+              <Stack.Item>
                 <Dropdown
                   label="Event Category"
                   selectedKey={swimlane}
@@ -714,9 +759,10 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                   onChange={(_, option) => this.setState({ swimlane: option?.key as SwimlaneType })}
                   onRenderOption={this.onRenderSwimlaneOption}
                   onRenderTitle={this.onRenderSwimlaneTitle}
+                  styles={{ root: { width: 300 } }}
                 />
               </Stack.Item>
-              <Stack.Item grow>
+              <Stack.Item>
                 <Dropdown
                   label="Status"
                   selectedKey={status}
@@ -724,14 +770,29 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                   onChange={(_, option) => this.setState({ status: option?.key as StatusType })}
                   onRenderOption={this.onRenderStatusOption}
                   onRenderTitle={this.onRenderStatusTitle}
+                  styles={{ root: { width: 300 } }}
                 />
               </Stack.Item>
-              <Stack.Item grow>
+            </Stack>
+
+            {/* IMO and OPR Row */}
+            <Stack horizontal tokens={{ childrenGap: 16 }}>
+              <Stack.Item>
                 <Dropdown
                   label="IMO"
                   selectedKey={imo}
                   options={this.getIMOOptions()}
                   onChange={(_, option) => this.setState({ imo: option?.key as IMOType })}
+                  styles={{ root: { width: 300 } }}
+                />
+              </Stack.Item>
+              <Stack.Item>
+                <Dropdown
+                  label="OPR"
+                  selectedKey={opr}
+                  options={this.getOPROptions()}
+                  onChange={(_, option) => this.setState({ opr: option?.key as OPRType })}
+                  styles={{ root: { width: 300 } }}
                 />
               </Stack.Item>
             </Stack>
