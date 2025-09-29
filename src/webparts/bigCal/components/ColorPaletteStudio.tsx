@@ -536,15 +536,18 @@ export class ColorPaletteStudio extends React.Component<IColorPaletteStudioProps
   };
 
   private renderTwoColumnLayout = (): React.ReactElement => {
-    // Filter to only show Swimlanes (not Status options) - this prevents Status values like "Tentative" from appearing
-    const swimlaneOptions = this.props.discoveredOptions.filter(o => o.fieldName === 'Swimlanes');
+    // Show Swimlanes AND Status options, but exclude "Confirmed" since it doesn't affect display (uses swimlane color)
+    const allDiscoveredOptions = this.props.discoveredOptions.filter(o =>
+      o.fieldName === 'Swimlanes' ||
+      (o.fieldName === 'Status' && o.optionValue !== 'Confirmed')
+    );
 
     // Sort options to put newly discovered ones at the bottom for better visibility
-    const existingOptions = swimlaneOptions.filter(o => !o.isNewlyDiscovered);
-    const newOptions = swimlaneOptions.filter(o => o.isNewlyDiscovered);
+    const existingOptions = allDiscoveredOptions.filter(o => !o.isNewlyDiscovered);
+    const newOptions = allDiscoveredOptions.filter(o => o.isNewlyDiscovered);
 
     // Also identify recently created items for highlighting
-    const recentlyCreatedOptions = swimlaneOptions.filter(o => o.isRecentlyCreated);
+    const recentlyCreatedOptions = allDiscoveredOptions.filter(o => o.isRecentlyCreated);
 
     const allOptions = [...existingOptions, ...newOptions];
 
