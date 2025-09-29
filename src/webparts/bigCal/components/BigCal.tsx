@@ -2948,7 +2948,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
         {/* 🚀 LEGENDARY PRINT PREVIEW - The Future of Calendar Printing! */}
         <LegendaryPrintPreview
-          events={allEventsWithHolidays}
+          events={allFilteredEvents}
           isOpen={isLegendaryPrintOpen}
           onClose={this.closeLegendaryPrint}
           currentDate={currentDate}
