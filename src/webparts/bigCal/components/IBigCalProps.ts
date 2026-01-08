@@ -13,5 +13,6 @@ export interface IBigCalProps {
   showIconSelector: boolean;
   showTimelineView: boolean;
   gridLineOpacity: number;
+  webPartDomElement: HTMLElement; // Reference to web part container for fullscreen toggle
   onConfigureProperties?: () => void;
 }

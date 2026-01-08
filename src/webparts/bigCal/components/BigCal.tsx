@@ -1376,6 +1376,25 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
    */
   private exitFullscreen = (): void => {
     try {
+      // FLICKER FIX: Reset styles on the webPartDomElement (where CSS bootstrap was applied)
+      if (this.props.webPartDomElement) {
+        const container = this.props.webPartDomElement;
+        container.style.position = '';
+        container.style.top = '';
+        container.style.left = '';
+        container.style.right = '';
+        container.style.bottom = '';
+        container.style.zIndex = '';
+        container.style.height = '';
+        container.style.width = '';
+        container.style.maxWidth = '';
+        container.style.padding = '';
+        container.style.margin = '';
+        container.style.backgroundColor = '';
+
+        Logger.debug('Reset fullscreen CSS bootstrap on web part container');
+      }
+
       // Get our component element
       const bigCalElement = document.querySelector(`.${styles.bigCal}`);
       if (!bigCalElement) return;

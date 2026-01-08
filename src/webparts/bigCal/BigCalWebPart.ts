@@ -65,6 +65,7 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         showIconSelector: this.properties.showIconSelector || false, // Default to false
         showTimelineView: this.properties.showTimelineView !== false, // Default to true for backward compatibility
         gridLineOpacity: this.properties.gridLineOpacity || 0.5, // Default to 50% opacity
+        webPartDomElement: this.domElement, // Pass reference for fullscreen toggle
         onConfigureProperties: () => {
           this.context.propertyPane.open();
         }
