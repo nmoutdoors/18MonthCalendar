@@ -91,6 +91,11 @@ interface IBigCalState {
   dynamicIconMappings: Map<string, string>;
   // Available swimlanes from SharePoint list
   availableSwimlanes: string[];
+  // Lazy loading state
+  isPartialLoad: boolean;
+  loadedDateRange: { start: Date; end: Date } | undefined;
+  isLoadingFullDataset: boolean;
+  preserveScrollPosition: boolean; // Don't auto-scroll to current month when user is actively scrolling
 }
 
 export default class BigCal extends React.Component<IBigCalProps, IBigCalState> {
@@ -102,6 +107,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   // Refs for mini calendar auto-scroll functionality
   private miniCalendarScrollAreaRef = React.createRef<HTMLDivElement>();
   private miniCalendarRefs = new Map<string, HTMLDivElement>();
+  private scrollCheckTimeout: number | null = null;
 
   constructor(props: IBigCalProps) {
     super(props);
@@ -170,7 +176,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       // Dynamic icon mappings from Color Palette Studio
       dynamicIconMappings: new Map(),
       // Available swimlanes from SharePoint list
-      availableSwimlanes: []
+      availableSwimlanes: [],
+      // Lazy loading state
+      isPartialLoad: props.enableLazyLoading, // Start with partial load if enabled
+      loadedDateRange: undefined, // Will be set when events are loaded
+      isLoadingFullDataset: false,
+      preserveScrollPosition: false // Allow auto-scroll on initial load
     };
 
     this.sharePointService = new SharePointService(props.context, props.listName);
@@ -350,6 +361,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       window.clearTimeout(this.popoverTimeout);
       this.popoverTimeout = null;
     }
+
+    // Clear scroll check timeout
+    if (this.scrollCheckTimeout) {
+      window.clearTimeout(this.scrollCheckTimeout);
+      this.scrollCheckTimeout = null;
+    }
   }
 
   private loadDynamicColorMappings = async (): Promise<void> => {
@@ -464,26 +481,157 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
   };
 
+  /**
+   * Calculate date range for initial lazy load
+   */
+  private calculateInitialDateRange(): { start: Date; end: Date } {
+    const today = new Date();
+    const startDate = new Date(today.getTime());
+    const endDate = new Date(today.getTime());
+
+    // Apply configured months (with minimum safeguards)
+    const monthsPast = Math.max(0, this.props.lazyLoadMonthsPast);
+    const monthsFuture = Math.max(0, this.props.lazyLoadMonthsFuture);
+
+    // Set start date (X months in the past)
+    startDate.setMonth(today.getMonth() - monthsPast);
+    startDate.setDate(1); // Start of month
+    startDate.setHours(0, 0, 0, 0);
+
+    // Set end date (X months in the future)
+    endDate.setMonth(today.getMonth() + monthsFuture + 1); // +1 to include the full future month
+    endDate.setDate(0); // Last day of previous month (end of the future month)
+    endDate.setHours(23, 59, 59, 999);
+
+    return { start: startDate, end: endDate };
+  }
+
+  /**
+   * Check if a date is outside the currently loaded range
+   */
+  private isDateOutsideLoadedRange(date: Date): boolean {
+    if (!this.state.isPartialLoad || !this.state.loadedDateRange) {
+      return false; // All events loaded or no range set
+    }
+
+    const { start, end } = this.state.loadedDateRange;
+    return date < start || date > end;
+  }
+
+  /**
+   * Check if we need to load all events and trigger load if needed
+   */
+  private checkAndLoadAllIfNeeded = async (requestedDate?: Date): Promise<void> => {
+    // Skip if already loading or if all events are loaded
+    if (this.state.isLoadingFullDataset || !this.state.isPartialLoad) {
+      return;
+    }
+
+    // Check if requested date is outside loaded range
+    if (requestedDate && this.isDateOutsideLoadedRange(requestedDate)) {
+      if (this.props.enablePerformanceLogging) {
+        Logger.info(`[Lazy Load] Date ${requestedDate.toLocaleDateString()} is outside loaded range. Loading all events...`);
+      }
+      await this.loadAllEvents();
+    }
+  };
+
+  /**
+   * Load events - uses lazy loading if enabled, otherwise loads all events
+   */
   private loadEvents = async (): Promise<void> => {
+    if (this.props.enableLazyLoading) {
+      await this.loadInitialEvents();
+    } else {
+      await this.loadAllEvents();
+    }
+  };
+
+  /**
+   * Load initial events within configured date range (lazy loading)
+   */
+  private loadInitialEvents = async (): Promise<void> => {
     try {
       this.setState({ isLoading: true, error: undefined });
 
-      // Use HybridEventsService to get all events (public + private based on permissions)
-      // Pass the emulation flag for testing
-      const calendarEvents = await this.hybridEventsService.getAllEvents(this.state.emulateNonPrivilegedUser);
+      const dateRange = this.calculateInitialDateRange();
+      const startTime = performance.now();
+
+      if (this.props.enablePerformanceLogging) {
+        Logger.info(`[Lazy Load] Loading events from ${dateRange.start.toLocaleDateString()} to ${dateRange.end.toLocaleDateString()} (${this.props.lazyLoadMonthsPast} past + current + ${this.props.lazyLoadMonthsFuture} future months)`);
+      }
+
+      // Use HybridEventsService to get events within date range
+      const calendarEvents = await this.hybridEventsService.getAllEventsByDateRange(
+        dateRange.start,
+        dateRange.end,
+        this.state.emulateNonPrivilegedUser
+      );
+
+      const endTime = performance.now();
+      const duration = Math.round(endTime - startTime);
+
+      if (this.props.enablePerformanceLogging) {
+        Logger.info(`[Lazy Load] Loaded ${calendarEvents.length} events in ${duration}ms`);
+      }
 
       this.setState({
         events: calendarEvents,
-        isLoading: false
+        isLoading: false,
+        isPartialLoad: true,
+        loadedDateRange: dateRange
       }, () => {
         // Apply filters after events are loaded
         this.applyFilters();
       });
     } catch (error) {
-      Logger.error('Failed to load events', error);
+      Logger.error('Failed to load initial events', error);
       this.setState({
         error: 'Failed to load events from SharePoint. Please check your connection and permissions.',
         isLoading: false
+      });
+    }
+  };
+
+  /**
+   * Load all events (full dataset) - triggered by user action or when lazy loading is disabled
+   */
+  private loadAllEvents = async (): Promise<void> => {
+    try {
+      this.setState({ isLoadingFullDataset: true, error: undefined });
+
+      const startTime = performance.now();
+
+      if (this.props.enablePerformanceLogging) {
+        Logger.info('[Full Load] Loading all events...');
+      }
+
+      // Use HybridEventsService to get all events (public + private based on permissions)
+      const calendarEvents = await this.hybridEventsService.getAllEvents(this.state.emulateNonPrivilegedUser);
+
+      const endTime = performance.now();
+      const duration = Math.round(endTime - startTime);
+
+      if (this.props.enablePerformanceLogging) {
+        Logger.info(`[Full Load] Loaded ${calendarEvents.length} events in ${duration}ms`);
+      }
+
+      this.setState({
+        events: calendarEvents,
+        isLoading: false,
+        isLoadingFullDataset: false,
+        isPartialLoad: false,
+        loadedDateRange: undefined // No range limit when all events are loaded
+      }, () => {
+        // Apply filters after events are loaded
+        this.applyFilters();
+      });
+    } catch (error) {
+      Logger.error('Failed to load all events', error);
+      this.setState({
+        error: 'Failed to load events from SharePoint. Please check your connection and permissions.',
+        isLoading: false,
+        isLoadingFullDataset: false
       });
     }
   };
@@ -519,11 +667,26 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private handleMonthNavigate = (month: Date): void => {
     this.setState({ currentDate: month, viewMode: 'calendar' });
+
+    // Check if we need to load all events (lazy loading trigger for mini-calendar navigation)
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    this.checkAndLoadAllIfNeeded(month);
   };
 
   private handleViewModeChange = (item?: PivotItem): void => {
     if (item?.props.itemKey) {
-      this.setState({ viewMode: item.props.itemKey as 'calendar' | 'grid' | 'timeline' }, () => {
+      const newViewMode = item.props.itemKey as 'calendar' | 'grid' | 'timeline';
+
+      // Trigger load all events for grid view (18-month view needs all data)
+      if (newViewMode === 'grid' && this.state.isPartialLoad) {
+        if (this.props.enablePerformanceLogging) {
+          Logger.info('[Lazy Load] Switching to 18-Month Grid View. Loading all events...');
+        }
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.loadAllEvents();
+      }
+
+      this.setState({ viewMode: newViewMode }, () => {
         // Maintain mini calendar scroll position when switching views
         setTimeout(() => {
           this.scrollToCurrentMonth();
@@ -533,6 +696,15 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   private openDataSheetModal = (): void => {
+    // Trigger load all events for DataSheet view (needs all data for editing)
+    if (this.state.isPartialLoad) {
+      if (this.props.enablePerformanceLogging) {
+        Logger.info('[Lazy Load] Opening DataSheet View. Loading all events...');
+      }
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.loadAllEvents();
+    }
+
     this.setState({ isDataSheetModalOpen: true });
   };
 
@@ -578,6 +750,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
    * Implements smart navigation: shows next month during the last week
    */
   private scrollToCurrentMonth = (): void => {
+    // Don't auto-scroll if user is actively scrolling (preserve their position)
+    if (this.state.preserveScrollPosition) {
+      return;
+    }
+
     // Use current date for smart navigation
     const today = new Date();
 
@@ -635,6 +812,83 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     } else {
       console.warn('❌ Cannot scroll - missing element or container');
     }
+  };
+
+  /**
+   * Handle mini-calendar scroll events to detect when user scrolls beyond loaded range
+   */
+  private handleMiniCalendarScroll = (): void => {
+    // Debounce scroll checks to avoid excessive processing
+    if (this.scrollCheckTimeout) {
+      window.clearTimeout(this.scrollCheckTimeout);
+    }
+
+    // Mark that user is actively scrolling (preserve their position)
+    this.setState({ preserveScrollPosition: true });
+
+    this.scrollCheckTimeout = window.setTimeout(() => {
+      // Only check if we're in partial load mode
+      if (!this.state.isPartialLoad || !this.state.loadedDateRange) {
+        return;
+      }
+
+      const scrollContainer = this.miniCalendarScrollAreaRef.current;
+      if (!scrollContainer) {
+        return;
+      }
+
+      // Get scroll metrics
+      const scrollTop = scrollContainer.scrollTop;
+      const scrollHeight = scrollContainer.scrollHeight;
+      const clientHeight = scrollContainer.clientHeight;
+      const scrollPercentage = (scrollTop / (scrollHeight - clientHeight)) * 100;
+
+      // Check which months are currently visible in the viewport
+      const visibleMonths: Date[] = [];
+      this.miniCalendarRefs.forEach((element, monthKey) => {
+        const rect = element.getBoundingClientRect();
+        const containerRect = scrollContainer.getBoundingClientRect();
+
+        // Check if this month is visible in the viewport
+        if (rect.top < containerRect.bottom && rect.bottom > containerRect.top) {
+          const [year, month] = monthKey.split('-').map(Number);
+          visibleMonths.push(new Date(year, month, 1));
+        }
+      });
+
+      if (visibleMonths.length === 0) {
+        return;
+      }
+
+      // Find the earliest and latest visible months
+      const earliestVisible = new Date(Math.min(...visibleMonths.map(d => d.getTime())));
+      const latestVisible = new Date(Math.max(...visibleMonths.map(d => d.getTime())));
+
+      // Check if user has scrolled beyond the loaded range
+      const loadedStart = this.state.loadedDateRange.start;
+      const loadedEnd = this.state.loadedDateRange.end;
+
+      const scrolledBeforeRange = earliestVisible < loadedStart;
+      const scrolledAfterRange = latestVisible > loadedEnd;
+
+      if (scrolledBeforeRange || scrolledAfterRange) {
+        if (this.props.enablePerformanceLogging) {
+          Logger.info('[Lazy Load] User scrolled beyond loaded range. Triggering load all events...', {
+            scrollPercentage: scrollPercentage.toFixed(1),
+            earliestVisible: earliestVisible.toLocaleDateString(),
+            latestVisible: latestVisible.toLocaleDateString(),
+            loadedStart: loadedStart.toLocaleDateString(),
+            loadedEnd: loadedEnd.toLocaleDateString(),
+            scrolledBeforeRange,
+            scrolledAfterRange
+          });
+        }
+
+        // Trigger load all events
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.loadAllEvents();
+      }
+    }, 300); // 300ms debounce
   };
 
   /**
@@ -1458,6 +1712,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private handleNavigate = (date: Date): void => {
     this.setState({ currentDate: date });
+
+    // Check if we need to load all events (lazy loading trigger)
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    this.checkAndLoadAllIfNeeded(date);
   };
 
   private handleShowMore = (events: ICalendarEvent[], date: Date): void => {
@@ -2749,6 +3007,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                     <div
                       className={styles.miniCalendarScrollArea}
                       ref={this.miniCalendarScrollAreaRef}
+                      onScroll={this.handleMiniCalendarScroll}
                     >
                       {this.get18MonthRange().map((month, index) => {
                         const monthEvents = this.getEventsForMonth(month);
@@ -3021,6 +3280,28 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                     root: { width: '100%' }
                   }}
                 />
+                {this.state.isPartialLoad && this.state.loadedDateRange && (
+                  <MessageBar
+                    messageBarType={MessageBarType.info}
+                    styles={{ root: { marginTop: '12px' } }}
+                    actions={
+                      <div>
+                        <IconButton
+                          iconProps={{ iconName: 'Download' }}
+                          title="Load all events"
+                          ariaLabel="Load all events"
+                          onClick={() => {
+                            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+                            this.loadAllEvents();
+                          }}
+                          disabled={this.state.isLoadingFullDataset}
+                        />
+                      </div>
+                    }
+                  >
+                    Searching {this.state.loadedDateRange.start.toLocaleDateString()} - {this.state.loadedDateRange.end.toLocaleDateString()} ({this.props.lazyLoadMonthsPast + 1 + this.props.lazyLoadMonthsFuture} months). Click to load all events.
+                  </MessageBar>
+                )}
                 {searchText && (
                   <div style={{ marginTop: '12px', fontSize: '14px', color: 'var(--neutralSecondary, #605e5c)' }}>
                     Found {allFilteredEvents.filter(event => event.title.toLowerCase().indexOf(searchText.toLowerCase()) !== -1).length} events matching &ldquo;{searchText}&rdquo;

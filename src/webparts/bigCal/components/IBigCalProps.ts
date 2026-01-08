@@ -14,5 +14,10 @@ export interface IBigCalProps {
   showTimelineView: boolean;
   gridLineOpacity: number;
   webPartDomElement: HTMLElement; // Reference to web part container for fullscreen toggle
+  // Lazy Loading Configuration
+  enableLazyLoading: boolean;
+  lazyLoadMonthsPast: number;
+  lazyLoadMonthsFuture: number;
+  enablePerformanceLogging: boolean;
   onConfigureProperties?: () => void;
 }

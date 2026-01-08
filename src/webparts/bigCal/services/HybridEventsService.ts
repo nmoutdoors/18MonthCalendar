@@ -32,7 +32,7 @@ export class HybridEventsService {
     try {
       // Get public events
       const publicEvents = await this.sharePointService.getEvents();
-      
+
       // Check if user can access private events (or if we're emulating non-privileged user)
       this.canAccessPrivateEvents = emulateNonPrivilegedUser ? false : await this.privateEventsService.canUserAccessPrivateEvents();
 
@@ -48,6 +48,39 @@ export class HybridEventsService {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       throw new Error(`Failed to fetch events: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Get events within a specific date range (for lazy loading optimization)
+   * @param startDate - Start of date range (inclusive)
+   * @param endDate - End of date range (inclusive)
+   * @param emulateNonPrivilegedUser - Whether to emulate non-privileged user for testing
+   */
+  public async getAllEventsByDateRange(
+    startDate: Date,
+    endDate: Date,
+    emulateNonPrivilegedUser: boolean = false
+  ): Promise<ICalendarEvent[]> {
+    try {
+      // Get public events within date range
+      const publicEvents = await this.sharePointService.getEventsByDateRange(startDate, endDate);
+
+      // Check if user can access private events (or if we're emulating non-privileged user)
+      this.canAccessPrivateEvents = emulateNonPrivilegedUser ? false : await this.privateEventsService.canUserAccessPrivateEvents();
+
+      if (!this.canAccessPrivateEvents) {
+        // User cannot see private events - return public events with "Unavailable" placeholders
+        return this.convertToCalendarEvents(publicEvents, []);
+      }
+
+      // User can see private events - get private data within date range and merge
+      const privateEvents = await this.privateEventsService.getPrivateEventsByDateRange(startDate, endDate);
+      return this.convertToCalendarEvents(publicEvents, privateEvents);
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      throw new Error(`Failed to fetch events by date range: ${errorMessage}`);
     }
   }
 

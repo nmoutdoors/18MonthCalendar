@@ -422,7 +422,118 @@ export class SharePointService {
     }
   }
 
+  /**
+   * Get events within a specific date range (for lazy loading optimization)
+   * @param startDate - Start of date range (inclusive)
+   * @param endDate - End of date range (inclusive)
+   */
+  public async getEventsByDateRange(startDate: Date, endDate: Date): Promise<ISharePointEvent[]> {
+    try {
+      // Check if the list has the new Private fields
+      const hasPrivateFields = await this.checkForPrivateFields();
 
+      // Use PnP.js to get items from the Events list
+      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description';
+
+      // Enhanced field selection for production environments
+      if (hasPrivateFields) {
+        try {
+          // Get actual field names to handle case sensitivity
+          const fields = await this.sp.web.lists.getByTitle(this.listName).fields
+            .select('InternalName')();
+
+          let privateField: { InternalName: string } | undefined = undefined;
+          let privateEventIdField: { InternalName: string } | undefined = undefined;
+
+          for (let i = 0; i < fields.length; i++) {
+            const field = fields[i];
+            const lowerName = field.InternalName.toLowerCase();
+            if (lowerName.indexOf('private') !== -1 && lowerName.indexOf('privateeventid') === -1) {
+              privateField = field;
+            }
+            if (lowerName.indexOf('privateeventid') !== -1) {
+              privateEventIdField = field;
+            }
+          }
+
+          if (privateField && privateEventIdField) {
+            selectFields += `,${privateField.InternalName},${privateEventIdField.InternalName}`;
+            Logger.debug('Using actual private field names');
+          } else {
+            Logger.warn('Private fields detected but actual field names not found');
+            selectFields += ',Private,PrivateEventId'; // Fallback to expected names
+          }
+        } catch (fieldError) {
+          Logger.warn('Error getting field names, using defaults', fieldError);
+          selectFields += ',Private,PrivateEventId'; // Fallback to expected names
+        }
+      }
+
+      // Build OData filter for date range
+      // Filter events where EventDate is within the range
+      const startISO = startDate.toISOString();
+      const endISO = endDate.toISOString();
+      const filterQuery = `EventDate ge datetime'${startISO}' and EventDate le datetime'${endISO}'`;
+
+      const itemsPromise = this.sp.web.lists.getByTitle(this.listName).items
+        .select(selectFields)
+        .filter(filterQuery)
+        .orderBy('EventDate', true)
+        .top(5000)(); // Increase limit to 5000 events
+
+      const items = await withTimeout(itemsPromise, NETWORK_TIMEOUTS.STANDARD, `Get events from ${this.listName} (${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()})`);
+
+      Logger.info(`Loaded ${items.length} events from SharePoint for date range ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`);
+
+      return items.map((item: {
+        Id: number;
+        Title: string;
+        EventDate: string;
+        EndDate: string;
+        Swimlane: string;
+        Status: string;
+        IMO: string;
+        OPR: string;
+        Description?: string;
+        Private?: unknown;
+        PrivateEventId?: string;
+      }) => {
+        // Enhanced boolean field handling for production environments
+        const isPrivate = this.normalizeBoolean(item.Private);
+
+        const mappedEvent = {
+          Id: item.Id,
+          Title: item.Title,
+          EventDate: item.EventDate,
+          EndDate: item.EndDate,
+          Swimlane: item.Swimlane,
+          Status: item.Status,
+          IMO: item.IMO === 'null' || item.IMO === null || item.IMO === undefined ? '' : item.IMO,
+          OPR: item.OPR === 'null' || item.OPR === null || item.OPR === undefined ? '' : item.OPR,
+          Description: item.Description || '',
+          Private: isPrivate,
+          PrivateEventId: item.PrivateEventId
+        };
+
+        // Only log private events in debug mode to avoid performance impact
+        if ((isPrivate || item.PrivateEventId) && Logger.getConfig().level >= 3) {
+          Logger.debug(`Private event: ${item.Title} (ID: ${item.Id})`);
+        }
+
+        return mappedEvent;
+      });
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error fetching events by date range from SharePoint', {
+        message: errorMessage,
+        listName: this.listName,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      });
+      throw new Error(`Failed to fetch events by date range: ${errorMessage}`);
+    }
+  }
 
   /**
    * Create multiple events in a single batch operation for better performance

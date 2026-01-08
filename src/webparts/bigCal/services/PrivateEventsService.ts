@@ -112,6 +112,63 @@ export class PrivateEventsService {
   }
 
   /**
+   * Get private events within a specific date range (for lazy loading optimization)
+   * @param startDate - Start of date range (inclusive)
+   * @param endDate - End of date range (inclusive)
+   */
+  public async getPrivateEventsByDateRange(startDate: Date, endDate: Date): Promise<IPrivateEventData[]> {
+    const hasAccess = await this.canUserAccessPrivateEvents();
+    if (!hasAccess) {
+      return []; // Return empty array if no access
+    }
+
+    try {
+      // Build OData filter for date range
+      const startISO = startDate.toISOString();
+      const endISO = endDate.toISOString();
+      const filterQuery = `EventDate ge datetime'${startISO}' and EventDate le datetime'${endISO}'`;
+
+      const items = await this.sp.web.lists.getByTitle(this.privateListName).items
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Private', 'PrivateEventId')
+        .filter(filterQuery)
+        .orderBy('EventDate', true)
+        .top(5000)();
+
+      Logger.info(`Loaded ${items.length} private events for date range ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`);
+
+      return items.map((item: {
+        Id: number;
+        Title: string;
+        EventDate: string;
+        EndDate: string;
+        Swimlane: string;
+        Status: string;
+        IMO: string;
+        OPR: string;
+        Description: string;
+        Private: boolean;
+        PrivateEventId: string;
+      }) => ({
+        Id: item.Id,
+        Title: item.Title,
+        EventDate: item.EventDate,
+        EndDate: item.EndDate,
+        Swimlane: item.Swimlane,
+        Status: item.Status,
+        IMO: item.IMO,
+        OPR: item.OPR,
+        Description: item.Description || '',
+        Private: item.Private || false,
+        PrivateEventId: item.PrivateEventId
+      }));
+
+    } catch (error: unknown) {
+      Logger.error('Error fetching private events by date range', error);
+      return []; // Return empty array on error
+    }
+  }
+
+  /**
    * Create a private event
    */
   public async createPrivateEvent(

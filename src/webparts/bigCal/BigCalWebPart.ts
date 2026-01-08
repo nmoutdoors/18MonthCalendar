@@ -28,6 +28,11 @@ export interface IBigCalWebPartProps {
   showIconSelector: boolean;
   showTimelineView: boolean;
   gridLineOpacity: number;
+  // Lazy Loading Configuration
+  enableLazyLoading: boolean;
+  lazyLoadMonthsPast: number;
+  lazyLoadMonthsFuture: number;
+  enablePerformanceLogging: boolean;
 }
 
 export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartProps> {
@@ -66,6 +71,11 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         showTimelineView: this.properties.showTimelineView !== false, // Default to true for backward compatibility
         gridLineOpacity: this.properties.gridLineOpacity || 0.5, // Default to 50% opacity
         webPartDomElement: this.domElement, // Pass reference for fullscreen toggle
+        // Lazy Loading Configuration
+        enableLazyLoading: this.properties.enableLazyLoading !== undefined ? this.properties.enableLazyLoading : true, // Default to true
+        lazyLoadMonthsPast: this.properties.lazyLoadMonthsPast !== undefined ? this.properties.lazyLoadMonthsPast : 1, // Default to 1
+        lazyLoadMonthsFuture: this.properties.lazyLoadMonthsFuture !== undefined ? this.properties.lazyLoadMonthsFuture : 4, // Default to 4
+        enablePerformanceLogging: this.properties.enablePerformanceLogging || false, // Default to false
         onConfigureProperties: () => {
           this.context.propertyPane.open();
         }
@@ -167,6 +177,20 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
 
       // Refresh the property pane to show validation results
       this.context.propertyPane.refresh();
+    }
+
+    // Refresh property pane when lazy loading is toggled to enable/disable month sliders
+    if (propertyPath === 'enableLazyLoading') {
+      this.context.propertyPane.refresh();
+      // Re-render the web part to apply the new lazy loading setting
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.render();
+    }
+
+    // Re-render when lazy loading months are changed
+    if (propertyPath === 'lazyLoadMonthsPast' || propertyPath === 'lazyLoadMonthsFuture') {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.render();
     }
   }
 
@@ -590,6 +614,36 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         step: 0.1,
         showValue: true,
         value: this.properties.gridLineOpacity || 0.5
+      }),
+      PropertyPaneToggle('enableLazyLoading', {
+        label: 'Enable Fast Loading (Lazy Load Events)',
+        onText: 'Enabled',
+        offText: 'Disabled (Load All Events)',
+        checked: this.properties.enableLazyLoading !== undefined ? this.properties.enableLazyLoading : true
+      }),
+      PropertyPaneSlider('lazyLoadMonthsPast', {
+        label: 'Months to Load (Past)',
+        min: 0,
+        max: 12,
+        step: 1,
+        showValue: true,
+        value: this.properties.lazyLoadMonthsPast !== undefined ? this.properties.lazyLoadMonthsPast : 1,
+        disabled: this.properties.enableLazyLoading === false // Only disable if explicitly set to false
+      }),
+      PropertyPaneSlider('lazyLoadMonthsFuture', {
+        label: 'Months to Load (Future)',
+        min: 0,
+        max: 12,
+        step: 1,
+        showValue: true,
+        value: this.properties.lazyLoadMonthsFuture !== undefined ? this.properties.lazyLoadMonthsFuture : 4,
+        disabled: this.properties.enableLazyLoading === false // Only disable if explicitly set to false
+      }),
+      PropertyPaneToggle('enablePerformanceLogging', {
+        label: 'Enable Performance Logging',
+        onText: 'Enabled',
+        offText: 'Disabled',
+        checked: this.properties.enablePerformanceLogging || false
       }),
       PropertyPaneTextField('listName', {
         label: 'SharePoint List Name',
