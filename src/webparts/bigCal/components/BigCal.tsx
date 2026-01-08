@@ -200,11 +200,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                          document.querySelector('.CanvasComponent') as HTMLElement ||
                          document.querySelector('[data-automation-id="CanvasComponent"]') as HTMLElement;
 
+    // FLICKER FIX: No delay needed - fullscreen CSS is already applied by WebPart.onInit()
+    // The CSS bootstrap in BigCalWebPart.applyFullscreenBootstrap() ensures fullscreen
+    // is established BEFORE React mounts, preventing flicker
     if (this.webPartElement && this.state.isFullscreen) {
-      // Delay fullscreen application to avoid conflicts with SharePoint page rendering
-      setTimeout(() => {
-        this.enterFullscreen();
-      }, 200);
+      this.enterFullscreen();
     }
 
     // If timeline view is disabled but currently selected, switch to calendar view

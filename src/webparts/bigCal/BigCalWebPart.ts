@@ -83,6 +83,12 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       this.properties.startInFullscreen = true;  // Default to fullscreen
     }
 
+    // FLICKER FIX: Apply fullscreen CSS BEFORE React renders (UnityFX pattern)
+    // This prevents the flicker/disappear/reappear issue on page load
+    if (this.properties.startInFullscreen) {
+      this.applyFullscreenBootstrap();
+    }
+
 
 
     // Set default list name if not already set
@@ -713,6 +719,38 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         }
       ]
     };
+  }
+
+  /**
+   * FLICKER FIX: Apply fullscreen CSS to web part container BEFORE React renders
+   * This follows the UnityFX Fullscreen Layout Pattern to prevent flicker
+   * Reference: unityfx/patterns/ui-shell/02-Fullscreen-Layout-Pattern.md
+   */
+  private applyFullscreenBootstrap(): void {
+    try {
+      // Apply styles directly to the web part's DOM element
+      // This happens BEFORE React.render(), preventing any intermediate page states
+      const container = this.domElement;
+
+      if (container) {
+        container.style.position = 'fixed';
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.right = '0';
+        container.style.bottom = '0';
+        container.style.zIndex = '100';  // Lower than SharePoint's toolbar (z-index: 1000+)
+        container.style.height = '100vh';
+        container.style.width = '100vw';
+        container.style.maxWidth = '100vw';
+        container.style.padding = '0';
+        container.style.margin = '0';
+        container.style.backgroundColor = '#ffffff';
+
+        Logger.debug('Fullscreen CSS bootstrap applied to web part container');
+      }
+    } catch (error) {
+      Logger.error('Error applying fullscreen bootstrap', error);
+    }
   }
 
   /**
