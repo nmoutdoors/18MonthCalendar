@@ -183,6 +183,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       return; // Exit early if refreshing
     }
 
+    // Hide SharePoint navigation bar (z-index 9999 fix)
+    const suiteNav = document.getElementById('SuiteNavWrapper');
+    if (suiteNav) {
+      suiteNav.style.display = 'none';
+    }
+
     // Add debug reference for console debugging (development only)
     if (process.env.NODE_ENV === 'development') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

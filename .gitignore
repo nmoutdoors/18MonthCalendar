@@ -32,3 +32,6 @@ obj
 
 # Styles Generated Code
 *.scss.ts
+
+# UnityFX junction (points to C:\code\UnityFX)
+unityfx
