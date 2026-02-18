@@ -2145,6 +2145,15 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   // Export/Print dialog methods
   private openExportDialog = (): void => {
+    // Trigger load all events for Excel Export (users expect to export all events)
+    if (this.state.isPartialLoad) {
+      if (this.props.enablePerformanceLogging) {
+        Logger.info('[Lazy Load] Opening Excel Export. Loading all events...');
+      }
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.loadAllEvents();
+    }
+
     this.setState({ isExportDialogOpen: true });
   };
 
@@ -2159,6 +2168,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   // 🚀 LEGENDARY PRINT METHODS
   private openLegendaryPrint = (): void => {
     Logger.info('Opening Legendary Print Preview - prepare for awesomeness! 🎸');
+
+    // Trigger load all events for Legendary Print (multi-month/week/day prints need all data)
+    if (this.state.isPartialLoad) {
+      if (this.props.enablePerformanceLogging) {
+        Logger.info('[Lazy Load] Opening Legendary Print. Loading all events...');
+      }
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.loadAllEvents();
+    }
+
     this.setState({ isLegendaryPrintOpen: true });
   };
 
