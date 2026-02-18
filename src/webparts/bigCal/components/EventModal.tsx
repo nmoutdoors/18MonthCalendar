@@ -518,6 +518,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     }
 
     const eventId = this.props.event.id as number;
+
     if (!eventId || eventId <= 0) {
       this.setState({
         attachmentUploadMessage: 'Cannot upload attachments: Event must be saved first',
@@ -528,6 +529,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
     // Validate file
     const validation = this.props.sharePointService.validateFileForUpload(file);
+
     if (!validation.isValid) {
       this.setState({
         attachmentUploadMessage: validation.errorMessage || 'File validation failed',
@@ -543,7 +545,10 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     });
 
     try {
-      const result = await this.props.sharePointService.addEventAttachment(eventId, file.name, file);
+      // Read the file as ArrayBuffer before uploading
+      const fileContent = await this.readFileAsArrayBuffer(file);
+
+      const result = await this.props.sharePointService.addEventAttachment(eventId, file.name, fileContent);
 
       if (result.success) {
         this.setState({
@@ -576,16 +581,52 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     }
   };
 
+  /**
+   * Read a File object as ArrayBuffer for upload
+   */
+  private readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result instanceof ArrayBuffer) {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to read file as ArrayBuffer'));
+        }
+      };
+      reader.onerror = () => {
+        reject(new Error('Error reading file'));
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
   private handleAttachmentDownload = (fileName: string): void => {
     if (!this.props.event || !this.props.sharePointService) {
       return;
     }
 
-    const eventId = this.props.event.id as number;
-    const downloadUrl = this.props.sharePointService.getAttachmentDownloadUrl(eventId, fileName);
+    // Find the attachment in the state to get its ServerRelativeUrl
+    let attachment: IAttachmentInfo | undefined;
+    for (let i = 0; i < this.state.attachments.length; i++) {
+      if (this.state.attachments[i].FileName === fileName) {
+        attachment = this.state.attachments[i];
+        break;
+      }
+    }
 
-    // Open download in new window/tab
-    window.open(downloadUrl, '_blank');
+    if (attachment && attachment.ServerRelativeUrl) {
+      // ServerRelativeUrl is already a full server-relative path (e.g., /sites/Dev/Lists/...)
+      // We need to get the origin (protocol + hostname) and append the ServerRelativeUrl
+      const origin = window.location.origin;
+      const downloadUrl = `${origin}${attachment.ServerRelativeUrl}`;
+      window.open(downloadUrl, '_blank');
+    } else {
+      // Fallback to the old method if ServerRelativeUrl is not available
+      const eventId = this.props.event.id as number;
+      const downloadUrl = this.props.sharePointService.getAttachmentDownloadUrl(eventId, fileName);
+      window.open(downloadUrl, '_blank');
+    }
   };
 
   private handleAttachmentDelete = async (fileName: string): Promise<void> => {

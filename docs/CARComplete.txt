@@ -1,0 +1,214 @@
+Title	Single line of text	
+RecordType	Choice	
+CAR
+Finding
+Recommendation
+
+RelatedCAR	Lookup	CARComplete
+RelatedFinding	Lookup	CARComplete
+Archived	Yes/No	
+Status	Choice	
+Overdue
+Open
+Closed
+Due Within 30 Days
+
+StatusNew	Choice	
+Overdue
+On Target
+Due Within 30 Days
+Closed
+Constraints
+
+StatusByOffice	Choice	
+J1
+J2
+J3/5/7
+J4
+J6
+J8
+J9
+ACQ
+COS
+DD
+EII
+DCDC
+PSD
+SDC
+WHCA
+WHSSS
+Other
+
+StatusByOfficeMulti	Choice	
+J1
+J2
+J3/5/7
+J4
+J6
+J8
+J9
+ACQ
+COS
+DD
+EII
+DCDC
+PSD
+SDC
+WHCA
+WHSSS
+Other
+
+ActionType	Choice	
+Audit
+Evaluation
+Investigation
+
+ProjectNumber	Single line of text	
+Objective	Multiple lines of text	
+InvestigationType	Choice
+Contract Fraud or Improprieties
+Employee Misconduct
+Ethics Violations
+Misuse of IT
+Prohibited Personnel Practices
+Security Violations
+Supervisor Mismanagement
+Whistleblower and Reprisal
+N/A
+Other
+	
+DateOfROI	Date and Time	
+FinalActionDate	Date and Time	
+CorrectiveAction	Multiple lines of text	
+DaysOverdue	Single line of text	
+InvestigationNumber	Single line of text	
+ProjectedCompletionDate	Date and Time	
+ActionOfficer	Single line of text	
+Deliverable	Multiple lines of text	
+RecommendationStatus	Choice	
+Overdue
+Open
+Closed
+
+StatusUpdate	Multiple lines of text	
+NewEstimatedCompletionDate	Date and Time	
+IGResponse	Multiple lines of text	
+IGResponseDate	Date and Time	
+ResponsibleOrg	Choice	
+J1
+J2
+J3/5/7
+J4
+J6
+J8
+J9
+ACQ
+COS
+DD
+EII
+JFHQ DODIN
+PSD
+SDC
+WHCA
+WHSSS
+Other
+
+ReportDate	Date and Time	
+AuditEvalType	Choice	
+GAO
+DoD
+IG Audit
+IG Eval
+Other
+
+FunctionalArea	Choice	
+Property Management
+Personnel
+Contracting
+IT/Cyber
+Safety/Security
+Financial
+Other
+
+RecommendationNumber	Single line of text	
+RecommendationDescription	Multiple lines of text	
+StatusUpdated	Date and Time	
+ROIorMRA	Choice	
+ROI
+MRA
+Other
+
+NumberofRecs	Choice	
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+
+IGApprovalStatus	Choice	
+Completed
+Not Completed
+
+InvestigationStatusUpdate	Choice	
+Action with HRFA
+Action with OGC
+Action with Responsible Management Official (RMO)
+Action with Organizational Director for Signature
+Action with Employee
+Action currently Pending Litigation
+Action with Contractor
+Final Action submitted to OIG
+Legal Hold
+
+RelatedCARID	Single line of text	
+RelatedCARTitle	Single line of text	
+WFProjectedDate	Date and Time	
+AuditEval	Hyperlink or Picture	
+WFStatusUpdated	Date and Time	
+Testing	Yes/No	
+WFIGResponse	Date and Time	
+RelatedCAR:ID	Lookup	CARComplete
+StatusByOfficeTemp	Choice
+J1
+J2
+J3/5/7
+J4
+J6
+J8
+J9
+ACQ
+COS
+DD
+EII
+JFHQ DODIN
+PSD
+SDC
+WHCA
+WHSSS
+Other
+	
+StatusByOfficeMultiTemp	Choice	
+J1
+J2
+J3/5/7
+J4
+J6
+J8
+J9
+ACQ
+COS
+DD
+EII
+JFHQ DODIN
+PSD
+SDC
+WHCA
+WHSSS
+Other
+
+Constraints	Yes/No

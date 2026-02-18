@@ -1412,6 +1412,7 @@ export class SharePointService {
       const sanitizedFileName = fileName.replace(/[<>:"/\\|?*]/g, '_');
 
       const item = this.sp.web.lists.getByTitle(this.listName).items.getById(eventId);
+
       const addPromise = item.attachmentFiles.add(sanitizedFileName, fileContent);
       const result = await withTimeout(addPromise, NETWORK_TIMEOUTS.SLOW, `Add attachment ${sanitizedFileName} to event ${eventId}`);
 
@@ -1500,6 +1501,13 @@ export class SharePointService {
     const siteUrl = this.context.pageContext.web.absoluteUrl;
     const encodedFileName = encodeURIComponent(fileName);
     return `${siteUrl}/_api/web/lists/getbytitle('${this.listName}')/items(${eventId})/AttachmentFiles('${encodedFileName}')/$value`;
+  }
+
+  /**
+   * Get the site URL
+   */
+  public getSiteUrl(): string {
+    return this.context.pageContext.web.absoluteUrl;
   }
 
   /**

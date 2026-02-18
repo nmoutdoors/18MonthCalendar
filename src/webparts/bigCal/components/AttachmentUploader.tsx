@@ -121,7 +121,13 @@ export class AttachmentUploader extends React.Component<IAttachmentUploaderProps
     return { isValid: true };
   };
 
-  private handleBrowseClick = (): void => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleBrowseClick = (e?: React.MouseEvent<any>): void => {
+    // Stop propagation to prevent double-triggering when button is clicked
+    if (e) {
+      e.stopPropagation();
+    }
+
     if (this.props.disabled || this.props.isUploading) {
       return;
     }
@@ -129,7 +135,7 @@ export class AttachmentUploader extends React.Component<IAttachmentUploaderProps
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = false;
-    
+
     if (this.props.allowedExtensions && this.props.allowedExtensions.length > 0) {
       input.accept = this.props.allowedExtensions.join(',');
     }
