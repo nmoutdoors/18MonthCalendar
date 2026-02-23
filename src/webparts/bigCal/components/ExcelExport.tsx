@@ -366,6 +366,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     // Find column indices
     let titleIndex = -1;
     let descriptionIndex = -1;
+    let notesIndex = -1;
     let startIndex = -1;
     let endIndex = -1;
     let swimlaneIndex = -1;
@@ -378,6 +379,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       const header = headers[i];
       if (header && header.toLowerCase().indexOf('title') !== -1) titleIndex = i;
       if (header && header.toLowerCase().indexOf('description') !== -1) descriptionIndex = i;
+      if (header && header.toLowerCase().indexOf('notes') !== -1) notesIndex = i;
       if (header && header.toLowerCase().indexOf('start') !== -1) startIndex = i;
       if (header && header.toLowerCase().indexOf('end') !== -1) endIndex = i;
       // Support both "Swimlane" and "Event Category" column names
@@ -396,6 +398,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       headerCount: headers.length,
       titleIndex,
       descriptionIndex,
+      notesIndex,
       startIndex,
       endIndex,
       swimlaneIndex,
@@ -455,6 +458,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
           title: title,
           description: (descriptionIndex !== -1 && row[descriptionIndex] ?
             row[descriptionIndex].toString().trim() : ''),
+          notes: (notesIndex !== -1 && row[notesIndex] ?
+            row[notesIndex].toString().trim() : ''),
           start: startDate,
           end: endDate || startDate,
           swimlane: (swimlaneIndex !== -1 && row[swimlaneIndex] ?
@@ -755,6 +760,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       dataWorksheet['!cols'] = [
         { width: 30 }, // Title column
         { width: 40 }, // Description column
+        { width: 40 }, // Notes column
         { width: 20 }, // Start column
         { width: 20 }, // End column
         { width: 15 }, // Event Category column
@@ -859,7 +865,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     const data: string[][] = [];
 
     // Add header row matching SharePoint list structure
-    data.push(['Title', 'Description', 'Start', 'End', 'Event Category', 'Status', 'IMO', 'OPR', 'Private']);
+    data.push(['Title', 'Description', 'Notes', 'Start', 'End', 'Event Category', 'Status', 'IMO', 'OPR', 'Private']);
 
     events.forEach(event => {
       // Use MM/DD/YYYY HH:MM AM/PM format for better readability while maintaining precision
@@ -893,6 +899,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       data.push([
         event.title,
         event.description || '',
+        event.notes || '',
         startFormatted,
         endFormatted,
         event.swimlane || '',
