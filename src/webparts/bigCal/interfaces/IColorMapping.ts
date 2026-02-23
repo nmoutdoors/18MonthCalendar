@@ -184,12 +184,16 @@ export const SPECIFIC_COLOR_MAPPINGS: { [key: string]: string } = {
   'Tentative': '#ff00ff',        // Magenta/Pink (user provided)
 
   // Current swimlane colors (user hex codes + image inspection)
+  'CDR/DIR FYSA': '#4169E1',            // Royal blue (informational)
   'DCDC': '#70ad47',                    // Green (from image)
+  'Delegated': '#9370DB',               // Medium purple (distinct from existing purple)
   'DISA': '#5b9bd5',                    // Light blue (from image)
   'DOD CIO / NSA / USCC': '#f28e3c',    // Orange (user provided)
   'Exec Time': '#7f7f7f',               // Gray (from image)
   'Exercises': '#7030a0',               // Purple (user provided)
+  'FO/SIG': '#8B4513',                  // Brown/bronze (formal/official)
   'FYSA': '#00b050',                    // Green (user provided)
+  'Holiday/Downday': '#FF8C00',         // Dark orange (celebratory)
   'Joint DISA & DCDC': '#B39DDB',       // Light purple/lavender (from reference image)
   'Mission Partner': '#ff5050',          // Red/Pink (user provided)
   'Out of Office': '#2f5597',           // Blue (user provided)
@@ -209,11 +213,15 @@ export const DEFAULT_ICON_MAPPINGS: { [key: string]: string } = {
   'Confirmed': '✅',                    // Checkmark (green)
 
   // Swimlane icons - matching current BigCalConfig list
+  'CDR/DIR FYSA': '📖',                 // Open book (informational)
   'DCDC': '🏢',                         // Building (blue)
+  'Delegated': '👤',                    // Person silhouette (delegated authority)
   'DISA': '📡',                         // Satellite dish
   'DOD CIO / NSA / USCC': '🛡️',         // Shield
   'Exercises': '🎯',                    // Target/bullseye
+  'FO/SIG': '✍️',                       // Writing hand (signature/correspondence)
   'FYSA': '🚩',                         // Flag
+  'Holiday/Downday': '☀️',              // Sun (time off/holiday)
   'Joint DISA & DCDC': '🌐',            // Globe (light blue)
   'Mission Partner': '🤝',              // Handshake (yellow)
   'Out of Office': '🕐',                // Clock

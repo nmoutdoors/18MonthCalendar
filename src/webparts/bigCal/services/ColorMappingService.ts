@@ -803,12 +803,16 @@ export class ColorMappingService {
 
     // Current swimlane options (updated list from user)
     const swimlaneChoices = [
+      'CDR/DIR FYSA',
       'DCDC',
+      'Delegated',
       'DISA',
       'DOD CIO / NSA / USCC',
       'Exec Time',
       'Exercises',
+      'FO/SIG',
       'FYSA',
+      'Holiday/Downday',
       'Joint DISA & DCDC',
       'Mission Partner',
       'Out of Office',

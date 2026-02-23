@@ -938,12 +938,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     const categories = availableSwimlanes && availableSwimlanes.length > 0
       ? availableSwimlanes.filter(swimlane => swimlane !== 'Private Events') // Exclude Private Events from regular categories
       : [
+          'CDR/DIR FYSA',
           'DCDC',
+          'Delegated',
           'DISA',
           'DOD CIO / NSA / USCC',
           'Exec Time',
           'Exercises',
+          'FO/SIG',
           'FYSA',
+          'Holiday/Downday',
           'Joint DISA & DCDC',
           'Mission Partner',
           'Out of Office',
@@ -1238,12 +1242,16 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         const allCategories = availableSwimlanes && availableSwimlanes.length > 0
           ? availableSwimlanes.filter(swimlane => swimlane !== 'Private Events')
           : [
+              'CDR/DIR FYSA',
               'DCDC',
+              'Delegated',
               'DISA',
               'DOD CIO / NSA / USCC',
               'Exec Time',
               'Exercises',
+              'FO/SIG',
               'FYSA',
+              'Holiday/Downday',
               'Joint DISA & DCDC',
               'Mission Partner',
               'Out of Office',
@@ -2203,9 +2211,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // Standard swimlanes that should always be available
     const standardSwimlanes = [
-      'DCDC', 'DISA', 'DOD CIO / NSA / USCG', 'Exec Time', 'Exercises', 'FYSA',
-      'Joint DISA & DCDC', 'Mission Partner', 'Out of Office', 'Seniors', 'Speaking Event',
-      'TDY Meetings/Congressional', 'Transit'
+      'CDR/DIR FYSA', 'DCDC', 'Delegated', 'DISA', 'DOD CIO / NSA / USCG', 'Exec Time',
+      'Exercises', 'FO/SIG', 'FYSA', 'Holiday/Downday', 'Joint DISA & DCDC', 'Mission Partner',
+      'Out of Office', 'Seniors', 'Speaking Event', 'TDY Meetings/Congressional', 'Transit'
     ];
 
     // Standard status options

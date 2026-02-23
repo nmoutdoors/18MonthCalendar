@@ -49,6 +49,9 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
   private _updateListFieldsMessage: string = '';
   private _isUpdatingPrivateListFields: boolean = false;
   private _updatePrivateListFieldsMessage: string = '';
+  private _isAddingEventCategories: boolean = false;
+  private _addEventCategoriesMessage: string = '';
+  private _missingEventCategories: string[] = [];
   // COMMENTED OUT: Refresh Swimlanes functionality moved to Legend Studio
   // private _isRefreshingSwimlanes: boolean = false;
   // private _refreshSwimlanesMessage: string = '';
@@ -133,6 +136,9 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     this._listValidationResult = await this._validateListName(this.properties.listName);
     this._privateListValidationResult = await this._validatePrivateList();
     this._configListValidationResult = await this._validateConfigList();
+
+    // Check for missing event categories
+    await this._checkMissingEventCategories();
 
     return Promise.resolve();
   }
@@ -250,6 +256,40 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
         errorMessage: `Failed to validate BigCalConfig list: ${errorMessage}`,
         canCreate: true
       };
+    }
+  }
+
+  private async _checkMissingEventCategories(): Promise<void> {
+    if (!this._sharePointService || !this.properties.listName) {
+      this._missingEventCategories = [];
+      return;
+    }
+
+    try {
+      // Check both Public Events and PrivateEvents lists
+      const publicMissing = await this._sharePointService.checkMissingEventCategories(this.properties.listName);
+
+      // Check PrivateEvents list if it exists
+      let privateMissing: string[] = [];
+      try {
+        privateMissing = await this._sharePointService.checkMissingEventCategories('PrivateEvents');
+      } catch (error) {
+        // PrivateEvents list might not exist, that's okay
+        Logger.info('PrivateEvents list not found or error checking it', error);
+      }
+
+      // Combine missing options from both lists (unique values)
+      const combined = publicMissing.concat(privateMissing);
+      const unique: string[] = [];
+      for (const option of combined) {
+        if (unique.indexOf(option) === -1) {
+          unique.push(option);
+        }
+      }
+      this._missingEventCategories = unique;
+    } catch (error: unknown) {
+      Logger.error('Error checking missing event categories', error);
+      this._missingEventCategories = [];
     }
   }
 
@@ -441,6 +481,63 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       };
     } finally {
       this._isCreatingConfigList = false;
+      this.context.propertyPane.refresh();
+    }
+  }
+
+  private async _addMissingEventCategories(): Promise<void> {
+    if (!this._sharePointService || !this.properties.listName || this._isAddingEventCategories) {
+      return;
+    }
+
+    this._isAddingEventCategories = true;
+    this._addEventCategoriesMessage = '';
+    this.context.propertyPane.refresh();
+
+    try {
+      // Add to Public Events list
+      const publicResult = await this._sharePointService.addMissingEventCategories(this.properties.listName);
+
+      // Try to add to PrivateEvents list if it exists
+      let privateResult: { success: boolean; addedOptions: string[]; errorMessage?: string } | null = null;
+      let privateListExists = false;
+      try {
+        privateResult = await this._sharePointService.addMissingEventCategories('PrivateEvents');
+        privateListExists = true;
+      } catch (error) {
+        // PrivateEvents list might not exist, that's okay
+        Logger.info('PrivateEvents list not found or error adding categories', error);
+      }
+
+      // Build success message based on results
+      if (publicResult.success) {
+        const totalAdded = publicResult.addedOptions.length;
+
+        if (totalAdded > 0) {
+          let message = `✅ Successfully added ${totalAdded} Event Category option(s) to ${this.properties.listName}`;
+
+          if (privateListExists && privateResult?.success) {
+            message += ' and PrivateEvents';
+          } else if (privateListExists && !privateResult?.success) {
+            message += ` (Warning: Failed to update PrivateEvents: ${privateResult?.errorMessage || 'Unknown error'})`;
+          }
+
+          message += `: ${publicResult.addedOptions.join(', ')}`;
+          this._addEventCategoriesMessage = message;
+
+          // Re-check for missing categories to update the UI
+          await this._checkMissingEventCategories();
+        } else {
+          this._addEventCategoriesMessage = '✅ All Event Category options are already present';
+        }
+      } else {
+        this._addEventCategoriesMessage = `❌ Failed to add Event Category options: ${publicResult.errorMessage || 'Unknown error'}`;
+      }
+    } catch (error) {
+      console.error('Error adding missing event categories:', error);
+      this._addEventCategoriesMessage = `❌ Error adding Event Category options: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    } finally {
+      this._isAddingEventCategories = false;
       this.context.propertyPane.refresh();
     }
   }
@@ -864,6 +961,58 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       }
     }
     */
+
+    // Add Event Category Options section
+    fields.push(
+      PropertyPaneLabel('eventCategoryStatus', {
+        text: 'Event Category Options'
+      })
+    );
+
+    // Show status of missing event categories
+    if (this._listValidationResult && this._listValidationResult.listExists) {
+      if (this._missingEventCategories.length > 0) {
+        fields.push(
+          PropertyPaneLabel('eventCategoryDescription', {
+            text: `⚠️ Missing ${this._missingEventCategories.length} Event Category option(s): ${this._missingEventCategories.join(', ')}`
+          })
+        );
+
+        // Add button to add missing categories
+        fields.push(
+          PropertyPaneButton('addMissingEventCategories', {
+            text: this._isAddingEventCategories ? 'Adding Categories...' : 'Add Missing Categories',
+            buttonType: PropertyPaneButtonType.Normal,
+            onClick: () => {
+              // eslint-disable-next-line @typescript-eslint/no-floating-promises
+              this._addMissingEventCategories();
+            },
+            disabled: this._isAddingEventCategories
+          })
+        );
+
+        // Show message if available
+        if (this._addEventCategoriesMessage) {
+          fields.push(
+            PropertyPaneLabel('addEventCategoriesMessage', {
+              text: this._addEventCategoriesMessage
+            })
+          );
+        }
+      } else {
+        fields.push(
+          PropertyPaneLabel('eventCategoryDescription', {
+            text: '✅ All Event Category options are present (FO/SIG, CDR/DIR FYSA, Holiday/Downday, Delegated)'
+          })
+        );
+      }
+    } else {
+      fields.push(
+        PropertyPaneLabel('eventCategoryDescription', {
+          text: 'Create the Events list first to manage Event Category options'
+        })
+      );
+    }
 
     return fields;
   }

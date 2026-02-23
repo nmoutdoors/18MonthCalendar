@@ -64,12 +64,16 @@ interface IEventModalState {
 
 // Fallback swimlane options for when dynamic loading fails
 const getFallbackSwimlaneOptions = (): IDropdownOption[] => [
+  { key: 'CDR/DIR FYSA', text: 'CDR/DIR FYSA' },
   { key: 'DCDC', text: 'DCDC' },
+  { key: 'Delegated', text: 'Delegated' },
   { key: 'DISA', text: 'DISA' },
   { key: 'DOD CIO / NSA / USCC', text: 'DOD CIO / NSA / USCC' },
   { key: 'Exec Time', text: 'Exec Time' },
   { key: 'Exercises', text: 'Exercises' },
+  { key: 'FO/SIG', text: 'FO/SIG' },
   { key: 'FYSA', text: 'FYSA' },
+  { key: 'Holiday/Downday', text: 'Holiday/Downday' },
   { key: 'Joint DISA & DCDC', text: 'Joint DISA & DCDC' },
   { key: 'Mission Partner', text: 'Mission Partner' },
   { key: 'Out of Office', text: 'Out of Office' },

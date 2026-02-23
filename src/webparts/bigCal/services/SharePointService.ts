@@ -8,6 +8,7 @@ import '@pnp/sp/attachments';
 import { Logger } from './LoggingService';
 import '@pnp/sp/content-types';
 import { withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
+import { SPECIFIC_COLOR_MAPPINGS, DEFAULT_ICON_MAPPINGS } from '../interfaces/IColorMapping';
 
 export interface ISharePointEvent {
   Id: number;
@@ -110,12 +111,16 @@ export class SharePointService {
       fieldType: 'Choice',
       required: false,
       choices: [
+        'CDR/DIR FYSA',
         'DCDC',
+        'Delegated',
         'DISA',
         'DOD CIO / NSA / USCC',
         'Exec Time',
         'Exercises',
+        'FO/SIG',
         'FYSA',
+        'Holiday/Downday',
         'Joint DISA & DCDC',
         'Mission Partner',
         'Out of Office',
@@ -1237,6 +1242,157 @@ export class SharePointService {
     } catch (error) {
       Logger.error(`Error updating field choices for list ${targetListName}`, error);
       throw new Error(`Failed to update field choices: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Check for missing Event Category options in the Swimlane field
+   * Returns array of missing option names
+   */
+  public async checkMissingEventCategories(listName?: string): Promise<string[]> {
+    const targetListName = listName || this.listName;
+    const requiredOptions = ['FO/SIG', 'CDR/DIR FYSA', 'Holiday/Downday', 'Delegated'];
+
+    try {
+      Logger.info(`Checking for missing Event Category options in ${targetListName}`);
+
+      // Get the Swimlane field
+      const field = await this.sp.web.lists.getByTitle(targetListName).fields.getByInternalNameOrTitle('Swimlane')();
+
+      if (field && field.TypeAsString === 'Choice' && field.Choices) {
+        const currentChoices = field.Choices as string[];
+        const missing = requiredOptions.filter(option => currentChoices.indexOf(option) === -1);
+
+        if (missing.length > 0) {
+          Logger.info(`Missing Event Category options: ${missing.join(', ')}`);
+        } else {
+          Logger.info('All Event Category options are present');
+        }
+
+        return missing;
+      } else {
+        Logger.warn('Swimlane field not found or is not a Choice field');
+        return requiredOptions; // All are missing if field doesn't exist
+      }
+    } catch (error) {
+      Logger.error(`Error checking missing Event Category options`, error);
+      throw new Error(`Failed to check missing options: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Add missing Event Category options to the Swimlane field
+   * Also adds corresponding BigCalConfig entries with default colors and icons
+   */
+  public async addMissingEventCategories(listName?: string, configListName: string = 'BigCalConfig'): Promise<{ success: boolean; addedOptions: string[]; errorMessage?: string }> {
+    const targetListName = listName || this.listName;
+
+    try {
+      Logger.info(`Adding missing Event Category options to ${targetListName}`);
+
+      // Check which options are missing
+      const missingOptions = await this.checkMissingEventCategories(targetListName);
+
+      if (missingOptions.length === 0) {
+        return {
+          success: true,
+          addedOptions: []
+        };
+      }
+
+      // Get current Swimlane field choices
+      const field = await this.sp.web.lists.getByTitle(targetListName).fields.getByInternalNameOrTitle('Swimlane')();
+
+      if (field && field.TypeAsString === 'Choice' && field.Choices) {
+        const currentChoices = field.Choices as string[];
+
+        // Add missing options to current choices
+        const updatedChoices = [...currentChoices, ...missingOptions];
+
+        // Update the field with new choices
+        await this.sp.web.lists.getByTitle(targetListName).fields.getByInternalNameOrTitle('Swimlane').update({
+          Choices: updatedChoices
+        });
+
+        Logger.info(`Successfully added ${missingOptions.length} Event Category options to Swimlane field: ${missingOptions.join(', ')}`);
+
+        // Now add corresponding BigCalConfig entries
+        try {
+          // Check if BigCalConfig list exists
+          const configList = await this.sp.web.lists.getByTitle(configListName)();
+
+          if (configList) {
+            // Get existing BigCalConfig items to check for duplicates
+            const existingItems = await this.sp.web.lists.getByTitle(configListName).items
+              .select('OptionValue', 'FieldName')
+              .filter(`FieldName eq 'Swimlanes'`)();
+
+            const existingOptionValues = existingItems.map((item: { OptionValue: string }) => item.OptionValue);
+
+            // Get the highest sort order to append new items
+            const allItems = await this.sp.web.lists.getByTitle(configListName).items
+              .select('SortOrder')
+              .orderBy('SortOrder', false)
+              .top(1)();
+
+            let sortOrder = allItems.length > 0 && allItems[0].SortOrder ? allItems[0].SortOrder + 1 : 1000;
+
+            // Add BigCalConfig entries for each missing option
+            for (const option of missingOptions) {
+              // Skip if already exists in BigCalConfig
+              if (existingOptionValues.indexOf(option) !== -1) {
+                Logger.info(`BigCalConfig entry already exists for ${option}, skipping`);
+                continue;
+              }
+
+              const defaultColor = SPECIFIC_COLOR_MAPPINGS[option] || '#808080'; // Gray fallback
+              const defaultIcon = DEFAULT_ICON_MAPPINGS[option] || '';
+
+              const itemData = {
+                Title: `Swimlanes - ${option}`,
+                ConfigType: 'ColorMapping',
+                FieldName: 'Swimlanes',
+                OptionValue: option,
+                ColorHex: defaultColor,
+                IconName: defaultIcon,
+                OriginalColorHex: defaultColor,
+                OriginalIconName: defaultIcon,
+                UseDarkText: false,
+                IsActive: true,
+                SortOrder: sortOrder++
+              };
+
+              await this.sp.web.lists.getByTitle(configListName).items.add(itemData);
+              Logger.info(`Added BigCalConfig entry for ${option} with color ${defaultColor} and icon ${defaultIcon}`);
+            }
+
+            Logger.info(`Successfully added BigCalConfig entries for ${missingOptions.length} new options`);
+          } else {
+            Logger.warn(`BigCalConfig list '${configListName}' not found, skipping BigCalConfig entries`);
+          }
+        } catch (configError) {
+          Logger.warn(`Failed to add BigCalConfig entries, but Swimlane field was updated successfully`, configError);
+          // Don't fail the entire operation if BigCalConfig update fails
+        }
+
+        return {
+          success: true,
+          addedOptions: missingOptions
+        };
+      } else {
+        return {
+          success: false,
+          addedOptions: [],
+          errorMessage: 'Swimlane field not found or is not a Choice field'
+        };
+      }
+    } catch (error) {
+      Logger.error(`Error adding missing Event Category options`, error);
+      return {
+        success: false,
+        addedOptions: [],
+        errorMessage: `Failed to add options: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
     }
   }
 
