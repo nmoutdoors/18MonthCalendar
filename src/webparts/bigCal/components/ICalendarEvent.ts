@@ -23,6 +23,8 @@ export interface ICalendarEvent {
   isPrivate?: boolean;
   privateEventId?: string; // GUID linking to PrivateEvents list
   attachmentCount?: number; // Number of attachments for this event
+  modified?: Date; // Last modified date
+  modifiedBy?: string; // Last modified by user display name
 }
 
 /**

@@ -21,6 +21,8 @@ export interface ISharePointEvent {
   Description: string;
   Private: boolean;
   PrivateEventId?: string;
+  Modified?: string; // Last modified date
+  Editor?: { Title: string }; // Last modified by user (expanded)
 }
 
 export interface IListValidationResult {
@@ -325,7 +327,7 @@ export class SharePointService {
 
       // Use PnP.js to get items from the Events list
       // Increase limit to handle large datasets (default is 100)
-      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description';
+      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description,Modified,Editor/Title';
 
       // Enhanced field selection for production environments
       if (hasPrivateFields) {
@@ -365,6 +367,7 @@ export class SharePointService {
 
       const itemsPromise = this.sp.web.lists.getByTitle(this.listName).items
         .select(selectFields)
+        .expand('Editor')
         .orderBy('EventDate', true)
         .top(5000)(); // Increase limit to 5000 events
 
@@ -386,6 +389,8 @@ export class SharePointService {
         Description?: string;
         Private?: unknown;
         PrivateEventId?: string;
+        Modified?: string;
+        Editor?: { Title: string };
       }) => {
         // Enhanced boolean field handling for production environments
         const isPrivate = this.normalizeBoolean(item.Private);
@@ -401,7 +406,9 @@ export class SharePointService {
           OPR: item.OPR === 'null' || item.OPR === null || item.OPR === undefined ? '' : item.OPR,
           Description: item.Description || '',
           Private: isPrivate,
-          PrivateEventId: item.PrivateEventId
+          PrivateEventId: item.PrivateEventId,
+          Modified: item.Modified,
+          Editor: item.Editor
         };
 
         // Only log private events in debug mode to avoid performance impact
@@ -433,7 +440,7 @@ export class SharePointService {
       const hasPrivateFields = await this.checkForPrivateFields();
 
       // Use PnP.js to get items from the Events list
-      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description';
+      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description,Modified,Editor/Title';
 
       // Enhanced field selection for production environments
       if (hasPrivateFields) {
@@ -477,6 +484,7 @@ export class SharePointService {
 
       const itemsPromise = this.sp.web.lists.getByTitle(this.listName).items
         .select(selectFields)
+        .expand('Editor')
         .filter(filterQuery)
         .orderBy('EventDate', true)
         .top(5000)(); // Increase limit to 5000 events
@@ -497,6 +505,8 @@ export class SharePointService {
         Description?: string;
         Private?: unknown;
         PrivateEventId?: string;
+        Modified?: string;
+        Editor?: { Title: string };
       }) => {
         // Enhanced boolean field handling for production environments
         const isPrivate = this.normalizeBoolean(item.Private);
@@ -512,7 +522,9 @@ export class SharePointService {
           OPR: item.OPR === 'null' || item.OPR === null || item.OPR === undefined ? '' : item.OPR,
           Description: item.Description || '',
           Private: isPrivate,
-          PrivateEventId: item.PrivateEventId
+          PrivateEventId: item.PrivateEventId,
+          Modified: item.Modified,
+          Editor: item.Editor
         };
 
         // Only log private events in debug mode to avoid performance impact

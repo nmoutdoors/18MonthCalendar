@@ -456,7 +456,9 @@ export class HybridEventsService {
       opr: (event.OPR === 'null' || event.OPR === null || event.OPR === undefined || event.OPR === '') ? '' : event.OPR as OPRType,
       description: event.Description,
       isPrivate: event.Private,
-      privateEventId: event.PrivateEventId
+      privateEventId: event.PrivateEventId,
+      modified: event.Modified ? this.parseSharePointDate(event.Modified) : undefined,
+      modifiedBy: event.Editor?.Title
     };
   }
 
@@ -475,7 +477,9 @@ export class HybridEventsService {
       opr: (privateEvent.OPR === 'null' || privateEvent.OPR === null || privateEvent.OPR === undefined || privateEvent.OPR === '') ? '' : privateEvent.OPR as OPRType,
       description: privateEvent.Description,
       isPrivate: true,
-      privateEventId: privateEvent.PrivateEventId
+      privateEventId: privateEvent.PrivateEventId,
+      modified: placeholder.Modified ? this.parseSharePointDate(placeholder.Modified) : undefined,
+      modifiedBy: placeholder.Editor?.Title
     };
   }
 

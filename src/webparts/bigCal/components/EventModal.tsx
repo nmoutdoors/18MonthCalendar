@@ -874,28 +874,38 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         </div>
 
         <div className={styles.modalFooter}>
-          <Stack horizontal horizontalAlign="space-between">
-            <Stack.Item>
-              {isEditMode && this.props.onDelete && (
+          <Stack tokens={{ childrenGap: 12 }}>
+            {/* Modified metadata display */}
+            {isEditMode && event?.modified && event?.modifiedBy && (
+              <Text variant="small" styles={{ root: { color: '#666', fontStyle: 'italic' } }}>
+                Modified by: {event.modifiedBy} at {event.modified.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} on {event.modified.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}
+              </Text>
+            )}
+
+            {/* Action buttons */}
+            <Stack horizontal horizontalAlign="space-between">
+              <Stack.Item>
+                {isEditMode && this.props.onDelete && (
+                  <DefaultButton
+                    text="Delete"
+                    onClick={this.handleDelete}
+                    disabled={isSaving || isDeleting}
+                    iconProps={{ iconName: 'Delete' }}
+                  />
+                )}
+              </Stack.Item>
+              <Stack horizontal tokens={{ childrenGap: 8 }}>
                 <DefaultButton
-                  text="Delete"
-                  onClick={this.handleDelete}
+                  text="Cancel"
+                  onClick={onClose}
                   disabled={isSaving || isDeleting}
-                  iconProps={{ iconName: 'Delete' }}
                 />
-              )}
-            </Stack.Item>
-            <Stack horizontal tokens={{ childrenGap: 8 }}>
-              <DefaultButton
-                text="Cancel"
-                onClick={onClose}
-                disabled={isSaving || isDeleting}
-              />
-              <PrimaryButton
-                text={isEditMode ? 'Update' : 'Create'}
-                onClick={this.handleSave}
-                disabled={isSaving || isDeleting || !title.trim()}
-              />
+                <PrimaryButton
+                  text={isEditMode ? 'Update' : 'Create'}
+                  onClick={this.handleSave}
+                  disabled={isSaving || isDeleting || !title.trim()}
+                />
+              </Stack>
             </Stack>
           </Stack>
         </div>
