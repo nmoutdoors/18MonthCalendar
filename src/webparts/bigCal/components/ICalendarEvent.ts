@@ -17,7 +17,8 @@ export interface ICalendarEvent {
   status?: StatusType;
   imo?: IMOType;
   opr?: OPRType;
-  description?: string;
+  description: string; // Now required
+  notes?: string; // Multi-line text field for additional notes
   isHoliday?: boolean;
   isObserved?: boolean;
   isPrivate?: boolean;

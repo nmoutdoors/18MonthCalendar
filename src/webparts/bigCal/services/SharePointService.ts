@@ -19,6 +19,7 @@ export interface ISharePointEvent {
   IMO: string;
   OPR: string;
   Description: string;
+  Notes?: string; // Multi-line text field for additional notes
   Private: boolean;
   PrivateEventId?: string;
   Modified?: string; // Last modified date
@@ -94,6 +95,12 @@ export class SharePointService {
     {
       internalName: 'Description',
       displayName: 'Description',
+      fieldType: 'Note',
+      required: true
+    },
+    {
+      internalName: 'Notes',
+      displayName: 'Notes',
       fieldType: 'Note',
       required: false
     },
@@ -327,7 +334,7 @@ export class SharePointService {
 
       // Use PnP.js to get items from the Events list
       // Increase limit to handle large datasets (default is 100)
-      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description,Modified,Editor/Title';
+      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description,Notes,Modified,Editor/Title';
 
       // Enhanced field selection for production environments
       if (hasPrivateFields) {
@@ -387,6 +394,7 @@ export class SharePointService {
         IMO: string;
         OPR: string;
         Description?: string;
+        Notes?: string;
         Private?: unknown;
         PrivateEventId?: string;
         Modified?: string;
@@ -405,6 +413,7 @@ export class SharePointService {
           IMO: item.IMO === 'null' || item.IMO === null || item.IMO === undefined ? '' : item.IMO,
           OPR: item.OPR === 'null' || item.OPR === null || item.OPR === undefined ? '' : item.OPR,
           Description: item.Description || '',
+          Notes: item.Notes,
           Private: isPrivate,
           PrivateEventId: item.PrivateEventId,
           Modified: item.Modified,
@@ -440,7 +449,7 @@ export class SharePointService {
       const hasPrivateFields = await this.checkForPrivateFields();
 
       // Use PnP.js to get items from the Events list
-      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description,Modified,Editor/Title';
+      let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description,Notes,Modified,Editor/Title';
 
       // Enhanced field selection for production environments
       if (hasPrivateFields) {
@@ -503,6 +512,7 @@ export class SharePointService {
         IMO: string;
         OPR: string;
         Description?: string;
+        Notes?: string;
         Private?: unknown;
         PrivateEventId?: string;
         Modified?: string;
@@ -521,6 +531,7 @@ export class SharePointService {
           IMO: item.IMO === 'null' || item.IMO === null || item.IMO === undefined ? '' : item.IMO,
           OPR: item.OPR === 'null' || item.OPR === null || item.OPR === undefined ? '' : item.OPR,
           Description: item.Description || '',
+          Notes: item.Notes,
           Private: isPrivate,
           PrivateEventId: item.PrivateEventId,
           Modified: item.Modified,
@@ -645,7 +656,7 @@ export class SharePointService {
     }
   }
 
-  public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', imo: string = '', opr: string = '', description: string = '', isPrivate: boolean = false, privateEventId?: string): Promise<ISharePointEvent> {
+  public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', imo: string = '', opr: string = '', description: string = '', notes: string = '', isPrivate: boolean = false, privateEventId?: string): Promise<ISharePointEvent> {
     try {
       Logger.debug('Creating event', { title, isPrivate });
 
@@ -658,7 +669,8 @@ export class SharePointService {
         EventDate: this.toSharePointDateString(start), // Store without timezone conversion
         EndDate: this.toSharePointDateString(end),     // Store without timezone conversion
         Swimlane: swimlane,
-        Description: description
+        Description: description,
+        Notes: notes || ''
       };
 
       // Only add Status if it's provided (not undefined/null/empty)
@@ -702,6 +714,7 @@ export class SharePointService {
         IMO: result.IMO,
         OPR: result.OPR,
         Description: result.Description || '',
+        Notes: result.Notes,
         Private: result.Private || false,
         PrivateEventId: result.PrivateEventId || undefined
       };
@@ -713,7 +726,7 @@ export class SharePointService {
     }
   }
 
-  public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string, imo?: string, opr?: string, description?: string, isPrivate?: boolean, privateEventId?: string): Promise<void> {
+  public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string, imo?: string, opr?: string, description?: string, notes?: string, isPrivate?: boolean, privateEventId?: string): Promise<void> {
     try {
       // Check if the list has the new Private fields
       const hasPrivateFields = await this.checkForPrivateFields();
@@ -729,6 +742,7 @@ export class SharePointService {
       if (imo !== undefined) updateData.IMO = imo;
       if (opr !== undefined) updateData.OPR = opr;
       if (description !== undefined) updateData.Description = description;
+      if (notes !== undefined) updateData.Notes = notes;
 
       // Only add Private fields if they exist in the list
       if (hasPrivateFields) {
@@ -796,7 +810,7 @@ export class SharePointService {
       }
 
       // For Events lists (template 106), use the built-in field names
-      const coreFields = ['EventDate', 'EndDate', 'Description', 'Swimlane', 'Status', 'IMO', 'OPR'];
+      const coreFields = ['EventDate', 'EndDate', 'Description', 'Notes', 'Swimlane', 'Status', 'IMO', 'OPR'];
       requiredFields = coreFields.concat(requirePrivateFields ? privateFields : []);
 
       // Get all fields in the list
@@ -1053,6 +1067,124 @@ export class SharePointService {
         success: false,
         listName: listName,
         errorMessage: `Failed to create list: ${errorMessage}`
+      };
+    }
+  }
+
+  /**
+   * Update existing list with missing fields from REQUIRED_FIELDS
+   * This allows existing lists to be updated when new fields are added to the app
+   */
+  public async updateListFields(listName: string): Promise<IListCreationResult> {
+    try {
+      Logger.info(`Updating SharePoint list fields: ${listName}`);
+
+      // Get the existing list
+      const list = this.sp.web.lists.getByTitle(listName);
+
+      // Get existing fields
+      const existingFields = await list.fields.select('InternalName')();
+      const existingFieldNames = existingFields.map(f => f.InternalName);
+
+      let fieldsAdded = 0;
+      let fieldsUpdated = 0;
+      const errors: string[] = [];
+
+      // Check each required field
+      for (const fieldDef of SharePointService.REQUIRED_FIELDS) {
+        try {
+          const fieldExists = existingFieldNames.indexOf(fieldDef.internalName) !== -1;
+
+          if (!fieldExists) {
+            // Add missing field
+            if (fieldDef.fieldType === 'DateTime') {
+              await list.fields.addDateTime(fieldDef.internalName, {
+                DisplayFormat: 0,
+                DateTimeCalendarType: 1,
+                FriendlyDisplayFormat: 0,
+                Required: fieldDef.required || false
+              });
+              fieldsAdded++;
+              Logger.info(`Added DateTime field: ${fieldDef.internalName}`);
+            } else if (fieldDef.fieldType === 'Choice') {
+              await list.fields.addChoice(fieldDef.internalName, {
+                Choices: fieldDef.choices || [],
+                Required: fieldDef.required || false,
+                FillInChoice: false
+              });
+              fieldsAdded++;
+              Logger.info(`Added Choice field: ${fieldDef.internalName}`);
+            } else if (fieldDef.fieldType === 'Note') {
+              await list.fields.addMultilineText(fieldDef.internalName, {
+                NumberOfLines: 3,
+                RichText: false,
+                RestrictedMode: false,
+                AppendOnly: false,
+                AllowHyperlink: true,
+                Required: fieldDef.required || false
+              });
+              fieldsAdded++;
+              Logger.info(`Added Note field: ${fieldDef.internalName}`);
+            } else if (fieldDef.fieldType === 'Boolean') {
+              await list.fields.addBoolean(fieldDef.internalName, {
+                Required: fieldDef.required || false
+              });
+              fieldsAdded++;
+              Logger.info(`Added Boolean field: ${fieldDef.internalName}`);
+            } else if (fieldDef.fieldType === 'Text') {
+              await list.fields.addText(fieldDef.internalName, {
+                MaxLength: 255,
+                Required: fieldDef.required || false
+              });
+              fieldsAdded++;
+              Logger.info(`Added Text field: ${fieldDef.internalName}`);
+            }
+          } else {
+            // Field exists - check if we need to update the Required property
+            // This is specifically for the Description field which we're making required
+            if (fieldDef.internalName === 'Description' && fieldDef.required) {
+              try {
+                const field = await list.fields.getByInternalNameOrTitle(fieldDef.internalName)();
+                if (!field.Required) {
+                  await list.fields.getByInternalNameOrTitle(fieldDef.internalName).update({
+                    Required: true
+                  });
+                  fieldsUpdated++;
+                  Logger.info(`Updated Description field to required`);
+                }
+              } catch (updateError) {
+                Logger.warn(`Could not update required property for ${fieldDef.internalName}`, updateError);
+                errors.push(`Could not update ${fieldDef.internalName}: ${updateError instanceof Error ? updateError.message : 'Unknown error'}`);
+              }
+            }
+          }
+        } catch (fieldError) {
+          Logger.warn(`Could not add/update field ${fieldDef.internalName}`, fieldError);
+          errors.push(`${fieldDef.internalName}: ${fieldError instanceof Error ? fieldError.message : 'Unknown error'}`);
+        }
+      }
+
+      // Build result message
+      let message = `Updated list fields: ${fieldsAdded} added, ${fieldsUpdated} updated`;
+      if (errors.length > 0) {
+        message += `. Errors: ${errors.join('; ')}`;
+      }
+
+      Logger.info(message);
+
+      return {
+        success: fieldsAdded > 0 || fieldsUpdated > 0 || errors.length === 0,
+        listName: listName,
+        errorMessage: errors.length > 0 ? message : undefined
+      };
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Logger.error('Error updating list fields', error);
+      return {
+        success: false,
+        listName: listName,
+        errorMessage: `Failed to update list fields: ${errorMessage}`
       };
     }
   }

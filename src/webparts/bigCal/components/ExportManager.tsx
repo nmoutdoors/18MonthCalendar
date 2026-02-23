@@ -82,6 +82,7 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
             event.imo || '',
             event.opr || '',
             event.description || '',
+            event.notes || '',
             true // isPrivate
           );
         } else {
@@ -95,6 +96,7 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
             event.imo || '',
             event.opr || '',
             event.description || '',
+            event.notes || '',
             false // isPrivate
           );
         }

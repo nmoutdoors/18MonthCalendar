@@ -45,6 +45,10 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
   private _isCreatingList: boolean = false;
   private _isCreatingPrivateList: boolean = false;
   private _isCreatingConfigList: boolean = false;
+  private _isUpdatingListFields: boolean = false;
+  private _updateListFieldsMessage: string = '';
+  private _isUpdatingPrivateListFields: boolean = false;
+  private _updatePrivateListFieldsMessage: string = '';
   // COMMENTED OUT: Refresh Swimlanes functionality moved to Legend Studio
   // private _isRefreshingSwimlanes: boolean = false;
   // private _refreshSwimlanesMessage: string = '';
@@ -291,6 +295,35 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     }
   }
 
+  private async _updateListFields(): Promise<void> {
+    if (!this._sharePointService || !this.properties.listName || this._isUpdatingListFields) {
+      return;
+    }
+
+    this._isUpdatingListFields = true;
+    this._updateListFieldsMessage = 'Updating list fields...';
+    this.context.propertyPane.refresh();
+
+    try {
+      const result: IListCreationResult = await this._sharePointService.updateListFields(this.properties.listName);
+
+      if (result.success) {
+        this._updateListFieldsMessage = '✅ List fields updated successfully! Please refresh the page.';
+
+        // Re-validate the list to update the UI
+        this._listValidationResult = await this._validateListName(this.properties.listName);
+      } else {
+        this._updateListFieldsMessage = `❌ ${result.errorMessage || 'Failed to update list fields'}`;
+      }
+    } catch (error) {
+      console.error('Error updating list fields:', error);
+      this._updateListFieldsMessage = `❌ Failed to update list fields: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    } finally {
+      this._isUpdatingListFields = false;
+      this.context.propertyPane.refresh();
+    }
+  }
+
   private async _createPrivateList(): Promise<void> {
     if (!this._sharePointService || this._isCreatingPrivateList) {
       return;
@@ -326,6 +359,35 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       };
     } finally {
       this._isCreatingPrivateList = false;
+      this.context.propertyPane.refresh();
+    }
+  }
+
+  private async _updatePrivateListFields(): Promise<void> {
+    if (!this._sharePointService || this._isUpdatingPrivateListFields) {
+      return;
+    }
+
+    this._isUpdatingPrivateListFields = true;
+    this._updatePrivateListFieldsMessage = 'Updating PrivateEvents list fields...';
+    this.context.propertyPane.refresh();
+
+    try {
+      const result: IListCreationResult = await this._sharePointService.updateListFields('PrivateEvents');
+
+      if (result.success) {
+        this._updatePrivateListFieldsMessage = '✅ PrivateEvents list fields updated successfully! Please refresh the page.';
+
+        // Re-validate the private list to update the UI
+        this._privateListValidationResult = await this._validatePrivateList();
+      } else {
+        this._updatePrivateListFieldsMessage = `❌ ${result.errorMessage || 'Failed to update PrivateEvents list fields'}`;
+      }
+    } catch (error) {
+      console.error('Error updating PrivateEvents list fields:', error);
+      this._updatePrivateListFieldsMessage = `❌ Failed to update PrivateEvents list fields: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    } finally {
+      this._isUpdatingPrivateListFields = false;
       this.context.propertyPane.refresh();
     }
   }
@@ -668,6 +730,30 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
       );
     }
 
+    // Add update list fields button if list exists but has missing fields
+    if (this._listValidationResult && this._listValidationResult.listExists && this._listValidationResult.missingFields.length > 0) {
+      fields.push(
+        PropertyPaneButton('updateListFields', {
+          text: this._isUpdatingListFields ? 'Updating List Fields...' : 'Update List Fields',
+          buttonType: PropertyPaneButtonType.Normal,
+          onClick: () => {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            this._updateListFields();
+          },
+          disabled: this._isUpdatingListFields
+        })
+      );
+
+      // Show update message if available
+      if (this._updateListFieldsMessage) {
+        fields.push(
+          PropertyPaneLabel('updateListFieldsMessage', {
+            text: this._updateListFieldsMessage
+          })
+        );
+      }
+    }
+
     // Add private events configuration fields
     fields.push(
       PropertyPaneLabel('privateFieldsStatus', {
@@ -698,6 +784,30 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
           disabled: this._isCreatingPrivateList
         })
       );
+    }
+
+    // Add update private list fields button if list exists but has missing fields
+    if (this._privateListValidationResult && this._privateListValidationResult.listExists && this._privateListValidationResult.missingFields.length > 0) {
+      fields.push(
+        PropertyPaneButton('updatePrivateListFields', {
+          text: this._isUpdatingPrivateListFields ? 'Updating PrivateEvents List Fields...' : 'Update PrivateEvents List Fields',
+          buttonType: PropertyPaneButtonType.Normal,
+          onClick: () => {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            this._updatePrivateListFields();
+          },
+          disabled: this._isUpdatingPrivateListFields
+        })
+      );
+
+      // Show update message if available
+      if (this._updatePrivateListFieldsMessage) {
+        fields.push(
+          PropertyPaneLabel('updatePrivateListFieldsMessage', {
+            text: this._updatePrivateListFieldsMessage
+          })
+        );
+      }
     }
 
     // Add BigCalConfig list configuration fields

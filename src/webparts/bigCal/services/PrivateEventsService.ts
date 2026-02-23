@@ -179,7 +179,8 @@ export class PrivateEventsService {
     status: string,
     imo: string,
     opr: string,
-    description: string
+    description: string,
+    notes: string = ''
   ): Promise<IPrivateEventData | undefined> {
     const hasAccess = await this.canUserAccessPrivateEvents();
     if (!hasAccess) {
@@ -196,6 +197,7 @@ export class PrivateEventsService {
         IMO: imo,
         OPR: opr,
         Description: description,
+        Notes: notes || '',
         Private: true
       });
 
@@ -209,6 +211,7 @@ export class PrivateEventsService {
         IMO: result.IMO,
         OPR: result.OPR,
         Description: result.Description || '',
+        Notes: result.Notes,
         Private: result.Private || false
       };
 
@@ -231,7 +234,8 @@ export class PrivateEventsService {
     status?: string,
     imo?: string,
     opr?: string,
-    description?: string
+    description?: string,
+    notes?: string
   ): Promise<void> {
     const hasAccess = await this.canUserAccessPrivateEvents();
     if (!hasAccess) {
@@ -250,6 +254,7 @@ export class PrivateEventsService {
       if (imo !== undefined) updateData.IMO = imo;
       if (opr !== undefined) updateData.OPR = opr;
       if (description !== undefined) updateData.Description = description;
+      if (notes !== undefined) updateData.Notes = notes;
 
       await this.sp.web.lists.getByTitle(this.privateListName).items.getById(id).update(updateData);
 

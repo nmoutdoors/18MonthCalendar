@@ -39,6 +39,7 @@ export interface IEventModalProps {
 interface IEventModalState {
   title: string;
   description: string;
+  notes: string;
   startDate: Date;
   endDate: Date;
   startTime: string;
@@ -131,6 +132,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     this.state = {
       title: props.event?.title || '',
       description: props.event?.description || '',
+      notes: props.event?.notes || '',
       startDate: props.event?.start || defaultStart,
       endDate: props.event?.end || defaultEnd,
       startTime: startTimeData.time,
@@ -184,6 +186,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         this.setState({
           title: '',
           description: '',
+          notes: '',
           startDate: defaultStart,
           endDate: defaultEnd,
           startTime: startTimeData.time,
@@ -213,6 +216,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         this.setState({
           title: this.props.event.title,
           description: this.props.event.description || '',
+          notes: this.props.event.notes || '',
           startDate: this.props.event.start,
           endDate: this.props.event.end,
           startTime: startTimeData.time,
@@ -416,10 +420,15 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
 
   private handleSave = async (): Promise<void> => {
-    const { title, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, imo, opr, isPrivate } = this.state;
+    const { title, description, notes, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, imo, opr, isPrivate } = this.state;
 
     if (!title.trim()) {
       alert('Please enter a title for the event.');
+      return;
+    }
+
+    if (!description.trim()) {
+      alert('Please enter a description for the event.');
       return;
     }
 
@@ -434,7 +443,8 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
       const eventData: Partial<ICalendarEvent> = {
         id: this.props.event?.id,
         title: title.trim(),
-        description: this.state.description.trim(),
+        description: description.trim(),
+        notes: notes.trim(),
         start,
         end,
         swimlane,
@@ -650,7 +660,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
   public render(): React.ReactElement<IEventModalProps> {
     const { isOpen, event, onClose } = this.props;
     const {
-      title, description, startDate, endDate, startTime, endTime, startAmPm, endAmPm,
+      title, description, notes, startDate, endDate, startTime, endTime, startAmPm, endAmPm,
       swimlane, status, imo, opr, isPrivate, isSaving, isDeleting,
       attachments, isLoadingAttachments, isUploadingAttachment, attachmentUploadMessage,
       attachmentUploadMessageType, attachmentError
@@ -727,7 +737,8 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
               onChange={(_, newValue) => this.setState({ description: newValue || '' })}
               multiline
               rows={2}
-              placeholder="Enter event description (optional)"
+              required
+              placeholder="Enter event description"
             />
 
             {/* Start Date and Time Row */}
@@ -870,6 +881,16 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
                 </Text>
               )}
             </Stack>
+
+            {/* Notes Field */}
+            <TextField
+              label="Notes"
+              value={notes}
+              onChange={(_, newValue) => this.setState({ notes: newValue || '' })}
+              multiline
+              rows={3}
+              placeholder="Enter additional notes (optional)"
+            />
           </Stack>
         </div>
 

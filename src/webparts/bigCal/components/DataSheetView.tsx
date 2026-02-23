@@ -286,6 +286,7 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
             updatedEvent.imo || '',
             updatedEvent.opr || '',
             updatedEvent.description || '',
+            updatedEvent.notes || '',
             updatedEvent.isPrivate || false
           );
         } else {
@@ -300,6 +301,7 @@ export class DataSheetView extends React.Component<IDataSheetViewProps, IDataShe
             updatedEvent.imo || '',
             updatedEvent.opr || '',
             updatedEvent.description || '',
+            updatedEvent.notes || '',
             updatedEvent.isPrivate || false
           );
         }
