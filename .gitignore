@@ -35,3 +35,6 @@ obj
 
 # UnityFX junction (points to C:\code\UnityFX)
 unityfx
+
+# Research and scratch documents
+docs/SecurityTrimmingResearch.md
