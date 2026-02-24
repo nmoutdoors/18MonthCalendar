@@ -93,9 +93,6 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
   }
 
   protected async onInit(): Promise<void> {
-    // COLD START FIX: Detect cold start and auto-refresh if needed
-    this.handleColdStartDetection();
-
     // Set default value for startInFullscreen if not already set (ProgramTracker pattern)
     if (this.properties.startInFullscreen === undefined) {
       this.properties.startInFullscreen = true;  // Default to fullscreen
@@ -132,10 +129,12 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     // Initialize SharePoint services
     this._sharePointService = new SharePointService(this.context, this.properties.listName);
 
-    // Validate lists on initialization
-    this._listValidationResult = await this._validateListName(this.properties.listName);
-    this._privateListValidationResult = await this._validatePrivateList();
-    this._configListValidationResult = await this._validateConfigList();
+    // Validate lists on initialization - run in parallel for faster load
+    [this._listValidationResult, this._privateListValidationResult, this._configListValidationResult] = await Promise.all([
+      this._validateListName(this.properties.listName),
+      this._validatePrivateList(),
+      this._validateConfigList()
+    ]);
 
     // Check for missing event categories
     await this._checkMissingEventCategories();
@@ -1067,43 +1066,4 @@ export default class BigCalWebPart extends BaseClientSideWebPart<IBigCalWebPartP
     }
   }
 
-  /**
-   * COLD START FIX: Simple detection and auto-refresh solution
-   * If F5 fixes it every time, let's just auto-F5 on cold starts
-   */
-  private handleColdStartDetection(): void {
-    try {
-      // Only apply to fullscreen webparts
-      if (!this.properties.startInFullscreen) {
-        return;
-      }
-
-      // Detect cold start vs page refresh
-      const isColdStart = !window.performance.navigation ||
-                         window.performance.navigation.type === 0;
-
-      const isPageRefresh = window.performance.navigation &&
-                           window.performance.navigation.type === 1;
-
-      // If this is a cold start, set up auto-refresh after component mount
-      if (isColdStart && !isPageRefresh) {
-        // Use sessionStorage to prevent infinite refresh loops
-        const refreshKey = 'bigcal-cold-start-refresh';
-        const hasAlreadyRefreshed = sessionStorage.getItem(refreshKey);
-
-        if (!hasAlreadyRefreshed) {
-          // Mark that we're about to refresh
-          sessionStorage.setItem(refreshKey, 'true');
-
-          // Auto-refresh after a short delay to let the component mount first
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000); // 2 second delay to let user see it's loading
-        }
-      }
-
-    } catch {
-      // Silently handle cold start detection failures
-    }
-  }
 }

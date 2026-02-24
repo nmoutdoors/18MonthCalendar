@@ -189,11 +189,6 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   }
 
   public async componentDidMount(): Promise<void> {
-    // Check for cold start and handle auto-refresh if needed
-    if (this.handleColdStartDetection()) {
-      return; // Exit early if refreshing
-    }
-
     // Hide SharePoint navigation bar (z-index 9999 fix)
     const suiteNav = document.getElementById('SuiteNavWrapper');
     if (suiteNav) {
@@ -242,82 +237,6 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     setTimeout(() => {
       this.scrollToCurrentMonth();
     }, 500);
-  }
-
-  /**
-   * Handle cold start detection and auto-refresh
-   * Returns true if refresh was triggered, false if normal load should continue
-   */
-  private handleColdStartDetection(): boolean {
-    try {
-      // Check if this is a cold start scenario
-      const isColdStart = this.detectColdStart();
-
-      if (isColdStart) {
-        // Check if we've already attempted a refresh for this session
-        const refreshAttempted = sessionStorage.getItem('bigcal_coldstart_refresh_attempted');
-
-        if (!refreshAttempted) {
-          Logger.info('Cold start detected - triggering automatic refresh');
-
-          // Mark that we've attempted a refresh to prevent infinite loops
-          sessionStorage.setItem('bigcal_coldstart_refresh_attempted', Date.now().toString());
-
-          // Mark successful load for future sessions
-          sessionStorage.setItem('bigcal_loaded', 'true');
-
-          // Trigger refresh after a tiny delay to ensure sessionStorage is written
-          setTimeout(() => {
-            window.location.reload();
-          }, 100);
-
-          return true; // Indicate that refresh was triggered
-        } else {
-          // We already tried refreshing this session, continue with normal load
-          Logger.info('Cold start refresh already attempted this session - continuing with normal load');
-        }
-      }
-
-      // Mark successful load for future sessions
-      sessionStorage.setItem('bigcal_loaded', 'true');
-
-      return false; // Continue with normal load
-    } catch (error) {
-      Logger.error('Error in cold start detection', error);
-      return false; // Continue with normal load on error
-    }
-  }
-
-  /**
-   * Detect if this is a cold start scenario
-   */
-  private detectColdStart(): boolean {
-    try {
-      // Check if BigCal has been loaded before in this session
-      const hasBeenLoaded = sessionStorage.getItem('bigcal_loaded');
-
-      // Check navigation type (1 = navigate, 0 = reload, 2 = back/forward)
-      const navigationType = performance.navigation?.type;
-
-      // Check if this is a direct navigation (no referrer from same origin)
-      const isDirectNavigation = !document.referrer ||
-                                document.referrer.indexOf(window.location.origin) === -1;
-
-      // Cold start conditions:
-      // 1. BigCal hasn't been loaded in this session
-      // 2. This is a navigation (not a reload)
-      // 3. This is direct navigation (bookmark, link, new tab)
-      const isColdStart = !hasBeenLoaded &&
-                         navigationType === 1 &&
-                         isDirectNavigation;
-
-      Logger.info(`Cold start detection: hasBeenLoaded=${!!hasBeenLoaded}, navigationType=${navigationType}, isDirectNavigation=${isDirectNavigation}, result=${isColdStart}`);
-
-      return isColdStart;
-    } catch (error) {
-      Logger.error('Error detecting cold start', error);
-      return false; // Default to not cold start on error
-    }
   }
 
   /**

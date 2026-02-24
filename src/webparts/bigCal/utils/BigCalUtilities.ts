@@ -68,4 +68,20 @@ export const NETWORK_TIMEOUTS = {
   VERY_SLOW: 60000  // 60 seconds
 } as const;
 
+/**
+ * Decode HTML entities from SharePoint text fields
+ * SharePoint automatically encodes special characters in Note fields (e.g., &#58; for :)
+ * This function decodes them back to their original characters
+ * @param text The text containing HTML entities
+ * @returns Decoded text with special characters restored
+ */
+export const decodeHtmlEntities = (text: string): string => {
+  if (!text) return '';
+
+  // Create a temporary DOM element to leverage browser's HTML entity decoding
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = text;
+  return tempDiv.textContent || tempDiv.innerText || '';
+};
+
 // Legacy getEventCategoryIcon function removed - all icons now come from Color Palette Studio

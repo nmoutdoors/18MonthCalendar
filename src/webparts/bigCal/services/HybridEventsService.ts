@@ -3,6 +3,7 @@ import { SharePointService, ISharePointEvent } from './SharePointService';
 import { PrivateEventsService, IPrivateEventData } from './PrivateEventsService';
 import { Logger } from './LoggingService';
 import { ICalendarEvent, SwimlaneType, StatusType, IMOType, OPRType } from '../components/ICalendarEvent';
+import { decodeHtmlEntities } from '../utils/BigCalUtilities';
 
 
 export interface IHybridEventResult {
@@ -461,7 +462,7 @@ export class HybridEventsService {
       status: event.Status as StatusType,
       imo: (event.IMO === 'null' || event.IMO === null || event.IMO === undefined || event.IMO === '') ? '' : event.IMO as IMOType,
       opr: (event.OPR === 'null' || event.OPR === null || event.OPR === undefined || event.OPR === '') ? '' : event.OPR as OPRType,
-      description: event.Description || '',
+      description: decodeHtmlEntities(event.Description || ''),
       notes: event.Notes,
       isPrivate: event.Private,
       privateEventId: event.PrivateEventId,
@@ -483,7 +484,7 @@ export class HybridEventsService {
       status: privateEvent.Status as StatusType,
       imo: (privateEvent.IMO === 'null' || privateEvent.IMO === null || privateEvent.IMO === undefined || privateEvent.IMO === '') ? '' : privateEvent.IMO as IMOType,
       opr: (privateEvent.OPR === 'null' || privateEvent.OPR === null || privateEvent.OPR === undefined || privateEvent.OPR === '') ? '' : privateEvent.OPR as OPRType,
-      description: privateEvent.Description || '',
+      description: decodeHtmlEntities(privateEvent.Description || ''),
       notes: privateEvent.Notes,
       isPrivate: true,
       privateEventId: privateEvent.PrivateEventId,
