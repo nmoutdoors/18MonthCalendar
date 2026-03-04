@@ -75,7 +75,7 @@ export class PrivateEventsService {
 
     try {
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Private', 'PrivateEventId')
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Notes', 'Private', 'PrivateEventId')
         .orderBy('EventDate', true)
         .top(5000)();
 
@@ -89,6 +89,7 @@ export class PrivateEventsService {
         IMO: string;
         OPR: string;
         Description: string;
+        Notes?: string;
         Private: boolean;
         PrivateEventId: string;
       }) => ({
@@ -101,6 +102,7 @@ export class PrivateEventsService {
         IMO: item.IMO,
         OPR: item.OPR,
         Description: item.Description || '',
+        Notes: item.Notes,
         Private: item.Private || false,
         PrivateEventId: item.PrivateEventId
       }));
@@ -129,7 +131,7 @@ export class PrivateEventsService {
       const filterQuery = `EventDate ge datetime'${startISO}' and EventDate le datetime'${endISO}'`;
 
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Private', 'PrivateEventId')
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Notes', 'Private', 'PrivateEventId')
         .filter(filterQuery)
         .orderBy('EventDate', true)
         .top(5000)();
@@ -146,6 +148,7 @@ export class PrivateEventsService {
         IMO: string;
         OPR: string;
         Description: string;
+        Notes?: string;
         Private: boolean;
         PrivateEventId: string;
       }) => ({
@@ -158,6 +161,7 @@ export class PrivateEventsService {
         IMO: item.IMO,
         OPR: item.OPR,
         Description: item.Description || '',
+        Notes: item.Notes,
         Private: item.Private || false,
         PrivateEventId: item.PrivateEventId
       }));
