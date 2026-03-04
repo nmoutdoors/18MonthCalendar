@@ -2600,8 +2600,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         Logger.debug('Event created successfully');
       }
 
-      // Reload events to show changes
-      await this.loadEvents();
+      // Reload all events to ensure newly created/updated event is visible
+      // (even if it's outside the lazy-loaded date range)
+      await this.loadAllEvents();
     } catch (error) {
       Logger.error('Failed to save event', error);
       throw error; // Re-throw to let modal handle the error display
@@ -2613,8 +2614,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       await this.sharePointService.deleteEvent(eventId as number);
       Logger.debug('Event deleted successfully');
 
-      // Reload events to show changes
-      await this.loadEvents();
+      // Reload all events to ensure UI is fully refreshed after deletion
+      await this.loadAllEvents();
     } catch (error) {
       Logger.error('Failed to delete event', error);
       throw error; // Re-throw to let modal handle the error display
