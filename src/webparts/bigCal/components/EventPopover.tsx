@@ -22,6 +22,29 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
     return this.props.dynamicIconMappings?.get(swimlane) || '';
   };
 
+  /**
+   * Render an icon - handles Font Awesome icons, emoji, and unicode symbols
+   */
+  private renderIcon = (iconName: string): React.ReactElement => {
+    // Check if it's a Font Awesome icon (starts with 'fa-')
+    if (iconName && iconName.indexOf('fa-') === 0) {
+      return (
+        <i
+          className={`fa ${iconName}`}
+          style={{ fontSize: '20px', display: 'inline-block', marginRight: '8px' }}
+          aria-hidden="true"
+        />
+      );
+    }
+
+    // Otherwise render as emoji/unicode text
+    return (
+      <span style={{ fontSize: '20px', display: 'inline-block', marginRight: '8px' }}>
+        {iconName}
+      </span>
+    );
+  };
+
   private formatDateTime = (date: Date): string => {
     return date.toLocaleDateString('en-US', {
       weekday: 'short',
@@ -73,7 +96,7 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
     }
 
     // Private events get locked icon, regular events get category icon
-    const iconEmoji = event.isPrivate ? '🔒' : this.getEventCategoryIcon(event.swimlane!);
+    const iconName = event.isPrivate ? '🔒' : this.getEventCategoryIcon(event.swimlane!);
     const isAllDay = this.isAllDayEvent(event);
     const isSameDayEvent = this.isSameDay(event.start, event.end);
 
@@ -100,7 +123,7 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
         <div className={styles.popoverContainer}>
           <div className={styles.popoverHeader}>
             <div className={styles.eventTitleRow}>
-              <span className={styles.eventIcon}>{iconEmoji}</span>
+              <span className={styles.eventIcon}>{this.renderIcon(iconName)}</span>
               <Text variant="mediumPlus" className={styles.eventTitle}>
                 {event.title}
               </Text>

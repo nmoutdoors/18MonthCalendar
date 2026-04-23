@@ -279,17 +279,39 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     return allStatuses;
   };
 
+  /**
+   * Render an icon - handles Font Awesome icons, emoji, and unicode symbols
+   */
+  private renderIcon = (iconName: string, fontSize: string = '16px'): React.ReactElement => {
+    // Check if it's a Font Awesome icon (starts with 'fa-')
+    if (iconName && iconName.indexOf('fa-') === 0) {
+      return (
+        <i
+          className={`fa ${iconName}`}
+          style={{ fontSize, display: 'inline-block' }}
+          aria-hidden="true"
+        />
+      );
+    }
+
+    // Otherwise render as emoji/unicode text
+    return (
+      <span style={{ fontSize, display: 'inline-block' }}>
+        {iconName}
+      </span>
+    );
+  };
+
   private onRenderSwimlaneOption = (option?: IDropdownOption): JSX.Element => {
     const icon = this.props.dynamicIconMappings?.get(option?.key as string) || '';
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{
-          fontSize: '16px',
           width: '18px',
           textAlign: 'center',
           display: 'inline-block'
         }}>
-          {icon}
+          {this.renderIcon(icon, '16px')}
         </span>
         <span>{option?.text}</span>
       </div>
@@ -302,12 +324,11 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{
-          fontSize: '16px',
           width: '18px',
           textAlign: 'center',
           display: 'inline-block'
         }}>
-          {icon}
+          {this.renderIcon(icon, '16px')}
         </span>
         <span>{selectedOption?.text}</span>
       </div>

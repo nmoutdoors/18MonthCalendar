@@ -186,7 +186,48 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     this.sharePointService = new SharePointService(props.context, props.listName);
     this.hybridEventsService = new HybridEventsService(props.context, props.listName);
+
+    // Load Font Awesome CSS for icon support
+    this.loadFontAwesome();
   }
+
+  /**
+   * Load Font Awesome 4.7 CSS if not already loaded
+   */
+  private loadFontAwesome = (): void => {
+    const existingLink = document.querySelector('link[href*="font-awesome"]');
+    if (!existingLink) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css';
+      link.integrity = 'sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==';
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    }
+  };
+
+  /**
+   * Render an icon - handles Font Awesome icons, emoji, and unicode symbols
+   */
+  private renderIcon = (iconName: string, fontSize: string = '16px'): React.ReactElement => {
+    // Check if it's a Font Awesome icon (starts with 'fa-')
+    if (iconName && iconName.indexOf('fa-') === 0) {
+      return (
+        <i
+          className={`fa ${iconName}`}
+          style={{ fontSize, display: 'inline-block' }}
+          aria-hidden="true"
+        />
+      );
+    }
+
+    // Otherwise render as emoji/unicode text
+    return (
+      <span style={{ fontSize, display: 'inline-block' }}>
+        {iconName}
+      </span>
+    );
+  };
 
   public async componentDidMount(): Promise<void> {
     // Hide SharePoint navigation bar (z-index 9999 fix)
@@ -1330,12 +1371,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
         <span style={{
-          fontSize: '16px',
           width: '18px',
           textAlign: 'center',
           display: 'inline-block'
         }}>
-          {option.data?.icon}
+          {this.renderIcon(option.data?.icon || '', '16px')}
         </span>
         <span style={{ fontSize: '13px' }}>
           {option.text}
@@ -1913,7 +1953,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
 
     // Private events get locked icon, regular events get dynamic category icon
-    const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
+    const iconName = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
 
     return (
       <div
@@ -1932,9 +1972,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       >
         <span
           className={styles.eventIcon}
-          style={{ fontSize: '16px', marginRight: '6px' }}
+          style={{ marginRight: '6px' }}
         >
-          {iconEmoji}
+          {this.renderIcon(iconName, '16px')}
         </span>
         <span className={styles.eventTitle}>{event.title}</span>
       </div>
@@ -1984,7 +2024,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     }
 
     // Private events get locked icon, regular events get dynamic category icon
-    const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
+    const iconName = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
 
     return (
       <div
@@ -2003,9 +2043,9 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       >
         <span
           className={styles.eventIcon}
-          style={{ fontSize: '14px', marginRight: '4px' }}
+          style={{ marginRight: '4px' }}
         >
-          {iconEmoji}
+          {this.renderIcon(iconName, '14px')}
         </span>
         <span className={styles.eventTitle}>{event.title}</span>
       </div>

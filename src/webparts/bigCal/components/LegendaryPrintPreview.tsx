@@ -1266,7 +1266,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     }
 
     // Private events get locked icon, regular events get dynamic category icon
-    const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
+    const iconName = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
 
     // Truncate regular event titles to maintain consistent cell widths
     const displayTitle = truncateTitle(event.title, 18); // Optimal length for print month view
@@ -1275,9 +1275,9 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       <div className={`${bigCalStyles.customEvent} ${bigCalStyles.monthEventItem}`}>
         <span
           className={bigCalStyles.eventIcon}
-          style={{ fontSize: '14px', marginRight: '4px' }}
+          style={{ marginRight: '4px' }}
         >
-          {iconEmoji}
+          {this.renderIcon(iconName, '14px')}
         </span>
         <span className={bigCalStyles.eventTitle}>{displayTitle}</span>
       </div>
@@ -1311,16 +1311,16 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     }
 
     // Private events get locked icon, regular events get dynamic category icon
-    const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
+    const iconName = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
     const displayTitle = truncateTitle(event.title, 22); // Optimal for week view
 
     return (
       <div className={bigCalStyles.customEvent}>
         <span
           className={bigCalStyles.eventIcon}
-          style={{ fontSize: '16px', marginRight: '6px' }}
+          style={{ marginRight: '6px' }}
         >
-          {iconEmoji}
+          {this.renderIcon(iconName, '16px')}
         </span>
         <span className={bigCalStyles.eventTitle}>{displayTitle}</span>
       </div>
@@ -1347,15 +1347,15 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     }
 
     // Get the icon for this event
-    const iconEmoji = this.getEventIconFromMapping(event.swimlane || '', event.status || '');
+    const iconName = this.getEventIconFromMapping(event.swimlane || '', event.status || '');
 
     return (
       <div className={bigCalStyles.customEvent}>
         <span
           className={bigCalStyles.eventIcon}
-          style={{ fontSize: '14px', marginRight: '6px' }}
+          style={{ marginRight: '6px' }}
         >
-          {iconEmoji}
+          {this.renderIcon(iconName, '14px')}
         </span>
         <span className={bigCalStyles.eventTitle}>{event.title}</span>
       </div>
@@ -1382,15 +1382,15 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     }
 
     // Get the icon for this event
-    const iconEmoji = this.getEventIconFromMapping(event.swimlane || '', event.status || '');
+    const iconName = this.getEventIconFromMapping(event.swimlane || '', event.status || '');
 
     return (
       <div className={bigCalStyles.customEvent}>
         <span
           className={bigCalStyles.eventIcon}
-          style={{ fontSize: '14px', marginRight: '6px' }}
+          style={{ marginRight: '6px' }}
         >
-          {iconEmoji}
+          {this.renderIcon(iconName, '14px')}
         </span>
         <span className={bigCalStyles.eventTitle}>{event.title}</span>
       </div>
@@ -1473,6 +1473,29 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
     // No fallback - only use Color Palette Studio icons
     return '';
+  };
+
+  /**
+   * Render an icon - handles Font Awesome icons, emoji, and unicode symbols
+   */
+  private renderIcon = (iconName: string, fontSize: string = '16px'): React.ReactElement => {
+    // Check if it's a Font Awesome icon (starts with 'fa-')
+    if (iconName && iconName.indexOf('fa-') === 0) {
+      return (
+        <i
+          className={`fa ${iconName}`}
+          style={{ fontSize, display: 'inline-block' }}
+          aria-hidden="true"
+        />
+      );
+    }
+
+    // Otherwise render as emoji/unicode text
+    return (
+      <span style={{ fontSize, display: 'inline-block' }}>
+        {iconName}
+      </span>
+    );
   };
 
   private generateMonthGrid = (events: ICalendarEvent[], selectedDate: Date): string => {
