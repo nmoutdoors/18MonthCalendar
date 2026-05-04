@@ -103,6 +103,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   private sharePointService: SharePointService;
   private hybridEventsService: HybridEventsService;
   private popoverTimeout: number | null = null;
+  private isProgrammaticMiniCalendarScroll: boolean = false;
 
   // Refs for mini calendar auto-scroll functionality
   private miniCalendarScrollAreaRef = React.createRef<HTMLDivElement>();
@@ -717,11 +718,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       return;
     }
 
-    // Use current date for smart navigation
-    const today = new Date();
+    // Use the currently displayed calendar date for smart navigation
+    const referenceDate = this.state.currentDate;
 
     // Smart navigation: if we're in the last 7 days of the month, show next month
-    const targetDate = this.getSmartNavigationDate(today);
+    const targetDate = this.getSmartNavigationDate(referenceDate);
     const targetMonthKey = `${targetDate.getFullYear()}-${targetDate.getMonth()}`;
     const targetMonthElement = this.miniCalendarRefs.get(targetMonthKey);
 
@@ -732,7 +733,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     });
 
     console.log('🎯 Auto-scroll Debug:', {
-      today: today.toDateString(),
+      referenceDate: referenceDate.toDateString(),
       targetDate: targetDate.toDateString(),
       targetMonthKey,
       hasTargetElement: !!targetMonthElement,
@@ -754,6 +755,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         targetElementOffsetTop: targetMonthElement.offsetTop
       });
 
+      this.isProgrammaticMiniCalendarScroll = true;
+
       scrollIntoView(targetMonthElement, {
         behavior: 'smooth',
         block: 'start', // Position the target month at the top of the viewport
@@ -770,6 +773,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           afterScrollTop,
           scrollChanged: beforeScrollTop !== afterScrollTop
         });
+
+        this.isProgrammaticMiniCalendarScroll = false;
       }, 1000);
     } else {
       console.warn('❌ Cannot scroll - missing element or container');
@@ -780,6 +785,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
    * Handle mini-calendar scroll events to detect when user scrolls beyond loaded range
    */
   private handleMiniCalendarScroll = (): void => {
+    if (this.isProgrammaticMiniCalendarScroll) {
+      return;
+    }
+
     // Debounce scroll checks to avoid excessive processing
     if (this.scrollCheckTimeout) {
       window.clearTimeout(this.scrollCheckTimeout);
@@ -789,66 +798,70 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     this.setState({ preserveScrollPosition: true });
 
     this.scrollCheckTimeout = window.setTimeout(() => {
-      // Only check if we're in partial load mode
-      if (!this.state.isPartialLoad || !this.state.loadedDateRange) {
-        return;
-      }
-
-      const scrollContainer = this.miniCalendarScrollAreaRef.current;
-      if (!scrollContainer) {
-        return;
-      }
-
-      // Get scroll metrics
-      const scrollTop = scrollContainer.scrollTop;
-      const scrollHeight = scrollContainer.scrollHeight;
-      const clientHeight = scrollContainer.clientHeight;
-      const scrollPercentage = (scrollTop / (scrollHeight - clientHeight)) * 100;
-
-      // Check which months are currently visible in the viewport
-      const visibleMonths: Date[] = [];
-      this.miniCalendarRefs.forEach((element, monthKey) => {
-        const rect = element.getBoundingClientRect();
-        const containerRect = scrollContainer.getBoundingClientRect();
-
-        // Check if this month is visible in the viewport
-        if (rect.top < containerRect.bottom && rect.bottom > containerRect.top) {
-          const [year, month] = monthKey.split('-').map(Number);
-          visibleMonths.push(new Date(year, month, 1));
-        }
-      });
-
-      if (visibleMonths.length === 0) {
-        return;
-      }
-
-      // Find the earliest and latest visible months
-      const earliestVisible = new Date(Math.min(...visibleMonths.map(d => d.getTime())));
-      const latestVisible = new Date(Math.max(...visibleMonths.map(d => d.getTime())));
-
-      // Check if user has scrolled beyond the loaded range
-      const loadedStart = this.state.loadedDateRange.start;
-      const loadedEnd = this.state.loadedDateRange.end;
-
-      const scrolledBeforeRange = earliestVisible < loadedStart;
-      const scrolledAfterRange = latestVisible > loadedEnd;
-
-      if (scrolledBeforeRange || scrolledAfterRange) {
-        if (this.props.enablePerformanceLogging) {
-          Logger.info('[Lazy Load] User scrolled beyond loaded range. Triggering load all events...', {
-            scrollPercentage: scrollPercentage.toFixed(1),
-            earliestVisible: earliestVisible.toLocaleDateString(),
-            latestVisible: latestVisible.toLocaleDateString(),
-            loadedStart: loadedStart.toLocaleDateString(),
-            loadedEnd: loadedEnd.toLocaleDateString(),
-            scrolledBeforeRange,
-            scrolledAfterRange
-          });
+      try {
+        // Only check if we're in partial load mode
+        if (!this.state.isPartialLoad || !this.state.loadedDateRange) {
+          return;
         }
 
-        // Trigger load all events
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        this.loadAllEvents();
+        const scrollContainer = this.miniCalendarScrollAreaRef.current;
+        if (!scrollContainer) {
+          return;
+        }
+
+        // Get scroll metrics
+        const scrollTop = scrollContainer.scrollTop;
+        const scrollHeight = scrollContainer.scrollHeight;
+        const clientHeight = scrollContainer.clientHeight;
+        const scrollPercentage = (scrollTop / (scrollHeight - clientHeight)) * 100;
+
+        // Check which months are currently visible in the viewport
+        const visibleMonths: Date[] = [];
+        this.miniCalendarRefs.forEach((element, monthKey) => {
+          const rect = element.getBoundingClientRect();
+          const containerRect = scrollContainer.getBoundingClientRect();
+
+          // Check if this month is visible in the viewport
+          if (rect.top < containerRect.bottom && rect.bottom > containerRect.top) {
+            const [year, month] = monthKey.split('-').map(Number);
+            visibleMonths.push(new Date(year, month, 1));
+          }
+        });
+
+        if (visibleMonths.length === 0) {
+          return;
+        }
+
+        // Find the earliest and latest visible months
+        const earliestVisible = new Date(Math.min(...visibleMonths.map(d => d.getTime())));
+        const latestVisible = new Date(Math.max(...visibleMonths.map(d => d.getTime())));
+
+        // Check if user has scrolled beyond the loaded range
+        const loadedStart = this.state.loadedDateRange.start;
+        const loadedEnd = this.state.loadedDateRange.end;
+
+        const scrolledBeforeRange = earliestVisible < loadedStart;
+        const scrolledAfterRange = latestVisible > loadedEnd;
+
+        if (scrolledBeforeRange || scrolledAfterRange) {
+          if (this.props.enablePerformanceLogging) {
+            Logger.info('[Lazy Load] User scrolled beyond loaded range. Triggering load all events...', {
+              scrollPercentage: scrollPercentage.toFixed(1),
+              earliestVisible: earliestVisible.toLocaleDateString(),
+              latestVisible: latestVisible.toLocaleDateString(),
+              loadedStart: loadedStart.toLocaleDateString(),
+              loadedEnd: loadedEnd.toLocaleDateString(),
+              scrolledBeforeRange,
+              scrolledAfterRange
+            });
+          }
+
+          // Trigger load all events
+          // eslint-disable-next-line @typescript-eslint/no-floating-promises
+          this.loadAllEvents();
+        }
+      } finally {
+        this.setState({ preserveScrollPosition: false });
       }
     }, 300); // 300ms debounce
   };
