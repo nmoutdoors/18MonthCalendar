@@ -59,7 +59,7 @@ interface IBigCalState {
   selectedIMOs: Set<string>;
   selectedOPRs: Set<string>;
   monthNavigatorExpanded: boolean;
-  viewMode: 'calendar' | 'grid' | 'timeline';
+  viewMode: 'calendar' | 'briefing' | 'grid' | 'timeline';
   isExportDialogOpen: boolean;
   isPrintDialogOpen: boolean;
   isLegendaryPrintOpen: boolean;
@@ -635,7 +635,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private handleViewModeChange = (item?: PivotItem): void => {
     if (item?.props.itemKey) {
-      const newViewMode = item.props.itemKey as 'calendar' | 'grid' | 'timeline';
+      const newViewMode = item.props.itemKey as 'calendar' | 'briefing' | 'grid' | 'timeline';
 
       // Trigger load all events for grid view (18-month view needs all data)
       if (newViewMode === 'grid' && this.state.isPartialLoad) {
@@ -647,10 +647,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       }
 
       this.setState({ viewMode: newViewMode }, () => {
-        // Maintain mini calendar scroll position when switching views
-        setTimeout(() => {
-          this.scrollToCurrentMonth();
-        }, 50);
+        if (newViewMode === 'calendar') {
+          // Maintain mini calendar scroll position when switching back to calendar view
+          setTimeout(() => {
+            this.scrollToCurrentMonth();
+          }, 50);
+        }
       });
     }
   };
@@ -2665,6 +2667,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   public render(): React.ReactElement<IBigCalProps> {
     const { hasTeamsContext } = this.props;
     const { events, isFullscreen, isLoading, error, currentView, currentDate, isModalOpen, selectedEvent, selectedDate, searchText, isSearchModalOpen, selectedEventCategories, selectedStatuses, selectedIMOs, selectedOPRs, viewMode, isExportDialogOpen, isPrintDialogOpen, isLegendaryPrintOpen, isIconSelectorOpen, isColorPaletteStudioOpen } = this.state;
+    const showMiniCalendars = viewMode === 'calendar';
+    const isCalendarLayoutMode = viewMode === 'calendar' || viewMode === 'briefing';
 
     // Combine regular events with holiday events and apply filters
     const allEventsWithHolidays = this.getAllEventsWithHolidays();
@@ -2870,6 +2874,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                     itemIcon="Calendar"
                   />
                   <PivotItem
+                    headerText="Briefing"
+                    itemKey="briefing"
+                    itemIcon="View"
+                  />
+                  <PivotItem
                     headerText="18-Month"
                     itemKey="grid"
                     itemIcon="GridViewMedium"
@@ -2987,70 +2996,72 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
         {/* Main Content Area */}
         <div className={styles.mainContent}>
-          {viewMode === 'calendar' ? (
+          {isCalendarLayoutMode ? (
             <>
-              {/* Left Column - Mini Calendars */}
-              <div className={styles.leftColumn}>
-                <div className={styles.leftColumnContent}>
-                  <div className={styles.miniCalendarContainer}>
-                    <div
-                      className={styles.miniCalendarScrollArea}
-                      ref={this.miniCalendarScrollAreaRef}
-                      onScroll={this.handleMiniCalendarScroll}
-                    >
-                      {this.get18MonthRange().map((month, index) => {
-                        const monthEvents = this.getEventsForMonth(month);
-                        const isCurrentMonth = month.getFullYear() === currentDate.getFullYear() &&
-                                             month.getMonth() === currentDate.getMonth();
-                        const monthKey = `${month.getFullYear()}-${month.getMonth()}`;
-                        return (
-                          <div key={index} className={styles.miniCalendarWrapper}>
-                            <div
-                              className={`${styles.miniCalendarCard} ${isCurrentMonth ? styles.currentMonth : ''}`}
-                              onClick={() => this.handleMonthNavigate(month)}
-                              ref={(el) => {
-                                if (el) {
-                                  this.miniCalendarRefs.set(monthKey, el);
-                                } else {
-                                  this.miniCalendarRefs.delete(monthKey);
-                                }
-                              }}
-                            >
-                              <div className={styles.miniCalendarTitle}>
-                                {formatMonthYear(month)} ({monthEvents})
-                              </div>
-                              <div className={styles.miniCalendarContent}>
-                                {/* Mini calendar will be rendered here */}
-                                <Calendar
-                                  localizer={localizer}
-                                  events={allFilteredEvents.filter(event =>
-                                    event.start.getFullYear() === month.getFullYear() &&
-                                    event.start.getMonth() === month.getMonth()
-                                  )}
-                                  startAccessor="start"
-                                  endAccessor="end"
-                                  style={{ height: '240px' }}
-                                  views={['month']}
-                                  view="month"
-                                  date={month}
-                                  toolbar={false}
-                                  eventPropGetter={this.eventStyleGetter}
-                                  components={{
-                                    event: this.MiniCalendarEvent
-                                  }}
-                                />
+              {showMiniCalendars && (
+                /* Left Column - Mini Calendars */
+                <div className={styles.leftColumn}>
+                  <div className={styles.leftColumnContent}>
+                    <div className={styles.miniCalendarContainer}>
+                      <div
+                        className={styles.miniCalendarScrollArea}
+                        ref={this.miniCalendarScrollAreaRef}
+                        onScroll={this.handleMiniCalendarScroll}
+                      >
+                        {this.get18MonthRange().map((month, index) => {
+                          const monthEvents = this.getEventsForMonth(month);
+                          const isCurrentMonth = month.getFullYear() === currentDate.getFullYear() &&
+                                               month.getMonth() === currentDate.getMonth();
+                          const monthKey = `${month.getFullYear()}-${month.getMonth()}`;
+                          return (
+                            <div key={index} className={styles.miniCalendarWrapper}>
+                              <div
+                                className={`${styles.miniCalendarCard} ${isCurrentMonth ? styles.currentMonth : ''}`}
+                                onClick={() => this.handleMonthNavigate(month)}
+                                ref={(el) => {
+                                  if (el) {
+                                    this.miniCalendarRefs.set(monthKey, el);
+                                  } else {
+                                    this.miniCalendarRefs.delete(monthKey);
+                                  }
+                                }}
+                              >
+                                <div className={styles.miniCalendarTitle}>
+                                  {formatMonthYear(month)} ({monthEvents})
+                                </div>
+                                <div className={styles.miniCalendarContent}>
+                                  {/* Mini calendar will be rendered here */}
+                                  <Calendar
+                                    localizer={localizer}
+                                    events={allFilteredEvents.filter(event =>
+                                      event.start.getFullYear() === month.getFullYear() &&
+                                      event.start.getMonth() === month.getMonth()
+                                    )}
+                                    startAccessor="start"
+                                    endAccessor="end"
+                                    style={{ height: '240px' }}
+                                    views={['month']}
+                                    view="month"
+                                    date={month}
+                                    toolbar={false}
+                                    eventPropGetter={this.eventStyleGetter}
+                                    components={{
+                                      event: this.MiniCalendarEvent
+                                    }}
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
           {/* Right Column - Calendar */}
-          <div className={styles.rightColumn}>
+          <div className={`${styles.rightColumn} ${!showMiniCalendars ? styles.rightColumnFullWidth : ''}`.trim()}>
             <div className={styles.calendarContainer}>
               {error && (
                 <MessageBar messageBarType={MessageBarType.error} isMultiline>

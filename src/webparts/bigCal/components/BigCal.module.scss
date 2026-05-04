@@ -775,6 +775,10 @@
   overflow: hidden;
 }
 
+.rightColumnFullWidth {
+  width: 100%;
+}
+
 .calendarContainer {
   flex: 1;
   background: white;
@@ -1190,6 +1194,11 @@
       margin-left: 200px;
       width: calc(100% - 200px);
     }
+  }
+
+  .rightColumnFullWidth {
+    margin-left: 0;
+    width: 100%;
   }
 
   .navbar {
