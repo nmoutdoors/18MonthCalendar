@@ -2616,7 +2616,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           eventData.opr || '',
           eventData.description || '',
           eventData.notes || '',
-          eventData.isPrivate || false
+          eventData.isPrivate || false,
+          eventData.isBigRock || false
         );
 
         if (!result.success) {
@@ -2640,7 +2641,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           eventData.opr || '',
           eventData.description || '',
           eventData.notes || '',
-          eventData.isPrivate || false
+          eventData.isPrivate || false,
+          eventData.isBigRock || false
         );
 
         if (!result.success) {

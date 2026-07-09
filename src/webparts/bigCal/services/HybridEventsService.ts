@@ -98,13 +98,14 @@ export class HybridEventsService {
     opr: string,
     description: string,
     notes: string = '',
-    isPrivate: boolean = false
+    isPrivate: boolean = false,
+    isBigRock: boolean = false
   ): Promise<IHybridEventResult> {
     try {
       if (!isPrivate) {
         // Create regular public event
         const result = await this.sharePointService.createEvent(
-          title, start, end, swimlane, status, imo, opr, description, notes, false
+          title, start, end, swimlane, status, imo, opr, description, notes, false, undefined, isBigRock
         );
 
         return {
@@ -125,7 +126,8 @@ export class HybridEventsService {
           imo,
           opr,
           description, // Full description
-          notes // Full notes
+          notes, // Full notes
+          isBigRock
         );
 
         if (!privateEvent) {
@@ -147,7 +149,8 @@ export class HybridEventsService {
           '', // No description in placeholder
           '', // No notes in placeholder
           true, // Mark as private
-          privateEvent.Id.toString() // Store numeric ID as string
+          privateEvent.Id.toString(), // Store numeric ID as string
+          isBigRock
         );
 
 
@@ -162,7 +165,7 @@ export class HybridEventsService {
 
         // Fallback: Create as private event in main list only (without separate private list)
         const result = await this.sharePointService.createEvent(
-          title, start, end, swimlane, status, imo, opr, description, notes, true // Still mark as private
+          title, start, end, swimlane, status, imo, opr, description, notes, true, undefined, isBigRock // Still mark as private
         );
 
         return {
@@ -195,7 +198,8 @@ export class HybridEventsService {
     opr?: string,
     description?: string,
     notes?: string,
-    isPrivate?: boolean
+    isPrivate?: boolean,
+    isBigRock?: boolean
   ): Promise<IHybridEventResult> {
     try {
 
@@ -224,14 +228,14 @@ export class HybridEventsService {
       // Case 1: Public -> Private conversion
       if (!wasPrivate && willBePrivate) {
         return await this.convertPublicToPrivate(
-          id as number, title, start, end, swimlane!, status!, imo!, opr!, description || '', notes || ''
+          id as number, title, start, end, swimlane!, status!, imo!, opr!, description || '', notes || '', isBigRock || false
         );
       }
 
       // Case 2: Private -> Public conversion
       if (wasPrivate && !willBePrivate) {
         return await this.convertPrivateToPublic(
-          id as number, title, start, end, swimlane!, status!, imo!, opr!, description || '', notes || ''
+          id as number, title, start, end, swimlane!, status!, imo!, opr!, description || '', notes || '', isBigRock || false
         );
       }
 
@@ -239,12 +243,12 @@ export class HybridEventsService {
       if (wasPrivate && willBePrivate) {
         // Update private event
         return await this.updatePrivateEvent(
-          id as number, title, start, end, swimlane!, status!, imo!, opr!, description || '', notes || ''
+          id as number, title, start, end, swimlane!, status!, imo!, opr!, description || '', notes || '', isBigRock || false
         );
       } else {
         // Update public event
         await this.sharePointService.updateEvent(
-          id as number, title, start, end, swimlane!, status!, imo!, opr!, description, notes, false
+          id as number, title, start, end, swimlane!, status!, imo!, opr!, description, notes, false, undefined, isBigRock
         );
         return { success: true };
       }
@@ -271,12 +275,13 @@ export class HybridEventsService {
     imo: string,
     opr: string,
     description: string,
-    notes: string
+    notes: string,
+    isBigRock: boolean
   ): Promise<IHybridEventResult> {
 
     // 1. Create private event in PrivateEvents list
     const privateEvent = await this.privateEventsService.createPrivateEvent(
-      title, start, end, swimlane, status, imo, opr, description, notes
+      title, start, end, swimlane, status, imo, opr, description, notes, isBigRock
     );
 
     if (!privateEvent) {
@@ -288,7 +293,7 @@ export class HybridEventsService {
 
     // 2. Update main list event to "Unavailable" placeholder
     await this.sharePointService.updateEvent(
-      id, 'Unavailable', start, end, swimlane, status, imo, opr, '', '', true, privateEvent.Id.toString()
+      id, 'Unavailable', start, end, swimlane, status, imo, opr, '', '', true, privateEvent.Id.toString(), isBigRock
     );
 
     return {
@@ -310,7 +315,8 @@ export class HybridEventsService {
     imo: string,
     opr: string,
     description: string,
-    notes: string
+    notes: string,
+    isBigRock: boolean
   ): Promise<IHybridEventResult> {
 
     // Get current event to find PrivateEventId
@@ -335,7 +341,7 @@ export class HybridEventsService {
 
     // 2. Update main list event with actual data
     await this.sharePointService.updateEvent(
-      id, title, start, end, swimlane, status, imo, opr, description, notes, false
+      id, title, start, end, swimlane, status, imo, opr, description, notes, false, undefined, isBigRock
     );
 
     return {
@@ -357,7 +363,8 @@ export class HybridEventsService {
     imo: string,
     opr: string,
     description: string,
-    notes: string
+    notes: string,
+    isBigRock: boolean
   ): Promise<IHybridEventResult> {
 
     // Get current event to find PrivateEventId
@@ -379,12 +386,12 @@ export class HybridEventsService {
 
     // 1. Update private event in PrivateEvents list (convert string ID to number)
     await this.privateEventsService.updatePrivateEvent(
-      parseInt(currentEvent.PrivateEventId, 10), title, start, end, swimlane, status, imo, opr, description, notes
+      parseInt(currentEvent.PrivateEventId, 10), title, start, end, swimlane, status, imo, opr, description, notes, isBigRock
     );
 
     // 2. Update placeholder in main list (keep as "Unavailable" but update times/category)
     await this.sharePointService.updateEvent(
-      id, 'Unavailable', start, end, swimlane, status, imo, opr, '', '', true, currentEvent.PrivateEventId
+      id, 'Unavailable', start, end, swimlane, status, imo, opr, '', '', true, currentEvent.PrivateEventId, isBigRock
     );
 
     return { success: true };
@@ -465,6 +472,7 @@ export class HybridEventsService {
       description: decodeHtmlEntities(event.Description || ''),
       notes: event.Notes,
       isPrivate: event.Private,
+      isBigRock: event.BigRock || false,
       privateEventId: event.PrivateEventId,
       modified: event.Modified ? this.parseSharePointDate(event.Modified) : undefined,
       modifiedBy: event.Editor?.Title
@@ -487,6 +495,7 @@ export class HybridEventsService {
       description: decodeHtmlEntities(privateEvent.Description || ''),
       notes: privateEvent.Notes,
       isPrivate: true,
+      isBigRock: privateEvent.BigRock || false,
       privateEventId: privateEvent.PrivateEventId,
       modified: placeholder.Modified ? this.parseSharePointDate(placeholder.Modified) : undefined,
       modifiedBy: placeholder.Editor?.Title
@@ -506,6 +515,7 @@ export class HybridEventsService {
       status: placeholder.Status as StatusType,
       description: '',
       isPrivate: true,
+      isBigRock: placeholder.BigRock || false,
       privateEventId: placeholder.PrivateEventId
     };
   }

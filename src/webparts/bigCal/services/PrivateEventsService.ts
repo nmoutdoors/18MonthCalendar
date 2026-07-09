@@ -68,7 +68,7 @@ export class PrivateEventsService {
 
     try {
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Notes', 'Private', 'PrivateEventId')
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Notes', 'Private', 'BigRock', 'PrivateEventId')
         .orderBy('EventDate', true)
         .top(5000)();
 
@@ -84,6 +84,7 @@ export class PrivateEventsService {
         Description: string;
         Notes?: string;
         Private: boolean;
+        BigRock?: boolean;
         PrivateEventId: string;
       }) => ({
         Id: item.Id,
@@ -97,6 +98,7 @@ export class PrivateEventsService {
         Description: item.Description || '',
         Notes: item.Notes,
         Private: item.Private || false,
+        BigRock: item.BigRock || false,
         PrivateEventId: item.PrivateEventId
       }));
 
@@ -124,7 +126,7 @@ export class PrivateEventsService {
       const filterQuery = `EventDate ge datetime'${startISO}' and EventDate le datetime'${endISO}'`;
 
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Notes', 'Private', 'PrivateEventId')
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Notes', 'Private', 'BigRock', 'PrivateEventId')
         .filter(filterQuery)
         .orderBy('EventDate', true)
         .top(5000)();
@@ -143,6 +145,7 @@ export class PrivateEventsService {
         Description: string;
         Notes?: string;
         Private: boolean;
+        BigRock?: boolean;
         PrivateEventId: string;
       }) => ({
         Id: item.Id,
@@ -156,6 +159,7 @@ export class PrivateEventsService {
         Description: item.Description || '',
         Notes: item.Notes,
         Private: item.Private || false,
+        BigRock: item.BigRock || false,
         PrivateEventId: item.PrivateEventId
       }));
 
@@ -177,7 +181,8 @@ export class PrivateEventsService {
     imo: string,
     opr: string,
     description: string,
-    notes: string = ''
+    notes: string = '',
+    isBigRock: boolean = false
   ): Promise<IPrivateEventData | undefined> {
     const hasAccess = await this.canUserAccessPrivateEvents();
     if (!hasAccess) {
@@ -195,7 +200,8 @@ export class PrivateEventsService {
         OPR: opr,
         Description: description,
         Notes: notes || '',
-        Private: true
+        Private: true,
+        BigRock: isBigRock
       });
 
       return {
@@ -209,7 +215,8 @@ export class PrivateEventsService {
         OPR: result.OPR,
         Description: result.Description || '',
         Notes: result.Notes,
-        Private: result.Private || false
+        Private: result.Private || false,
+        BigRock: result.BigRock || false
       };
 
     } catch (error: unknown) {
@@ -232,7 +239,8 @@ export class PrivateEventsService {
     imo?: string,
     opr?: string,
     description?: string,
-    notes?: string
+    notes?: string,
+    isBigRock?: boolean
   ): Promise<void> {
     const hasAccess = await this.canUserAccessPrivateEvents();
     if (!hasAccess) {
@@ -252,6 +260,7 @@ export class PrivateEventsService {
       if (opr !== undefined) updateData.OPR = opr;
       if (description !== undefined) updateData.Description = description;
       if (notes !== undefined) updateData.Notes = notes;
+      if (isBigRock !== undefined) updateData.BigRock = isBigRock;
 
       await this.sp.web.lists.getByTitle(this.privateListName).items.getById(id).update(updateData);
 
@@ -291,7 +300,7 @@ export class PrivateEventsService {
 
     try {
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
-        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Private', 'PrivateEventId')
+        .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Private', 'BigRock', 'PrivateEventId')
         .filter(`PrivateEventId eq '${privateEventId}'`)
         .top(1)();
 
@@ -311,6 +320,7 @@ export class PrivateEventsService {
         OPR: item.OPR,
         Description: item.Description || '',
         Private: item.Private || false,
+        BigRock: item.BigRock || false,
         PrivateEventId: item.PrivateEventId
       };
 

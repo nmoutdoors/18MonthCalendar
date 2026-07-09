@@ -22,6 +22,7 @@ export interface ICalendarEvent {
   isHoliday?: boolean;
   isObserved?: boolean;
   isPrivate?: boolean;
+  isBigRock?: boolean;
   privateEventId?: string; // GUID linking to PrivateEvents list
   attachmentCount?: number; // Number of attachments for this event
   modified?: Date; // Last modified date

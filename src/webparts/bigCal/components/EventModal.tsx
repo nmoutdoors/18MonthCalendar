@@ -51,6 +51,7 @@ interface IEventModalState {
   imo: IMOType;
   opr: OPRType;
   isPrivate: boolean;
+  isBigRock: boolean;
   isSaving: boolean;
   isDeleting: boolean;
   // Attachment-related state
@@ -160,6 +161,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         return props.event.opr;
       })(),
       isPrivate: props.event?.isPrivate || false,
+      isBigRock: props.event?.isBigRock || false,
       isSaving: false,
       isDeleting: false,
       // Attachment-related state
@@ -202,6 +204,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
           imo: 'Not Set',
           opr: 'J-0', // Default to first OPR option since it's mandatory
           isPrivate: false,
+          isBigRock: false,
           isSaving: false,
           isDeleting: false,
           // Reset attachment state for create mode
@@ -244,6 +247,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
             return this.props.event.opr;
           })(),
           isPrivate: this.props.event.isPrivate || false,
+          isBigRock: this.props.event.isBigRock || false,
           isSaving: false,
           isDeleting: false,
           // Reset attachment state for edit mode
@@ -445,7 +449,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
 
   private handleSave = async (): Promise<void> => {
-    const { title, description, notes, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, imo, opr, isPrivate } = this.state;
+    const { title, description, notes, startDate, endDate, startTime, endTime, startAmPm, endAmPm, swimlane, status, imo, opr, isPrivate, isBigRock } = this.state;
 
     if (!title.trim()) {
       alert('Please enter a title for the event.');
@@ -476,7 +480,8 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
         status: (status === 'Not Set' ? '' : status), // Convert "Not Set" to empty string for storage
         imo: (imo === 'Not Set' ? '' : imo), // Convert "Not Set" to empty string for storage
         opr: (opr === 'Not Set' ? '' : opr), // Convert "Not Set" to empty string for storage
-        isPrivate
+        isPrivate,
+        isBigRock
       };
 
       await this.props.onSave(eventData);
@@ -686,7 +691,7 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
     const { isOpen, event, onClose } = this.props;
     const {
       title, description, notes, startDate, endDate, startTime, endTime, startAmPm, endAmPm,
-      swimlane, status, imo, opr, isPrivate, isSaving, isDeleting,
+      swimlane, status, imo, opr, isPrivate, isBigRock, isSaving, isDeleting,
       attachments, isLoadingAttachments, isUploadingAttachment, attachmentUploadMessage,
       attachmentUploadMessageType, attachmentError
     } = this.state;
@@ -723,29 +728,55 @@ export class EventModal extends React.Component<IEventModalProps, IEventModalSta
 
         <div className={styles.modalBody}>
           <Stack tokens={{ childrenGap: 12 }}>
-            {/* Private Event Checkbox - Reduced margin */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
-              <Checkbox
-                label="Private Event"
-                checked={isPrivate}
-                onChange={(_, checked) => this.setState({ isPrivate: checked || false })}
-                styles={{
-                  root: {
-                    backgroundColor: isPrivate ? '#fff4e6' : 'transparent',
-                    padding: '6px 12px',
-                    borderRadius: '4px',
-                    border: isPrivate ? '1px solid #d83b01' : '1px solid transparent'
-                  },
-                  text: {
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: isPrivate ? '#d83b01' : '#323130'
-                  },
-                  checkbox: {
-                    borderColor: isPrivate ? '#d83b01' : '#605e5c'
-                  }
-                }}
-              />
+            {/* Private Event / Big Rock Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 16, marginBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <Checkbox
+                  label="Private Event"
+                  checked={isPrivate}
+                  onChange={(_, checked) => this.setState({ isPrivate: checked || false })}
+                  styles={{
+                    root: {
+                      backgroundColor: isPrivate ? '#fff4e6' : 'transparent',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      border: isPrivate ? '1px solid #d83b01' : '1px solid transparent'
+                    },
+                    text: {
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: isPrivate ? '#d83b01' : '#323130'
+                    },
+                    checkbox: {
+                      borderColor: isPrivate ? '#d83b01' : '#605e5c'
+                    }
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <Checkbox
+                  label="Big Rock"
+                  checked={isBigRock}
+                  onChange={(_, checked) => this.setState({ isBigRock: checked || false })}
+                  styles={{
+                    root: {
+                      backgroundColor: isBigRock ? '#f3f2f1' : 'transparent',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      border: isBigRock ? '1px solid #605e5c' : '1px solid transparent'
+                    },
+                    text: {
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: '#323130'
+                    },
+                    checkbox: {
+                      borderColor: '#605e5c'
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             <TextField

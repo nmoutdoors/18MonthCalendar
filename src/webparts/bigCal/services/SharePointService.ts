@@ -22,6 +22,7 @@ export interface ISharePointEvent {
   Description: string;
   Notes?: string; // Multi-line text field for additional notes
   Private: boolean;
+  BigRock?: boolean;
   PrivateEventId?: string;
   Modified?: string; // Last modified date
   Editor?: { Title: string }; // Last modified by user (expanded)
@@ -189,6 +190,13 @@ export class SharePointService {
       defaultValue: 'No'
     },
     {
+      internalName: 'BigRock',
+      displayName: 'Big Rock',
+      fieldType: 'Boolean',
+      required: false,
+      defaultValue: 'No'
+    },
+    {
       internalName: 'PrivateEventId',
       displayName: 'Private Event ID',
       fieldType: 'Text',
@@ -332,10 +340,36 @@ export class SharePointService {
     }
   }
 
+  /**
+   * Check if the list has the BigRock field
+   */
+  private async checkForBigRockField(): Promise<boolean> {
+    try {
+      const fields = await this.sp.web.lists.getByTitle(this.listName).fields
+        .select('InternalName')();
+
+      const fieldNames = fields.map(f => f.InternalName.toLowerCase());
+      const hasBigRock = fieldNames.some(name =>
+        name === 'bigrock' || name === 'bigrock0' || name.indexOf('bigrock') !== -1
+      );
+
+      Logger.debug('Big Rock field detection', {
+        totalFields: fieldNames.length,
+        hasBigRock
+      });
+
+      return hasBigRock;
+    } catch (error: unknown) {
+      Logger.error('Critical error checking for Big Rock field', error);
+      return false;
+    }
+  }
+
   public async getEvents(): Promise<ISharePointEvent[]> {
     try {
       // Check if the list has the new Private fields
       const hasPrivateFields = await this.checkForPrivateFields();
+      const hasBigRockField = await this.checkForBigRockField();
 
       // Use PnP.js to get items from the Events list
       // Increase limit to handle large datasets (default is 100)
@@ -375,6 +409,10 @@ export class SharePointService {
         }
       }
 
+      if (hasBigRockField) {
+        selectFields += ',BigRock';
+      }
+
 
 
       const itemsPromise = this.sp.web.lists.getByTitle(this.listName).items
@@ -401,12 +439,14 @@ export class SharePointService {
         Description?: string;
         Notes?: string;
         Private?: unknown;
+        BigRock?: unknown;
         PrivateEventId?: string;
         Modified?: string;
         Editor?: { Title: string };
       }) => {
         // Enhanced boolean field handling for production environments
         const isPrivate = this.normalizeBoolean(item.Private);
+        const isBigRock = this.normalizeBoolean(item.BigRock);
 
         const mappedEvent = {
           Id: item.Id,
@@ -420,6 +460,7 @@ export class SharePointService {
           Description: item.Description || '',
           Notes: item.Notes,
           Private: isPrivate,
+          BigRock: isBigRock,
           PrivateEventId: item.PrivateEventId,
           Modified: item.Modified,
           Editor: item.Editor
@@ -452,6 +493,7 @@ export class SharePointService {
     try {
       // Check if the list has the new Private fields
       const hasPrivateFields = await this.checkForPrivateFields();
+      const hasBigRockField = await this.checkForBigRockField();
 
       // Use PnP.js to get items from the Events list
       let selectFields = 'Id,Title,EventDate,EndDate,Swimlane,Status,IMO,OPR,Description,Notes,Modified,Editor/Title';
@@ -490,6 +532,10 @@ export class SharePointService {
         }
       }
 
+      if (hasBigRockField) {
+        selectFields += ',BigRock';
+      }
+
       // Build OData filter for date range
       // Filter events where EventDate is within the range
       const startISO = startDate.toISOString();
@@ -519,12 +565,14 @@ export class SharePointService {
         Description?: string;
         Notes?: string;
         Private?: unknown;
+        BigRock?: unknown;
         PrivateEventId?: string;
         Modified?: string;
         Editor?: { Title: string };
       }) => {
         // Enhanced boolean field handling for production environments
         const isPrivate = this.normalizeBoolean(item.Private);
+        const isBigRock = this.normalizeBoolean(item.BigRock);
 
         const mappedEvent = {
           Id: item.Id,
@@ -538,6 +586,7 @@ export class SharePointService {
           Description: item.Description || '',
           Notes: item.Notes,
           Private: isPrivate,
+          BigRock: isBigRock,
           PrivateEventId: item.PrivateEventId,
           Modified: item.Modified,
           Editor: item.Editor
@@ -576,6 +625,7 @@ export class SharePointService {
     opr?: string; // Make OPR optional
     description: string;
     isPrivate?: boolean;
+    isBigRock?: boolean;
     privateEventId?: string;
   }>): Promise<ISharePointEvent[]> {
     try {
@@ -583,6 +633,7 @@ export class SharePointService {
 
       // Check if the list has the new Private fields
       const hasPrivateFields = await this.checkForPrivateFields();
+      const hasBigRockField = await this.checkForBigRockField();
 
       // Use Promise.all for parallel processing (simpler and more reliable than batch)
       const promises = events.map(async event => {
@@ -617,6 +668,10 @@ export class SharePointService {
           }
         }
 
+        if (hasBigRockField) {
+          itemData.BigRock = event.isBigRock || false;
+        }
+
         const createPromise = this.sp.web.lists.getByTitle(this.listName).items.add(itemData);
         const result = await withTimeout(createPromise, NETWORK_TIMEOUTS.STANDARD, `Create event in ${this.listName}`);
 
@@ -646,6 +701,7 @@ export class SharePointService {
           OPR: itemData_result.OPR,
           Description: itemData_result.Description || '',
           Private: itemData_result.Private || false,
+          BigRock: itemData_result.BigRock || false,
           PrivateEventId: itemData_result.PrivateEventId || undefined
         };
       });
@@ -661,12 +717,13 @@ export class SharePointService {
     }
   }
 
-  public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', imo: string = '', opr: string = '', description: string = '', notes: string = '', isPrivate: boolean = false, privateEventId?: string): Promise<ISharePointEvent> {
+  public async createEvent(title: string, start: Date, end: Date, swimlane: string = 'Category 1', status: string = 'Green', imo: string = '', opr: string = '', description: string = '', notes: string = '', isPrivate: boolean = false, privateEventId?: string, isBigRock: boolean = false): Promise<ISharePointEvent> {
     try {
       Logger.debug('Creating event', { title, isPrivate });
 
       // Check if the list has the new Private fields
       const hasPrivateFields = await this.checkForPrivateFields();
+      const hasBigRockField = await this.checkForBigRockField();
 
       // Use PnP.js to create a new item in the Events list
       const itemData: Record<string, unknown> = {
@@ -704,6 +761,10 @@ export class SharePointService {
         Logger.warn('Cannot create private event - Private fields do not exist in SharePoint list');
       }
 
+      if (hasBigRockField) {
+        itemData.BigRock = isBigRock;
+      }
+
       const createPromise = this.sp.web.lists.getByTitle(this.listName).items.add(itemData);
       const result = await withTimeout(createPromise, NETWORK_TIMEOUTS.STANDARD, `Create single event in ${this.listName}`);
 
@@ -721,6 +782,7 @@ export class SharePointService {
         Description: result.Description || '',
         Notes: result.Notes,
         Private: result.Private || false,
+        BigRock: result.BigRock || false,
         PrivateEventId: result.PrivateEventId || undefined
       };
 
@@ -731,10 +793,11 @@ export class SharePointService {
     }
   }
 
-  public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string, imo?: string, opr?: string, description?: string, notes?: string, isPrivate?: boolean, privateEventId?: string): Promise<void> {
+  public async updateEvent(id: number, title: string, start: Date, end: Date, swimlane?: string, status?: string, imo?: string, opr?: string, description?: string, notes?: string, isPrivate?: boolean, privateEventId?: string, isBigRock?: boolean): Promise<void> {
     try {
       // Check if the list has the new Private fields
       const hasPrivateFields = await this.checkForPrivateFields();
+      const hasBigRockField = await this.checkForBigRockField();
 
       const updateData: Record<string, unknown> = {
         Title: title,
@@ -753,6 +816,10 @@ export class SharePointService {
       if (hasPrivateFields) {
         if (isPrivate !== undefined) updateData.Private = isPrivate;
         if (privateEventId !== undefined) updateData.PrivateEventId = privateEventId;
+      }
+
+      if (hasBigRockField && isBigRock !== undefined) {
+        updateData.BigRock = isBigRock;
       }
 
       await this.sp.web.lists.getByTitle(this.listName).items.getById(id).update(updateData);
@@ -815,7 +882,7 @@ export class SharePointService {
       }
 
       // For Events lists (template 106), use the built-in field names
-      const coreFields = ['EventDate', 'EndDate', 'Description', 'Notes', 'Swimlane', 'Status', 'IMO', 'OPR'];
+      const coreFields = ['EventDate', 'EndDate', 'Description', 'Notes', 'Swimlane', 'Status', 'IMO', 'OPR', 'BigRock'];
       requiredFields = coreFields.concat(requirePrivateFields ? privateFields : []);
 
       // Get all fields in the list
