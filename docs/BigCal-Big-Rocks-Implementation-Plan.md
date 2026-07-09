@@ -116,25 +116,25 @@ Complete
 Give Big Rock events a **static rock-style overlay icon** while preserving normal swimlane color and normal category icon behavior.
 
 **Visual Acceptance Test:**  
-- [ ] Starting state / setup: At least one visible event is marked Big Rock and at least one comparable event is not.
-- [ ] User action: View the events in the main calendar and open the event popover.
-- [ ] Expected visible result: Big Rock events show **two visible icons** — the normal category/private icon behavior plus a distinct static Big Rock icon.
-- [ ] Important failure case or edge case if relevant: A **Private + Big Rock** event still shows a sensible two-icon treatment without losing the lock/private indicator.
+- [x] Starting state / setup: At least one visible event is marked Big Rock and at least one comparable event is not.
+- [x] User action: View the events in the main calendar and open the event popover.
+- [x] Expected visible result: Big Rock events show **two visible icons** — the normal category/private icon behavior plus a distinct static Big Rock icon.
+- [x] Important failure case or edge case if relevant: A **Private + Big Rock** event still shows a sensible two-icon treatment without losing the lock/private indicator.
 
 **Status:**  
-Not Started
+Complete
 
 **Tasks:**
-- [ ] Choose a static Big Rock icon candidate and define it in a shared constant location, likely `src/webparts/bigCal/interfaces/IColorMapping.ts` or a new shared constants location if cleaner.
-- [ ] Prefer an emoji/icon that reads visually as a rock/boulder; document fallback if the preferred symbol renders poorly on Windows 11.
-- [ ] Update event icon rendering in the main calendar event display in `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Update mini-calendar rendering to show the Big Rock marker where space allows in `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Update popover rendering so Big Rock status is visible in `src/webparts/bigCal/components/EventPopover.tsx`.
-- [ ] Update print-preview event rendering so Big Rock status is visually preserved in `src/webparts/bigCal/components/LegendaryPrintPreview.tsx`.
-- [ ] Review timeline item rendering and add a visible Big Rock cue if timeline cards expose icons in `src/webparts/bigCal/components/TimelineView.tsx`.
-- [ ] Review grid/briefing rendering surfaces and add the second icon anywhere the event icon is already visible in `src/webparts/bigCal/components/GridView.tsx` or `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Ensure the added icon does not accidentally inherit Big Rock-specific color treatment.
-- [ ] Ensure Big Rock does not override swimlane colors, status styling, or private-event grey treatment.
+- [x] Choose a static Big Rock icon candidate and define it in a shared constant location, likely `src/webparts/bigCal/interfaces/IColorMapping.ts` or a new shared constants location if cleaner.
+- [x] Prefer an emoji/icon that reads visually as a rock/boulder; document fallback if the preferred symbol renders poorly on Windows 11.
+- [x] Update event icon rendering in the main calendar event display in `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Update mini-calendar rendering to show the Big Rock marker where space allows in `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Update popover rendering so Big Rock status is visible in `src/webparts/bigCal/components/EventPopover.tsx`.
+- [x] Update print-preview event rendering so Big Rock status is visually preserved in `src/webparts/bigCal/components/LegendaryPrintPreview.tsx`.
+- [x] Review timeline item rendering and add a visible Big Rock cue if timeline cards expose icons in `src/webparts/bigCal/components/TimelineView.tsx`.
+- [x] Review grid/briefing rendering surfaces and add the second icon anywhere the event icon is already visible in `src/webparts/bigCal/components/GridView.tsx` or `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Ensure the added icon does not accidentally inherit Big Rock-specific color treatment.
+- [x] Ensure Big Rock does not override swimlane colors, status styling, or private-event grey treatment.
 
 **Files Modified:**
 - `src/webparts/bigCal/components/BigCal.tsx`
@@ -149,6 +149,8 @@ Not Started
 - The Big Rock icon should be **static** in v1.
 - The icon should be treated as an **overlay marker**, not as part of the configurable legend system.
 - If the chosen “rock” emoji renders poorly in Segoe/Windows, we may need a fallback symbol or a Fluent/FontAwesome approximation.
+- Implementation uses a shared `BIG_ROCK_ICON` constant (`🪨`) in `src/webparts/bigCal/interfaces/IColorMapping.ts`.
+- Stage 3 is complete across live calendar renderers, mini-calendar, popover, timeline, and Legendary Print renderers / fallback print HTML, including the newer right-side Big Rock marker treatment in Legendary Print.
 
 ---
 
@@ -158,25 +160,25 @@ Not Started
 Allow Big Rock state to move between separate BigCal instances through Excel export/import.
 
 **Visual Acceptance Test:**  
-- [ ] Starting state / setup: A calendar contains at least one Big Rock event and one non-Big Rock event.
-- [ ] User action: Export to Excel, verify the workbook contains a **Big Rock** column, then import that file back after toggling one row’s Big Rock value.
-- [ ] Expected visible result: Imported events preserve or update the Big Rock flag correctly, and reopening imported events in the modal shows the checkbox state matching the Excel file.
-- [ ] Important failure case or edge case if relevant: Accepted boolean-like values such as `TRUE`, `FALSE`, `Yes`, `No`, `1`, and `0` import predictably.
+- [x] Starting state / setup: A calendar contains at least one Big Rock event and one non-Big Rock event.
+- [x] User action: Export to Excel, verify the workbook contains a **Big Rock** column, then import that file back after toggling one row’s Big Rock value.
+- [x] Expected visible result: Imported events preserve or update the Big Rock flag correctly, and reopening imported events in the modal shows the checkbox state matching the Excel file.
+- [x] Important failure case or edge case if relevant: Accepted boolean-like values such as `TRUE`, `FALSE`, `Yes`, `No`, `1`, and `0` import predictably.
 
 **Status:**  
-Not Started
+Complete
 
 **Tasks:**
-- [ ] Add `Big Rock` to the machine-readable export headers in `src/webparts/bigCal/components/ExcelExport.tsx`.
-- [ ] Add `Big Rock` to the human-readable export shape only if appropriate for the Agenda/Data workbook strategy in `src/webparts/bigCal/components/ExcelExport.tsx`.
-- [ ] Include each event’s Big Rock value in export row generation in `src/webparts/bigCal/components/ExcelExport.tsx`.
-- [ ] Extend import header detection in `src/webparts/bigCal/components/ExcelExport.tsx` to recognize `Big Rock`.
-- [ ] Parse imported Big Rock values robustly in `src/webparts/bigCal/components/ExcelExport.tsx`.
-- [ ] Add `isBigRock` to the imported event model returned from `src/webparts/bigCal/components/ExcelExport.tsx`.
-- [ ] Update import save/create flow in `src/webparts/bigCal/components/ExportManager.tsx` to pass `isBigRock` into hybrid event creation.
-- [ ] Update any background import save flow to preserve Big Rock for private and non-private events in `src/webparts/bigCal/components/ExportManager.tsx`.
-- [ ] Confirm the exported template remains round-trip safe when Big Rock column is present but blank.
-- [ ] Confirm import errors remain user-friendly when Big Rock contains an invalid value in `src/webparts/bigCal/components/ExcelExport.tsx`.
+- [x] Add `Big Rock` to the machine-readable export headers in `src/webparts/bigCal/components/ExcelExport.tsx`.
+- [x] Add `Big Rock` to the human-readable export shape only if appropriate for the Agenda/Data workbook strategy in `src/webparts/bigCal/components/ExcelExport.tsx`.
+- [x] Include each event’s Big Rock value in export row generation in `src/webparts/bigCal/components/ExcelExport.tsx`.
+- [x] Extend import header detection in `src/webparts/bigCal/components/ExcelExport.tsx` to recognize `Big Rock`.
+- [x] Parse imported Big Rock values robustly in `src/webparts/bigCal/components/ExcelExport.tsx`.
+- [x] Add `isBigRock` to the imported event model returned from `src/webparts/bigCal/components/ExcelExport.tsx`.
+- [x] Update import save/create flow in `src/webparts/bigCal/components/ExportManager.tsx` to pass `isBigRock` into hybrid event creation.
+- [x] Update any background import save flow to preserve Big Rock for private and non-private events in `src/webparts/bigCal/components/ExportManager.tsx`.
+- [x] Confirm the exported template remains round-trip safe when Big Rock column is present but blank.
+- [x] Confirm import errors remain user-friendly when Big Rock contains an invalid value in `src/webparts/bigCal/components/ExcelExport.tsx`.
 
 **Files Modified:**
 - `src/webparts/bigCal/components/ExcelExport.tsx`
@@ -187,6 +189,7 @@ Not Started
 - Preserve single-click export behavior.
 - Keep the column name simple and human-editable: **Big Rock**.
 - We do **not** need DataSheet View support in v1.
+- Export/import support is implemented and the workbook includes Big Rock in both the machine-readable and human-readable sheets.
 
 ---
 

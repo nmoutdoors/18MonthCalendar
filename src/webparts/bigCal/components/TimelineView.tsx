@@ -4,6 +4,7 @@ import 'vis-timeline/styles/vis-timeline-graph2d.css';
 import { ICalendarEvent } from './ICalendarEvent';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { EventPopover } from './EventPopover';
+import { BIG_ROCK_ICON } from '../interfaces/IColorMapping';
 import styles from './TimelineView.module.scss';
 
 export interface ITimelineViewProps {
@@ -14,6 +15,7 @@ export interface ITimelineViewProps {
   onEventClick?: (event: ICalendarEvent) => void;
   onEventDoubleClick?: (event: ICalendarEvent) => void;
   dynamicColorMappings: Map<string, string>; // Add color mappings from BigCal
+  dynamicIconMappings: Map<string, string>;
 }
 
 export interface ITimelineViewState {
@@ -203,7 +205,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     // Create timeline items - colors applied via CSS classes
     const timelineItems = filteredEvents.map(event => ({
       id: event.id,
-      content: event.title,
+      content: `${event.title}${event.isBigRock ? ` ${BIG_ROCK_ICON}` : ''}`,
       start: event.start,
       group: event.isPrivate ? 'Private Events' : event.swimlane,
       className: `dynamic-color-${event.swimlane || 'FYSA'}-${event.status || 'Confirmed'}`.replace(/\s+/g, ''),
@@ -291,6 +293,7 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
             target={hoveredElement}
             isVisible={true}
             onDismiss={() => this.setState({ hoveredEvent: undefined, hoveredElement: undefined })}
+            dynamicIconMappings={this.props.dynamicIconMappings}
           />
         )}
       </div>

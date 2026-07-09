@@ -351,8 +351,11 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
 
     } catch (error) {
       Logger.error('Error importing Excel file', error);
+      const errorMessage = error instanceof Error
+        ? error.message
+        : 'Error reading Excel file. Please ensure it\'s a valid Excel file.';
       this.setState({
-        importMessage: 'Error reading Excel file. Please ensure it\'s a valid Excel file.',
+        importMessage: errorMessage,
         importMessageType: MessageBarType.error,
         isImporting: false
       });
@@ -374,6 +377,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     let imoIndex = -1;
     let oprIndex = -1;
     let privateIndex = -1;
+    let bigRockIndex = -1;
 
     for (let i = 0; i < headers.length; i++) {
       const header = headers[i];
@@ -390,6 +394,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       if (header && header.toLowerCase().indexOf('imo') !== -1) imoIndex = i;
       if (header && header.toLowerCase().indexOf('opr') !== -1) oprIndex = i;
       if (header && header.toLowerCase().indexOf('private') !== -1) privateIndex = i;
+      if (header && header.toLowerCase().indexOf('big rock') !== -1) bigRockIndex = i;
     }
 
     // Debug logging for header detection
@@ -406,6 +411,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       imoIndex,
       oprIndex,
       privateIndex,
+      bigRockIndex,
       totalRows: rawData.length
     });
 
@@ -449,8 +455,12 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         const opr = oprRaw ? oprRaw as OPRType : '';
 
         // Parse private field
-        const privateRaw = privateIndex !== -1 && row[privateIndex] ? row[privateIndex].toString().trim().toLowerCase() : '';
-        const isPrivate = privateRaw === 'true' || privateRaw === '1' || privateRaw === 'yes';
+        const privateRaw = privateIndex !== -1 && row[privateIndex] ? row[privateIndex].toString().trim() : '';
+        const isPrivate = this.parseExcelBoolean(privateRaw, 'Private', i + 1);
+
+        // Parse Big Rock field
+        const bigRockRaw = bigRockIndex !== -1 && row[bigRockIndex] ? row[bigRockIndex].toString().trim() : '';
+        const isBigRock = this.parseExcelBoolean(bigRockRaw, 'Big Rock', i + 1);
 
         // Create event
         const event: ICalendarEvent = {
@@ -467,17 +477,41 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
           status: status,
           imo: imo,
           opr: opr,
-          isPrivate: isPrivate
+          isPrivate: isPrivate,
+          isBigRock: isBigRock
         };
 
         events.push(event);
       } catch (error) {
         Logger.debug(`Error parsing row ${i}`, error);
-        // Continue with next row
+
+        if (error instanceof Error && error.message.indexOf('Invalid ') === 0) {
+          throw error;
+        }
+
+        // Continue with next row for non-critical row-level parsing issues
       }
     }
 
     return events;
+  };
+
+  private parseExcelBoolean = (value: string, fieldName: string, rowNumber: number): boolean => {
+    if (!value) {
+      return false;
+    }
+
+    const normalizedValue = value.trim().toLowerCase();
+
+    if (normalizedValue === 'true' || normalizedValue === 'yes' || normalizedValue === '1') {
+      return true;
+    }
+
+    if (normalizedValue === 'false' || normalizedValue === 'no' || normalizedValue === '0') {
+      return false;
+    }
+
+    throw new Error(`Invalid ${fieldName} value on row ${rowNumber}: "${value}". Use TRUE, FALSE, Yes, No, 1, or 0.`);
   };
 
   private parseExcelDate = (dateStr: string): Date | null => {
@@ -751,6 +785,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         { width: 20 }, // Time column
         { width: 12 }, // IMO column
         { width: 25 }, // OPR column
+        { width: 12 }, // Big Rock column
         { width: 50 }  // Event column
       ];
       XLSX.utils.book_append_sheet(workbook, agendaWorksheet, 'Agenda');
@@ -767,7 +802,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         { width: 15 }, // Status column
         { width: 12 }, // IMO column
         { width: 25 }, // OPR column
-        { width: 10 }  // Private column
+        { width: 10 }, // Private column
+        { width: 10 }  // Big Rock column
       ];
       XLSX.utils.book_append_sheet(workbook, dataWorksheet, 'Data');
 
@@ -800,7 +836,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     const data: string[][] = [];
     
     // Add header row
-    data.push(['Date', 'Time', 'IMO', 'OPR', 'Event']);
+    data.push(['Date', 'Time', 'IMO', 'OPR', 'Big Rock', 'Event']);
     
     let currentDate = '';
     
@@ -855,7 +891,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
       const eventTitle = (event as ICalendarEvent & { isHoliday?: boolean }).isHoliday ? `🏛️ ${event.title}` : event.title;
       const imoDisplay = event.imo || '';
       const oprDisplay = event.opr || '';
-      data.push([dateToShow, timeStr, imoDisplay, oprDisplay, eventTitle]);
+      const bigRockDisplay = event.isBigRock ? 'Yes' : '';
+      data.push([dateToShow, timeStr, imoDisplay, oprDisplay, bigRockDisplay, eventTitle]);
     });
     
     return data;
@@ -865,7 +902,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
     const data: string[][] = [];
 
     // Add header row matching SharePoint list structure
-    data.push(['Title', 'Description', 'Notes', 'Start', 'End', 'Event Category', 'Status', 'IMO', 'OPR', 'Private']);
+    data.push(['Title', 'Description', 'Notes', 'Start', 'End', 'Event Category', 'Status', 'IMO', 'OPR', 'Private', 'Big Rock']);
 
     events.forEach(event => {
       // Use MM/DD/YYYY HH:MM AM/PM format for better readability while maintaining precision
@@ -906,7 +943,8 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
         event.status || '',
         event.imo || '',
         event.opr || '',
-        event.isPrivate ? 'TRUE' : 'FALSE'
+        event.isPrivate ? 'TRUE' : 'FALSE',
+        event.isBigRock ? 'TRUE' : 'FALSE'
       ]);
     });
 
@@ -1107,7 +1145,7 @@ export class ExcelExport extends React.Component<IExcelExportProps, IExcelExport
                     <strong>Supported formats:</strong> Excel files (.xlsx, .xls) exported from BigCal
                   </Text>
                   <Text variant="small" styles={{ root: { color: '#666', lineHeight: '1.4' } }}>
-                    <strong>Requirements:</strong> File must contain a &quot;Data&quot; tab with Title, Start, End, Swimlane, and Status columns (MM/DD/YYYY HH:MM AM/PM format)
+                    <strong>Requirements:</strong> File must contain a &quot;Data&quot; tab with Title, Start, End, Swimlane, and Status columns (MM/DD/YYYY HH:MM AM/PM format). Boolean fields like Private and Big Rock accept TRUE, FALSE, Yes, No, 1, or 0.
                   </Text>
                   <Text variant="small" styles={{ root: { color: '#666', lineHeight: '1.4' } }}>
                     <strong>Result:</strong> Events will be added to your current calendar (existing events are preserved)

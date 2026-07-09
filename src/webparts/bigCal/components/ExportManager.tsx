@@ -83,7 +83,8 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
             event.opr || '',
             event.description || '',
             event.notes || '',
-            true // isPrivate
+            true, // isPrivate
+            event.isBigRock || false
           );
         } else {
           // Use SharePointService for regular events
@@ -97,7 +98,9 @@ export class ExportManager extends React.Component<IExportManagerProps, IExportM
             event.opr || '',
             event.description || '',
             event.notes || '',
-            false // isPrivate
+            false, // isPrivate
+            undefined,
+            event.isBigRock || false
           );
         }
       });

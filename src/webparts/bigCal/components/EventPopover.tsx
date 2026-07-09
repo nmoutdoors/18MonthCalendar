@@ -5,6 +5,7 @@ import { Text } from '@fluentui/react/lib/Text';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { IconButton } from '@fluentui/react/lib/Button';
 import { ICalendarEvent } from './ICalendarEvent';
+import { BIG_ROCK_ICON } from '../interfaces/IColorMapping';
 import { Logger } from '../services/LoggingService';
 import styles from './EventPopover.module.scss';
 
@@ -39,7 +40,15 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
 
     // Otherwise render as emoji/unicode text
     return (
-      <span style={{ fontSize: '20px', display: 'inline-block', marginRight: '8px' }}>
+      <span
+        style={{
+          fontSize: '20px',
+          display: 'inline-block',
+          marginRight: '8px',
+          position: iconName === BIG_ROCK_ICON ? 'relative' : undefined,
+          top: iconName === BIG_ROCK_ICON ? '-1px' : undefined
+        }}
+      >
         {iconName}
       </span>
     );
@@ -96,7 +105,7 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
     }
 
     // Private events get locked icon, regular events get category icon
-    const iconName = event.isPrivate ? '🔒' : this.getEventCategoryIcon(event.swimlane!);
+    const primaryIconName = event.isPrivate ? '🔒' : this.getEventCategoryIcon(event.swimlane || '');
     const isAllDay = this.isAllDayEvent(event);
     const isSameDayEvent = this.isSameDay(event.start, event.end);
 
@@ -123,10 +132,17 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
         <div className={styles.popoverContainer}>
           <div className={styles.popoverHeader}>
             <div className={styles.eventTitleRow}>
-              <span className={styles.eventIcon}>{this.renderIcon(iconName)}</span>
+              <span className={styles.eventIcon}>
+                {primaryIconName && this.renderIcon(primaryIconName)}
+              </span>
               <Text variant="mediumPlus" className={styles.eventTitle}>
                 {event.title}
               </Text>
+              {event.isBigRock && (
+                <span title="Big Rock" aria-label="Big Rock" style={{ display: 'inline-flex', marginLeft: '6px' }}>
+                  {this.renderIcon(BIG_ROCK_ICON)}
+                </span>
+              )}
               {onEdit && (
                 <IconButton
                   iconProps={{ iconName: 'Edit' }}
@@ -154,6 +170,20 @@ export class EventPopover extends React.Component<IEventPopoverProps> {
                   {event.swimlane}
                 </Text>
               </div>
+
+              {event.isBigRock && (
+                <div className={styles.detailRow}>
+                  <span
+                    className={styles.detailIcon}
+                    style={{ fontSize: '16px', display: 'inline-block', marginRight: '8px', position: 'relative', top: '-1px' }}
+                  >
+                    {BIG_ROCK_ICON}
+                  </span>
+                  <Text variant="small" className={styles.detailText}>
+                    Big Rock
+                  </Text>
+                </div>
+              )}
 
               {event.imo && event.imo.trim() && (
                 <div className={styles.imoRow}>

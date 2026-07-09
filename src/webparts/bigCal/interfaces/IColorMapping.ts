@@ -233,6 +233,12 @@ export const DEFAULT_ICON_MAPPINGS: { [key: string]: string } = {
 };
 
 /**
+ * Static Big Rock marker for v1 rendering.
+ * Intentionally separate from Legend Studio / Color Palette Studio configuration.
+ */
+export const BIG_ROCK_ICON = '💎';
+
+/**
  * Get default icon for a specific option value
  * Used for BigCalConfig initialization and fallback scenarios
  */

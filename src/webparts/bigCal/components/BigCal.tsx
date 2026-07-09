@@ -14,7 +14,7 @@ import type { ICalendarEvent } from './ICalendarEvent';
 
 import { SharePointService } from '../services/SharePointService';
 import { HybridEventsService } from '../services/HybridEventsService';
-import { SPECIFIC_COLOR_MAPPINGS, DEFAULT_ICON_MAPPINGS, IColorMapping, IFieldOption, ORIGINAL_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
+import { SPECIFIC_COLOR_MAPPINGS, DEFAULT_ICON_MAPPINGS, BIG_ROCK_ICON, IColorMapping, IFieldOption, ORIGINAL_COLOR_MAPPINGS } from '../interfaces/IColorMapping';
 import { ColorMappingService } from '../services/ColorMappingService';
 
 import { HolidayService } from '../services/HolidayService';
@@ -39,7 +39,7 @@ const localizer = momentLocalizer(moment);
 
 const BIG_ROCKS_FILTER_KEY = 'Big Rocks';
 const PRIVATE_EVENTS_FILTER_KEY = 'Private Events';
-const BIG_ROCKS_FILTER_ICON = '🪨';
+const BIG_ROCKS_FILTER_ICON = BIG_ROCK_ICON;
 const FALLBACK_EVENT_CATEGORIES = [
   'CDR/DIR FYSA',
   'DCDC',
@@ -247,7 +247,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // Otherwise render as emoji/unicode text
     return (
-      <span style={{ fontSize, display: 'inline-block' }}>
+      <span
+        style={{
+          fontSize,
+          display: 'inline-block',
+          position: iconName === BIG_ROCK_ICON ? 'relative' : undefined,
+          top: iconName === BIG_ROCK_ICON ? '-1px' : undefined
+        }}
+      >
         {iconName}
       </span>
     );
@@ -1844,6 +1851,28 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     return '';
   };
 
+  private getPrimaryEventIcon = (event: ICalendarEvent): string => {
+    if (event.isPrivate) {
+      return '🔒';
+    }
+
+    return this.getEventIconFromMapping(event.swimlane || '', event.status || '');
+  };
+
+  private renderEventIcons = (event: ICalendarEvent, primaryFontSize: string = '16px', bigRockFontSize: string = primaryFontSize): React.ReactElement => {
+    const primaryIcon = this.getPrimaryEventIcon(event);
+
+    return (
+      <>
+        {primaryIcon && (
+          <span style={{ display: 'inline-flex' }}>
+            {this.renderIcon(primaryIcon, primaryFontSize)}
+          </span>
+        )}
+      </>
+    );
+  };
+
   private checkListConfigurations = async (): Promise<void> => {
     const issues: string[] = [];
     let colorMappingsAvailable = true;
@@ -1975,9 +2004,6 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       );
     }
 
-    // Private events get locked icon, regular events get dynamic category icon
-    const iconName = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
-
     return (
       <div
         className={styles.customEvent}
@@ -1997,9 +2023,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           className={styles.eventIcon}
           style={{ marginRight: '6px' }}
         >
-          {this.renderIcon(iconName, '16px')}
+          {this.renderEventIcons(event, '16px', '14px')}
         </span>
         <span className={styles.eventTitle}>{event.title}</span>
+        {event.isBigRock && (
+          <span title="Big Rock" aria-label="Big Rock" style={{ display: 'inline-flex', marginLeft: '6px' }}>
+            {this.renderIcon(BIG_ROCK_ICON, '14px')}
+          </span>
+        )}
       </div>
     );
   };
@@ -2046,9 +2077,6 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       );
     }
 
-    // Private events get locked icon, regular events get dynamic category icon
-    const iconName = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
-
     return (
       <div
         className={`${styles.customEvent} ${styles.monthEventItem}`}
@@ -2068,9 +2096,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           className={styles.eventIcon}
           style={{ marginRight: '4px' }}
         >
-          {this.renderIcon(iconName, '14px')}
+          {this.renderEventIcons(event, '14px', '12px')}
         </span>
         <span className={styles.eventTitle}>{event.title}</span>
+        {event.isBigRock && (
+          <span title="Big Rock" aria-label="Big Rock" style={{ display: 'inline-flex', marginLeft: '4px' }}>
+            {this.renderIcon(BIG_ROCK_ICON, '12px')}
+          </span>
+        )}
       </div>
     );
   };
@@ -2104,6 +2137,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           {event.isHoliday && '🏛️ '}
           {event.isPrivate && '🔒 '}
           {displayTitle}
+          {event.isBigRock && (
+            <span style={{ display: 'inline-block', position: 'relative', top: '-1px', marginLeft: '4px' }}>
+              {' '}{BIG_ROCK_ICON}
+            </span>
+          )}
         </span>
       </div>
     );
@@ -3158,6 +3196,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                 onEventClick={this.openEditModal}
                 onEventDoubleClick={this.openEditModal}
                 dynamicColorMappings={this.state.dynamicColorMappings}
+                dynamicIconMappings={this.state.dynamicIconMappings}
               />
             </Suspense>
           ) : (

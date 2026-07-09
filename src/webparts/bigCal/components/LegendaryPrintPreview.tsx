@@ -5,6 +5,7 @@ import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import * as moment from 'moment';
 import html2canvas from 'html2canvas';
 import { ICalendarEvent } from './ICalendarEvent';
+import { BIG_ROCK_ICON } from '../interfaces/IColorMapping';
 import { Logger } from '../services/LoggingService';
 import styles from './LegendaryPrintPreview.module.scss';
 import bigCalStyles from './BigCal.module.scss';
@@ -1265,9 +1266,6 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       );
     }
 
-    // Private events get locked icon, regular events get dynamic category icon
-    const iconName = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
-
     // Truncate regular event titles to maintain consistent cell widths
     const displayTitle = truncateTitle(event.title, 18); // Optimal length for print month view
 
@@ -1277,9 +1275,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
           className={bigCalStyles.eventIcon}
           style={{ marginRight: '4px' }}
         >
-          {this.renderIcon(iconName, '14px')}
+          {this.renderEventIcons(event, '14px', '12px')}
         </span>
         <span className={bigCalStyles.eventTitle}>{displayTitle}</span>
+        {this.renderBigRockMarker(event, '12px', '4px')}
       </div>
     );
   };
@@ -1310,8 +1309,6 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       );
     }
 
-    // Private events get locked icon, regular events get dynamic category icon
-    const iconName = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
     const displayTitle = truncateTitle(event.title, 22); // Optimal for week view
 
     return (
@@ -1320,9 +1317,10 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
           className={bigCalStyles.eventIcon}
           style={{ marginRight: '6px' }}
         >
-          {this.renderIcon(iconName, '16px')}
+          {this.renderEventIcons(event, '16px', '14px')}
         </span>
         <span className={bigCalStyles.eventTitle}>{displayTitle}</span>
+        {this.renderBigRockMarker(event, '14px', '6px')}
       </div>
     );
   };
@@ -1346,18 +1344,16 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       );
     }
 
-    // Get the icon for this event
-    const iconName = this.getEventIconFromMapping(event.swimlane || '', event.status || '');
-
     return (
       <div className={bigCalStyles.customEvent}>
         <span
           className={bigCalStyles.eventIcon}
           style={{ marginRight: '6px' }}
         >
-          {this.renderIcon(iconName, '14px')}
+          {this.renderEventIcons(event, '14px', '12px')}
         </span>
         <span className={bigCalStyles.eventTitle}>{event.title}</span>
+        {this.renderBigRockMarker(event, '12px', '6px')}
       </div>
     );
   };
@@ -1381,18 +1377,16 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       );
     }
 
-    // Get the icon for this event
-    const iconName = this.getEventIconFromMapping(event.swimlane || '', event.status || '');
-
     return (
       <div className={bigCalStyles.customEvent}>
         <span
           className={bigCalStyles.eventIcon}
           style={{ marginRight: '6px' }}
         >
-          {this.renderIcon(iconName, '14px')}
+          {this.renderEventIcons(event, '14px', '12px')}
         </span>
         <span className={bigCalStyles.eventTitle}>{event.title}</span>
+        {this.renderBigRockMarker(event, '12px', '6px')}
       </div>
     );
   };
@@ -1475,6 +1469,46 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
     return '';
   };
 
+  private getPrimaryEventIcon = (event: ICalendarEvent): string => {
+    if (event.isPrivate) {
+      return '🔒';
+    }
+
+    return this.getEventIconFromMapping(event.swimlane || '', event.status || '');
+  };
+
+  private getInlineEventText = (event: ICalendarEvent, title: string): string => {
+    const primaryIcon = this.getPrimaryEventIcon(event);
+
+    return `${primaryIcon ? `${primaryIcon} ` : ''}${title}${event.isBigRock ? ` ${BIG_ROCK_ICON}` : ''}`;
+  };
+
+  private renderEventIcons = (event: ICalendarEvent, primaryFontSize: string = '16px', bigRockFontSize: string = primaryFontSize): React.ReactElement => {
+    const primaryIcon = this.getPrimaryEventIcon(event);
+
+    return (
+      <>
+        {primaryIcon && (
+          <span style={{ display: 'inline-flex' }}>
+            {this.renderIcon(primaryIcon, primaryFontSize)}
+          </span>
+        )}
+      </>
+    );
+  };
+
+  private renderBigRockMarker = (event: ICalendarEvent, fontSize: string, marginLeft: string): React.ReactNode => {
+    if (!event.isBigRock) {
+      return null;
+    }
+
+    return (
+      <span title="Big Rock" aria-label="Big Rock" style={{ display: 'inline-flex', marginLeft }}>
+        {this.renderIcon(BIG_ROCK_ICON, fontSize)}
+      </span>
+    );
+  };
+
   /**
    * Render an icon - handles Font Awesome icons, emoji, and unicode symbols
    */
@@ -1492,7 +1526,14 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
     // Otherwise render as emoji/unicode text
     return (
-      <span style={{ fontSize, display: 'inline-block' }}>
+      <span
+        style={{
+          fontSize,
+          display: 'inline-block',
+          position: iconName === BIG_ROCK_ICON ? 'relative' : undefined,
+          top: iconName === BIG_ROCK_ICON ? '-1px' : undefined
+        }}
+      >
         {iconName}
       </span>
     );
@@ -1562,7 +1603,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
             `${event.title.substring(0, 18)}...` : event.title;
 
           html += `<div class="event-item single-day-event" style="background-color: ${backgroundColor};">`;
-          html += displayTitle;
+          html += this.getInlineEventText(event, displayTitle);
           html += `</div>`;
         });
 
@@ -1595,7 +1636,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
 
             html += `<td class="spanning-cell" colspan="${eventInfo.colspan}">`;
             html += `<div class="event-item multi-day-spanning-event" style="background-color: ${backgroundColor};">`;
-            html += displayTitle;
+            html += this.getInlineEventText(eventInfo.event, displayTitle);
             html += `</div></td>`;
 
             dayIndex += eventInfo.colspan;
@@ -1839,12 +1880,11 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         dayEvents.forEach(event => {
           const eventStyle = this.props.eventStyleGetter(event);
           const backgroundColor = eventStyle.style.backgroundColor || '#0078d4';
-          const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
 
           // Truncate event titles for consistent print layout
           const displayTitle = event.title.length > 22 ? `${event.title.substring(0, 22)}...` : event.title;
           html += `<div class="week-event" style="background-color: ${backgroundColor};">`;
-          html += `${iconEmoji} ${displayTitle}`;
+          html += this.getInlineEventText(event, displayTitle);
           html += '</div>';
         });
         html += '</td>';
@@ -2006,7 +2046,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
           const endTime = moment(event.end).format('h:mm A');
 
           html += '<div class="day-event">';
-          html += `<div class="event-title">${event.title}</div>`;
+          html += `<div class="event-title">${this.getInlineEventText(event, event.title)}</div>`;
           html += `<div class="event-time">${startTime} - ${endTime}</div>`;
           if (event.description) {
             html += `<div class="event-description">${event.description}</div>`;
@@ -2034,7 +2074,7 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
         const endTime = moment(event.end).format('h:mm A');
 
         html += '<div class="day-event">';
-        html += `<div class="event-title">${event.title}</div>`;
+        html += `<div class="event-title">${this.getInlineEventText(event, event.title)}</div>`;
         html += `<div class="event-time">${startTime} - ${endTime}</div>`;
         if (event.description) {
           html += `<div class="event-description">${event.description}</div>`;
@@ -2237,16 +2277,15 @@ export class LegendaryPrintPreview extends React.Component<ILegendaryPrintPrevie
       const endTime = moment(event.end).format('h:mm A');
       const timeRange = `${startTime} – ${endTime}`;
 
-      // Get icon for the event
-      const iconEmoji = event.isPrivate ? '🔒' : this.getEventIconFromMapping(event.swimlane!, event.status || '');
+      const primaryIcon = this.getPrimaryEventIcon(event);
 
       html += `
         <tr>
           <td>${eventDate}</td>
           <td>${timeRange}</td>
           <td>
-            <span class="event-icon">${iconEmoji}</span>
-            <span class="event-title">${event.title}</span>
+            <span class="event-icon">${primaryIcon}</span>
+            <span class="event-title">${event.title}${event.isBigRock ? ` ${BIG_ROCK_ICON}` : ''}</span>
             ${event.swimlane ? `<div class="event-details">${event.swimlane}${event.status && event.status !== 'Not Set' ? ` • ${event.status}` : ''}</div>` : ''}
           </td>
         </tr>
