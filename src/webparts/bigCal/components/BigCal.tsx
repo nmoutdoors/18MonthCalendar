@@ -37,6 +37,29 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 // Setup the localizer for react-big-calendar
 const localizer = momentLocalizer(moment);
 
+const BIG_ROCKS_FILTER_KEY = 'Big Rocks';
+const PRIVATE_EVENTS_FILTER_KEY = 'Private Events';
+const BIG_ROCKS_FILTER_ICON = '🪨';
+const FALLBACK_EVENT_CATEGORIES = [
+  'CDR/DIR FYSA',
+  'DCDC',
+  'Delegated',
+  'DISA',
+  'DOD CIO / NSA / USCC',
+  'Exec Time',
+  'Exercises',
+  'FO/SIG',
+  'FYSA',
+  'Holiday/Downday',
+  'Joint DISA & DCDC',
+  'Mission Partner',
+  'Out of Office',
+  'Seniors',
+  'Speaking Event',
+  'TDY Meetings/Congressional',
+  'Transit'
+];
+
 // Lazy load DataSheetView component
 const LazyDataSheetView = React.lazy(() => import(/* webpackChunkName: 'datasheet-view' */ './DataSheetView').then(module => ({ default: module.DataSheetView })));
 
@@ -140,7 +163,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         'Speaking Event',
         'TDY Meetings/Congressional',
         'Transit',
-        'Private Events'
+        PRIVATE_EVENTS_FILTER_KEY
       ]), // All current swimlanes selected by default
       selectedStatuses: new Set(['Confirmed', 'Tentative', 'Not Set']), // All selected by default (Not Set = null/empty status)
       selectedIMOs: new Set(['IMO 1', 'IMO 2', 'IMO 3', 'IMO 4', 'IMO 5', 'IMO 6', 'IMO 7', 'IMO 8', 'Not Set']), // All selected by default
@@ -228,6 +251,14 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
         {iconName}
       </span>
     );
+  };
+
+  private getSelectableEventCategories = (): string[] => {
+    const { availableSwimlanes } = this.state;
+
+    return availableSwimlanes && availableSwimlanes.length > 0
+      ? availableSwimlanes.filter(swimlane => swimlane !== PRIVATE_EVENTS_FILTER_KEY && swimlane !== BIG_ROCKS_FILTER_KEY)
+      : FALLBACK_EVENT_CATEGORIES;
   };
 
   public async componentDidMount(): Promise<void> {
@@ -409,7 +440,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
       // Add any new swimlanes to the selected categories (except Private Events which is handled separately)
       swimlanes.forEach(swimlane => {
-        if (swimlane !== 'Private Events') {
+        if (swimlane !== PRIVATE_EVENTS_FILTER_KEY && swimlane !== BIG_ROCKS_FILTER_KEY) {
           updatedSelectedCategories.add(swimlane);
         }
       });
@@ -907,30 +938,8 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
 
   private getEventCategoryDropdownOptions = (): IDropdownOption[] => {
-    const { filteredEvents, selectedEventCategories, availableSwimlanes } = this.state;
-
-    // Use dynamic swimlanes if available, otherwise fallback to hardcoded list
-    const categories = availableSwimlanes && availableSwimlanes.length > 0
-      ? availableSwimlanes.filter(swimlane => swimlane !== 'Private Events') // Exclude Private Events from regular categories
-      : [
-          'CDR/DIR FYSA',
-          'DCDC',
-          'Delegated',
-          'DISA',
-          'DOD CIO / NSA / USCC',
-          'Exec Time',
-          'Exercises',
-          'FO/SIG',
-          'FYSA',
-          'Holiday/Downday',
-          'Joint DISA & DCDC',
-          'Mission Partner',
-          'Out of Office',
-          'Seniors',
-          'Speaking Event',
-          'TDY Meetings/Congressional',
-          'Transit'
-        ];
+    const { filteredEvents, selectedEventCategories } = this.state;
+    const categories = this.getSelectableEventCategories();
 
     const options = categories.map(eventCategory => {
       // Only count regular events, not holidays
@@ -945,15 +954,22 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
     // Add Private Events option
     const privateCount = filteredEvents.filter(e => !e.isHoliday && e.isPrivate).length;
-    const privateIcon = this.state.dynamicIconMappings.get('Private Events') || DEFAULT_ICON_MAPPINGS['Private Events'] || '';
+    const privateIcon = this.state.dynamicIconMappings.get(PRIVATE_EVENTS_FILTER_KEY) || DEFAULT_ICON_MAPPINGS[PRIVATE_EVENTS_FILTER_KEY] || '';
     options.push({
-      key: 'Private Events',
-      text: `Private Events (${privateCount})`,
+      key: PRIVATE_EVENTS_FILTER_KEY,
+      text: `${PRIVATE_EVENTS_FILTER_KEY} (${privateCount})`,
       data: { icon: privateIcon, count: privateCount }
     });
 
+    const bigRocksCount = filteredEvents.filter(e => !e.isHoliday && e.isBigRock).length;
+    options.push({
+      key: BIG_ROCKS_FILTER_KEY,
+      text: `${BIG_ROCKS_FILTER_KEY} (${bigRocksCount})`,
+      data: { icon: BIG_ROCKS_FILTER_ICON, count: bigRocksCount }
+    });
+
     // Add Select All/Unselect All toggle option
-    const allAvailableCategories = [...categories, 'Private Events'];
+    const allAvailableCategories = [...categories, PRIVATE_EVENTS_FILTER_KEY];
     const allSelected = allAvailableCategories.every(cat => selectedEventCategories.has(cat));
     options.push({
       key: '__toggle_all_categories__',
@@ -1135,6 +1151,13 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
   private applyFiltersToEvents = (events: ICalendarEvent[]): ICalendarEvent[] => {
     const { searchText, selectedEventCategories, selectedStatuses, selectedIMOs, selectedOPRs } = this.state;
+    const hasBigRocksFilter = selectedEventCategories.has(BIG_ROCKS_FILTER_KEY);
+    const selectedStandardCategories = new Set<string>();
+    selectedEventCategories.forEach((category: string) => {
+      if (category !== BIG_ROCKS_FILTER_KEY) {
+        selectedStandardCategories.add(category);
+      }
+    });
 
 
 
@@ -1158,10 +1181,18 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       // Check if event matches category (including Private Events)
       let matchesCategory = false;
       if (selectedEventCategories.size > 0) {
-        if (event.isPrivate && selectedEventCategories.has('Private Events')) {
-          matchesCategory = true;
-        } else if (!event.isPrivate && event.swimlane && selectedEventCategories.has(event.swimlane)) {
-          matchesCategory = true;
+        const matchesStandardCategory = event.isPrivate
+          ? selectedStandardCategories.has(PRIVATE_EVENTS_FILTER_KEY)
+          : !!event.swimlane && selectedStandardCategories.has(event.swimlane);
+
+        if (hasBigRocksFilter) {
+          if (selectedStandardCategories.size === 0) {
+            matchesCategory = !!event.isBigRock;
+          } else {
+            matchesCategory = !!event.isBigRock && matchesStandardCategory;
+          }
+        } else {
+          matchesCategory = matchesStandardCategory;
         }
         // Note: Events with null swimlane (need configuration) should NOT automatically pass
         // They should only show if user explicitly selects appropriate category
@@ -1211,33 +1242,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (option) {
       // Handle Select All/Unselect All toggle
       if (option.key === '__toggle_all_categories__') {
-        const { availableSwimlanes } = this.state;
+        const allCategories = this.getSelectableEventCategories();
 
-        // Use dynamic swimlanes if available, otherwise fallback to hardcoded list
-        const allCategories = availableSwimlanes && availableSwimlanes.length > 0
-          ? availableSwimlanes.filter(swimlane => swimlane !== 'Private Events')
-          : [
-              'CDR/DIR FYSA',
-              'DCDC',
-              'Delegated',
-              'DISA',
-              'DOD CIO / NSA / USCC',
-              'Exec Time',
-              'Exercises',
-              'FO/SIG',
-              'FYSA',
-              'Holiday/Downday',
-              'Joint DISA & DCDC',
-              'Mission Partner',
-              'Out of Office',
-              'Seniors',
-              'Speaking Event',
-              'TDY Meetings/Congressional',
-              'Transit'
-            ];
-
-        // Include Private Events in toggle logic for all views now that they have their own dedicated lane
-        const allAvailableCategories = [...allCategories, 'Private Events'];
+        // Include Private Events, but keep Big Rocks opt-in rather than treating it like a real category.
+        const allAvailableCategories = [...allCategories, PRIVATE_EVENTS_FILTER_KEY];
         const allSelected = option.data?.allSelected;
         const newSelected = allSelected ? new Set<string>() : new Set<string>(allAvailableCategories);
 
@@ -3143,7 +3151,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           ) : viewMode === 'timeline' && this.props.showTimelineView ? (
             <Suspense fallback={<Spinner size={SpinnerSize.large} label="Loading Timeline View..." />}>
               <LazyTimelineView
-                events={events}
+                events={this.state.filteredEvents}
                 selectedEventCategories={selectedEventCategories}
                 searchText={searchText}
                 selectedStatuses={selectedStatuses}

@@ -71,29 +71,29 @@ Complete
 Expose **Big Rocks** in the existing **Event Category** dropdown without treating it like a true swimlane, and implement the special filtering behavior that users requested.
 
 **Visual Acceptance Test:**  
-- [ ] Starting state / setup: Calendar contains at least one regular `DISA` event, one `DISA + Big Rock` event, and one `FYSA + Big Rock` event.
-- [ ] User action: Open the **Event Category** dropdown and select only **Big Rocks**.
-- [ ] Expected visible result: All Big Rock events display, regardless of category.
-- [ ] Important failure case or edge case if relevant: If the user selects **DISA** and **Big Rocks**, only events where `swimlane === DISA` **and** `isBigRock === true` remain visible; selecting **DISA** without **Big Rocks** still shows all DISA events regardless of Big Rock state.
+- [x] Starting state / setup: Calendar contains at least one regular `DISA` event, one `DISA + Big Rock` event, and one `FYSA + Big Rock` event.
+- [x] User action: Open the **Event Category** dropdown and select only **Big Rocks**.
+- [x] Expected visible result: All Big Rock events display, regardless of category.
+- [x] Important failure case or edge case if relevant: If the user selects **DISA** and **Big Rocks**, only events where `swimlane === DISA` **and** `isBigRock === true` remain visible; selecting **DISA** without **Big Rocks** still shows all DISA events regardless of Big Rock state.
 
 **Status:**  
-Not Started
+Complete
 
 **Tasks:**
-- [ ] Add `'Big Rocks'` to the initial selected category set only if we intentionally want it selected by default; otherwise explicitly leave it unselected in `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Decide and implement default selection behavior for Big Rocks in constructor state in `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Update category dropdown option generation in `src/webparts/bigCal/components/BigCal.tsx` to append a **Big Rocks** virtual option.
-- [ ] Add count logic for the **Big Rocks** dropdown entry in `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Keep Big Rocks out of SharePoint-discovered swimlane/category lists in `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Update Select All / Unselect All logic in `src/webparts/bigCal/components/BigCal.tsx` so Big Rocks is handled intentionally rather than accidentally like a real category.
-- [ ] Implement special filter semantics in `src/webparts/bigCal/components/BigCal.tsx`:
+- [x] Add `'Big Rocks'` to the initial selected category set only if we intentionally want it selected by default; otherwise explicitly leave it unselected in `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Decide and implement default selection behavior for Big Rocks in constructor state in `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Update category dropdown option generation in `src/webparts/bigCal/components/BigCal.tsx` to append a **Big Rocks** virtual option.
+- [x] Add count logic for the **Big Rocks** dropdown entry in `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Keep Big Rocks out of SharePoint-discovered swimlane/category lists in `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Update Select All / Unselect All logic in `src/webparts/bigCal/components/BigCal.tsx` so Big Rocks is handled intentionally rather than accidentally like a real category.
+- [x] Implement special filter semantics in `src/webparts/bigCal/components/BigCal.tsx`:
   - selected real categories only → normal OR behavior
   - Big Rocks only → all `isBigRock === true`
   - Big Rocks + one or more real categories → `(real category match) && (isBigRock === true)`
-- [ ] Ensure private-event filtering and Big Rock filtering coexist safely in `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Ensure the filtered event set drives counts consistently after Big Rocks is introduced in `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Update any event-category helper logic that currently special-cases only `Private Events` in `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Review timeline group/category discovery behavior in `src/webparts/bigCal/components/TimelineView.tsx` and confirm Big Rocks remains a filter token rather than a rendered swimlane group.
+- [x] Ensure private-event filtering and Big Rock filtering coexist safely in `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Ensure the filtered event set drives counts consistently after Big Rocks is introduced in `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Update any event-category helper logic that currently special-cases only `Private Events` in `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Review timeline group/category discovery behavior in `src/webparts/bigCal/components/TimelineView.tsx` and confirm Big Rocks remains a filter token rather than a rendered swimlane group.
 
 **Files Modified:**
 - `src/webparts/bigCal/components/BigCal.tsx`

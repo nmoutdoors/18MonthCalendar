@@ -191,7 +191,6 @@ export class TimelineView extends React.Component<ITimelineViewProps, ITimelineV
     discoveredCategories.forEach((category: string) => categoriesArray.push(category));
 
     const visibleGroups = categoriesArray
-      .filter((category: string) => this.props.selectedEventCategories.has(category))
       .sort()
       .map((category: string) => ({
         id: category,
