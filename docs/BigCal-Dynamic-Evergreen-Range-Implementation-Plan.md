@@ -34,22 +34,22 @@ Eliminate the fixed August 2025 → January 2027 assumptions and drive both Cale
 - [ ] Important failure case or edge case if relevant: Opening the page on the 1st, 15th, or last day of a month does **not** change the horizon length or produce off-by-one month errors, because the math is based on month boundaries rather than raw day subtraction/addition.
 
 **Status:**  
-Not Started
+Complete
 
 **Tasks:**
-- [ ] Add a shared rolling-month helper to `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts` that returns `start`, `end`, and `months[]` for a reference date plus month offsets.
-- [ ] Implement the helper in `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts` so the start date is the first day of the start month at `00:00:00.000`.
-- [ ] Implement the helper in `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts` so the end date is the last day of the end month at `23:59:59.999`.
-- [ ] Add unit-level inline documentation to `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts` clarifying that this helper uses **full-month** math and must not be converted back to day-based calculations.
-- [ ] Replace the hard-coded `get18MonthRange()` implementation in `src/webparts/bigCal/components/BigCal.tsx` with the shared helper.
-- [ ] Replace the hard-coded `get18MonthRange()` implementation in `src/webparts/bigCal/components/GridView.tsx` with the shared helper or with a `months[]` prop supplied by `BigCal.tsx`.
-- [ ] Decide whether `GridView.tsx` should compute months locally or receive them from `BigCal.tsx`, then implement the chosen single-source approach in `src/webparts/bigCal/components/GridView.tsx` and `src/webparts/bigCal/components/BigCal.tsx`.
-- [ ] Update the mini-calendar rendering loop in `src/webparts/bigCal/components/BigCal.tsx` so it renders the rolling evergreen month list instead of the August 2025 fixed list.
-- [ ] Update the grid-card rendering loop in `src/webparts/bigCal/components/GridView.tsx` so it renders the same rolling evergreen month list.
-- [ ] Update the current-month auto-scroll logic in `src/webparts/bigCal/components/BigCal.tsx` so it still lands naturally on the current operational month after the month list becomes evergreen.
-- [ ] Update the grid auto-scroll logic in `src/webparts/bigCal/components/GridView.tsx` so the current month row remains the initial focal row inside the evergreen 18-month grid.
-- [ ] Review `getSmartNavigationDate()` in `src/webparts/bigCal/components/BigCal.tsx` and confirm it still preserves the current end-of-month “show next month” feel after the month list is made rolling.
-- [ ] Remove or replace any remaining inline comments in `src/webparts/bigCal/components/BigCal.tsx` and `src/webparts/bigCal/components/GridView.tsx` that still describe the UI as fixed to August 2025.
+- [x] Add a shared rolling-month helper to `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts` that returns `start`, `end`, and `months[]` for a reference date plus month offsets.
+- [x] Implement the helper in `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts` so the start date is the first day of the start month at `00:00:00.000`.
+- [x] Implement the helper in `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts` so the end date is the last day of the end month at `23:59:59.999`.
+- [x] Add unit-level inline documentation to `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts` clarifying that this helper uses **full-month** math and must not be converted back to day-based calculations.
+- [x] Replace the hard-coded `get18MonthRange()` implementation in `src/webparts/bigCal/components/BigCal.tsx` with the shared helper.
+- [x] Replace the hard-coded `get18MonthRange()` implementation in `src/webparts/bigCal/components/GridView.tsx` with the shared helper or with a `months[]` prop supplied by `BigCal.tsx`.
+- [x] Decide whether `GridView.tsx` should compute months locally or receive them from `BigCal.tsx`, then implement the chosen single-source approach in `src/webparts/bigCal/components/GridView.tsx` and `src/webparts/bigCal/components/BigCal.tsx`.
+- [x] Update the mini-calendar rendering loop in `src/webparts/bigCal/components/BigCal.tsx` so it renders the rolling evergreen month list instead of the August 2025 fixed list.
+- [x] Update the grid-card rendering loop in `src/webparts/bigCal/components/GridView.tsx` so it renders the same rolling evergreen month list.
+- [x] Update the current-month auto-scroll logic in `src/webparts/bigCal/components/BigCal.tsx` so it still lands naturally on the current operational month after the month list becomes evergreen.
+- [x] Update the grid auto-scroll logic in `src/webparts/bigCal/components/GridView.tsx` so the current month row remains the initial focal row inside the evergreen 18-month grid.
+- [x] Review `getSmartNavigationDate()` in `src/webparts/bigCal/components/BigCal.tsx` and confirm it still preserves the current end-of-month “show next month” feel after the month list is made rolling.
+- [x] Remove or replace any remaining inline comments in `src/webparts/bigCal/components/BigCal.tsx` and `src/webparts/bigCal/components/GridView.tsx` that still describe the UI as fixed to August 2025.
 
 **Files Modified:**
 - `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts`
@@ -77,18 +77,18 @@ Make the initial event data range match the new evergreen 18-month display horiz
 - [ ] Important failure case or edge case if relevant: An event in the earliest visible month of the 18-month horizon and an event in the latest visible month of the 18-month horizon both appear without requiring a second background load or a manual recovery action.
 
 **Status:**  
-Not Started
+Complete
 
 **Tasks:**
-- [ ] Refactor `calculateInitialDateRange()` in `src/webparts/bigCal/components/BigCal.tsx` to use the shared helper from `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts`.
-- [ ] Ensure `calculateInitialDateRange()` in `src/webparts/bigCal/components/BigCal.tsx` returns the same `start` and `end` used by the Calendar mini-calendar strip and Grid view.
-- [ ] Update `loadInitialEvents()` in `src/webparts/bigCal/components/BigCal.tsx` so performance logging reflects the evergreen 18-month model rather than the old fixed-window assumptions.
-- [ ] Review `loadedDateRange` state writes in `src/webparts/bigCal/components/BigCal.tsx` and confirm they store the actual evergreen visible range boundaries.
-- [ ] Update any date-range-dependent comments in `src/webparts/bigCal/components/BigCal.tsx` that still describe the initial range as a small fixed historical window.
-- [ ] Review `src/webparts/bigCal/services/SharePointService.ts`, `src/webparts/bigCal/services/PrivateEventsService.ts`, and `src/webparts/bigCal/services/HybridEventsService.ts` to confirm no service-side assumptions depend on the old fixed August 2025 horizon.
-- [ ] Confirm `src/webparts/bigCal/components/GridView.tsx` no longer forces a full dataset load simply because the user opened the 18-Month view, since the visible 18-month horizon should already be supported.
-- [ ] Update `handleViewModeChange()` in `src/webparts/bigCal/components/BigCal.tsx` to remove or revise the unconditional grid-triggered `loadAllEvents()` path.
-- [ ] Verify the current-month landing / auto-scroll behavior after the expanded initial range is loaded, and adjust the scroll timing in `src/webparts/bigCal/components/BigCal.tsx` if the larger month collection changes DOM timing.
+- [x] Refactor `calculateInitialDateRange()` in `src/webparts/bigCal/components/BigCal.tsx` to use the shared helper from `src/webparts/bigCal/utils/BigCalDateRangeUtils.ts`.
+- [x] Ensure `calculateInitialDateRange()` in `src/webparts/bigCal/components/BigCal.tsx` returns the same `start` and `end` used by the Calendar mini-calendar strip and Grid view.
+- [x] Update `loadInitialEvents()` in `src/webparts/bigCal/components/BigCal.tsx` so performance logging reflects the evergreen 18-month model rather than the old fixed-window assumptions.
+- [x] Review `loadedDateRange` state writes in `src/webparts/bigCal/components/BigCal.tsx` and confirm they store the actual evergreen visible range boundaries.
+- [x] Update any date-range-dependent comments in `src/webparts/bigCal/components/BigCal.tsx` that still describe the initial range as a small fixed historical window.
+- [x] Review `src/webparts/bigCal/services/SharePointService.ts`, `src/webparts/bigCal/services/PrivateEventsService.ts`, and `src/webparts/bigCal/services/HybridEventsService.ts` to confirm no service-side assumptions depend on the old fixed August 2025 horizon.
+- [x] Confirm `src/webparts/bigCal/components/GridView.tsx` no longer forces a full dataset load simply because the user opened the 18-Month view, since the visible 18-month horizon should already be supported.
+- [x] Update `handleViewModeChange()` in `src/webparts/bigCal/components/BigCal.tsx` to remove or revise the unconditional grid-triggered `loadAllEvents()` path.
+- [x] Verify the current-month landing / auto-scroll behavior after the expanded initial range is loaded, and adjust the scroll timing in `src/webparts/bigCal/components/BigCal.tsx` if the larger month collection changes DOM timing.
 
 **Files Modified:**
 - `src/webparts/bigCal/components/BigCal.tsx`

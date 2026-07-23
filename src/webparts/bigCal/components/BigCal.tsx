@@ -482,28 +482,19 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   };
 
   /**
-   * Calculate date range for initial lazy load
+   * Calculate the initial evergreen range that should be loaded on first render.
+   *
+   * Stage 2 requirement: the loaded range must match the same rolling 18-month
+   * horizon rendered by the mini-calendar strip and 18-Month view.
    */
   private calculateInitialDateRange(): { start: Date; end: Date } {
-    const today = new Date();
-    const startDate = new Date(today.getTime());
-    const endDate = new Date(today.getTime());
+    const { start, end } = getRollingMonthRange(
+      new Date(),
+      DEFAULT_EVERGREEN_MONTHS_PAST,
+      DEFAULT_EVERGREEN_MONTHS_FUTURE
+    );
 
-    // Apply configured months (with minimum safeguards)
-    const monthsPast = Math.max(0, this.props.lazyLoadMonthsPast);
-    const monthsFuture = Math.max(0, this.props.lazyLoadMonthsFuture);
-
-    // Set start date (X months in the past)
-    startDate.setMonth(today.getMonth() - monthsPast);
-    startDate.setDate(1); // Start of month
-    startDate.setHours(0, 0, 0, 0);
-
-    // Set end date (X months in the future)
-    endDate.setMonth(today.getMonth() + monthsFuture + 1); // +1 to include the full future month
-    endDate.setDate(0); // Last day of previous month (end of the future month)
-    endDate.setHours(23, 59, 59, 999);
-
-    return { start: startDate, end: endDate };
+    return { start, end };
   }
 
   /**
@@ -558,7 +549,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
       const startTime = performance.now();
 
       if (this.props.enablePerformanceLogging) {
-        Logger.info(`[Lazy Load] Loading events from ${dateRange.start.toLocaleDateString()} to ${dateRange.end.toLocaleDateString()} (${this.props.lazyLoadMonthsPast} past + current + ${this.props.lazyLoadMonthsFuture} future months)`);
+        Logger.info(`[Lazy Load] Loading evergreen horizon events from ${dateRange.start.toLocaleDateString()} to ${dateRange.end.toLocaleDateString()} (${DEFAULT_EVERGREEN_MONTHS_PAST} past + current + ${DEFAULT_EVERGREEN_MONTHS_FUTURE} future months)`);
       }
 
       // Use HybridEventsService to get events within date range
@@ -677,13 +668,10 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     if (item?.props.itemKey) {
       const newViewMode = item.props.itemKey as 'calendar' | 'briefing' | 'grid' | 'timeline';
 
-      // Trigger load all events for grid view (18-month view needs all data)
-      if (newViewMode === 'grid' && this.state.isPartialLoad) {
-        if (this.props.enablePerformanceLogging) {
-          Logger.info('[Lazy Load] Switching to 18-Month Grid View. Loading all events...');
-        }
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        this.loadAllEvents();
+      // Stage 2: the partial-load evergreen horizon should already support the 18-month view.
+      if (newViewMode === 'grid' && this.state.isPartialLoad && this.props.enablePerformanceLogging) {
+        const visibleRange = this.calculateInitialDateRange();
+        Logger.info(`[Lazy Load] Switching to 18-Month Grid View using the loaded evergreen horizon ${visibleRange.start.toLocaleDateString()} - ${visibleRange.end.toLocaleDateString()}.`);
       }
 
       this.setState({ viewMode: newViewMode }, () => {
@@ -700,12 +688,12 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
   private openDataSheetModal = (): void => {
     // Trigger load all events for DataSheet view (needs all data for editing)
     if (this.state.isPartialLoad) {
-      if (this.props.enablePerformanceLogging) {
-        Logger.info('[Lazy Load] Opening DataSheet View. Loading all events...');
+        if (this.props.enablePerformanceLogging) {
+          Logger.info('[Lazy Load] Opening DataSheet View. Loading all events...');
+        }
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.loadAllEvents();
       }
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.loadAllEvents();
-    }
 
     this.setState({ isDataSheetModalOpen: true });
   };
@@ -3359,7 +3347,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                       </div>
                     }
                   >
-                    Searching {this.state.loadedDateRange.start.toLocaleDateString()} - {this.state.loadedDateRange.end.toLocaleDateString()} ({this.props.lazyLoadMonthsPast + 1 + this.props.lazyLoadMonthsFuture} months). Click to load all events.
+                    Searching {this.state.loadedDateRange.start.toLocaleDateString()} - {this.state.loadedDateRange.end.toLocaleDateString()} ({visibleMonths.length}-month evergreen horizon). Click to load all events.
                   </MessageBar>
                 )}
                 {searchText && (

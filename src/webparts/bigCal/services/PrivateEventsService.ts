@@ -120,10 +120,12 @@ export class PrivateEventsService {
     }
 
     try {
-      // Build OData filter for date range
+      // Build OData filter for date range.
+      // Include any event that overlaps the requested window, not just events
+      // whose start date falls inside it.
       const startISO = startDate.toISOString();
       const endISO = endDate.toISOString();
-      const filterQuery = `EventDate ge datetime'${startISO}' and EventDate le datetime'${endISO}'`;
+      const filterQuery = `EventDate le datetime'${endISO}' and EndDate ge datetime'${startISO}'`;
 
       const items = await this.sp.web.lists.getByTitle(this.privateListName).items
         .select('Id', 'Title', 'EventDate', 'EndDate', 'Swimlane', 'Status', 'IMO', 'OPR', 'Description', 'Notes', 'Private', 'BigRock', 'PrivateEventId')

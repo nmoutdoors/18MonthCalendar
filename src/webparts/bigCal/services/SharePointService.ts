@@ -536,11 +536,12 @@ export class SharePointService {
         selectFields += ',BigRock';
       }
 
-      // Build OData filter for date range
-      // Filter events where EventDate is within the range
+      // Build OData filter for date range.
+      // Include any event that overlaps the requested window, not just events
+      // whose start date falls inside it.
       const startISO = startDate.toISOString();
       const endISO = endDate.toISOString();
-      const filterQuery = `EventDate ge datetime'${startISO}' and EventDate le datetime'${endISO}'`;
+      const filterQuery = `EventDate le datetime'${endISO}' and EndDate ge datetime'${startISO}'`;
 
       const itemsPromise = this.sp.web.lists.getByTitle(this.listName).items
         .select(selectFields)
