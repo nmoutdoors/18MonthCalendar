@@ -32,6 +32,7 @@ import { LegendaryPrintPreview } from './LegendaryPrintPreview';
 import { GridView } from './GridView';
 import { SwimlanesRefreshModal } from './SwimlanesRefreshModal';
 import { formatMonthYear, withTimeout, NETWORK_TIMEOUTS } from '../utils/BigCalUtilities';
+import { DEFAULT_EVERGREEN_MONTHS_FUTURE, DEFAULT_EVERGREEN_MONTHS_PAST, getRollingMonthRange } from '../utils/BigCalDateRangeUtils';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Setup the localizer for react-big-calendar
@@ -735,14 +736,11 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
 
   private get18MonthRange = (): Date[] => {
-    const months: Date[] = [];
-    const startDate = new Date(2025, 7, 1);
-
-    for (let i = 0; i < 18; i++) {
-      const month = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
-      months.push(month);
-    }
-    return months;
+    return getRollingMonthRange(
+      new Date(),
+      DEFAULT_EVERGREEN_MONTHS_PAST,
+      DEFAULT_EVERGREEN_MONTHS_FUTURE
+    ).months;
   };
 
   /**
@@ -1563,14 +1561,13 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
 
 
 
-  private renderGridView = (): React.ReactElement => {
+  private renderGridView = (months: Date[], allFilteredEvents: ICalendarEvent[]): React.ReactElement => {
     const { currentDate } = this.state;
-    const allEventsWithHolidays = this.getAllEventsWithHolidays();
-    const allFilteredEvents = this.applyFiltersToEvents(allEventsWithHolidays);
 
     return (
       <GridView
         currentDate={currentDate}
+        months={months}
         allFilteredEvents={allFilteredEvents}
         eventStyleGetter={this.eventStyleGetter}
         onMonthNavigate={this.handleMonthNavigate}
@@ -2734,6 +2731,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
     // Combine regular events with holiday events and apply filters
     const allEventsWithHolidays = this.getAllEventsWithHolidays();
     const allFilteredEvents = this.applyFiltersToEvents(allEventsWithHolidays);
+    const visibleMonths = this.get18MonthRange();
 
     const fullscreenIcon: IIconProps = {
       iconName: isFullscreen ? 'BackToWindow' : 'FullScreen'
@@ -3069,13 +3067,13 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
                         ref={this.miniCalendarScrollAreaRef}
                         onScroll={this.handleMiniCalendarScroll}
                       >
-                        {this.get18MonthRange().map((month, index) => {
+                        {visibleMonths.map((month) => {
                           const monthEvents = this.getEventsForMonth(month);
                           const isCurrentMonth = month.getFullYear() === currentDate.getFullYear() &&
                                                month.getMonth() === currentDate.getMonth();
                           const monthKey = `${month.getFullYear()}-${month.getMonth()}`;
                           return (
-                            <div key={index} className={styles.miniCalendarWrapper}>
+                            <div key={monthKey} className={styles.miniCalendarWrapper}>
                               <div
                                 className={`${styles.miniCalendarCard} ${isCurrentMonth ? styles.currentMonth : ''}`}
                                 onClick={() => this.handleMonthNavigate(month)}
@@ -3185,7 +3183,7 @@ export default class BigCal extends React.Component<IBigCalProps, IBigCalState> 
           </div>
             </>
           ) : viewMode === 'grid' ? (
-            this.renderGridView()
+            this.renderGridView(visibleMonths, allFilteredEvents)
           ) : viewMode === 'timeline' && this.props.showTimelineView ? (
             <Suspense fallback={<Spinner size={SpinnerSize.large} label="Loading Timeline View..." />}>
               <LazyTimelineView

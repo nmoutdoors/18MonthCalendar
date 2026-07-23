@@ -8,6 +8,7 @@ const localizer = momentLocalizer(moment);
 
 export interface IGridViewProps {
   currentDate: Date;
+  months: Date[];
   allFilteredEvents: ICalendarEvent[];
   eventStyleGetter: (event: ICalendarEvent) => { className: string; style: React.CSSProperties };
   onMonthNavigate: (month: Date) => void;
@@ -36,7 +37,7 @@ export class GridView extends React.Component<IGridViewProps> {
   }
 
   private scrollToCurrentMonthRow = (): void => {
-    const { currentDate } = this.props;
+    const { currentDate, months } = this.props;
     const currentMonthKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
     const currentMonthElement = this.monthRefs.get(currentMonthKey);
 
@@ -44,7 +45,6 @@ export class GridView extends React.Component<IGridViewProps> {
       console.log('🎯 Scrolling 18-month grid to current month:', currentDate.toDateString());
 
       // Calculate the row position (3 months per row)
-      const months = this.get18MonthRange();
       let currentMonthIndex = -1;
       for (let i = 0; i < months.length; i++) {
         if (months[i].getFullYear() === currentDate.getFullYear() &&
@@ -69,37 +69,13 @@ export class GridView extends React.Component<IGridViewProps> {
       }
     }
   };
-
-  /*
-  private get18MonthRange = (): Date[] => {
-    const months: Date[] = [];
-    const current = new Date();
-
-    // Generate 18 months starting from current date (keep original logic)
-    for (let i = 0; i < 18; i++) {
-      const month = new Date(current.getFullYear(), current.getMonth() + i, 1);
-      months.push(month);
-    }
-    return months;
-  };
-  */
-  private get18MonthRange = (): Date[] => {
-    const months: Date[] = [];
-    const startDate = new Date(2025, 7, 1);
-
-    for (let i = 0; i < 18; i++) {
-      const month = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
-      months.push(month);
-    }
-    return months;
-  };
   
   private formatMonthYear = (date: Date): string => {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
   public render(): React.ReactElement {
-    const { currentDate, allFilteredEvents, eventStyleGetter, onMonthNavigate, MiniCalendarEvent } = this.props;
+    const { currentDate, months, allFilteredEvents, eventStyleGetter, onMonthNavigate, MiniCalendarEvent } = this.props;
 
     return (
       <div className={styles.gridViewContainer}>
@@ -111,7 +87,7 @@ export class GridView extends React.Component<IGridViewProps> {
           ref={this.gridScrollAreaRef}
         >
           <div className={styles.gridViewContent}>
-            {this.get18MonthRange().map((month, index) => {
+            {months.map((month) => {
               const monthEvents = allFilteredEvents.filter(event =>
                 event.start.getFullYear() === month.getFullYear() &&
                 event.start.getMonth() === month.getMonth()
@@ -122,7 +98,7 @@ export class GridView extends React.Component<IGridViewProps> {
 
               return (
                 <div
-                  key={index}
+                  key={monthKey}
                   ref={(el) => {
                     if (el) {
                       this.monthRefs.set(monthKey, el);
