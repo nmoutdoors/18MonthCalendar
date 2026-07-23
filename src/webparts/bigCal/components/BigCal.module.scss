@@ -642,6 +642,30 @@
     margin-bottom: 8px;
   }
 
+  .historyLoadTriggerWrapper {
+    margin-bottom: 12px;
+  }
+
+  .historyLoadTriggerCard {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px dashed var(--themePrimary, #0078d4);
+    border-radius: 6px;
+    padding: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+
+  .historyLoadTriggerButton {
+    width: 100%;
+  }
+
+  .historyLoadTriggerMessage {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--neutralSecondary, #605e5c);
+    text-align: center;
+  }
+
   .miniCalendarCard {
     background: white;
     border: 1px solid "[theme:neutralLight, default: #edebe9]";

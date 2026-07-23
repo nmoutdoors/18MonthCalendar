@@ -118,23 +118,23 @@ Stop loading the entire dataset merely because the user scrolls or navigates out
 - [ ] Important failure case or edge case if relevant: If there are no additional earlier events to load, the button either disables, hides, or shows a clear no-more-history message instead of endlessly reloading the same empty range.
 
 **Status:**  
-Not Started
+Complete
 
 **Tasks:**
-- [ ] Add state to `src/webparts/bigCal/components/BigCal.tsx` to track whether earlier-history expansion is in progress.
-- [ ] Add state to `src/webparts/bigCal/components/BigCal.tsx` to track the currently extended month-range boundaries after one or more earlier-history loads.
-- [ ] Decide the exact visible placement for the **Load 6 earlier months** action in `src/webparts/bigCal/components/BigCal.tsx` so users can discover it without confusing it for a general refresh action.
-- [ ] Render the **Load 6 earlier months** action in `src/webparts/bigCal/components/BigCal.tsx` only when lazy loading / partial loading is still active.
-- [ ] Add a dedicated `loadEarlierMonths()` workflow in `src/webparts/bigCal/components/BigCal.tsx` that requests the previous 6-month block relative to the current earliest loaded month.
-- [ ] Use `src/webparts/bigCal/services/HybridEventsService.ts` range-based loading to fetch the new earlier block rather than calling the full-dataset path.
-- [ ] Merge newly fetched earlier events into `events` state in `src/webparts/bigCal/components/BigCal.tsx` without duplicating items already loaded.
-- [ ] Expand the rendered evergreen month list in `src/webparts/bigCal/components/BigCal.tsx` after a successful earlier-history load so the earlier months become visible in the mini-calendar strip.
-- [ ] Ensure `src/webparts/bigCal/components/GridView.tsx` receives or derives the expanded earlier month list so the 18-Month view reflects the same history extension.
-- [ ] Replace the current `handleMiniCalendarScroll()` auto-`loadAllEvents()` behavior in `src/webparts/bigCal/components/BigCal.tsx` with non-destructive behavior that preserves scroll position without silently fetching the full dataset.
-- [ ] Replace the current `checkAndLoadAllIfNeeded()` full-load trigger in `src/webparts/bigCal/components/BigCal.tsx` with logic that either does nothing, shows the history action, or routes users into the intentional earlier-history workflow.
-- [ ] Review `handleMonthNavigate()` in `src/webparts/bigCal/components/BigCal.tsx` so navigating to an already rendered month does not unexpectedly escalate into a full-dataset fetch.
-- [ ] Add visible loading feedback for the history-extension action in `src/webparts/bigCal/components/BigCal.tsx` so users can tell the app is intentionally fetching older data.
-- [ ] Add a visible empty-history or completion state in `src/webparts/bigCal/components/BigCal.tsx` so repeated clicks do not feel broken when there is no older data left.
+- [x] Add state to `src/webparts/bigCal/components/BigCal.tsx` to track whether earlier-history expansion is in progress.
+- [x] Add state to `src/webparts/bigCal/components/BigCal.tsx` to track the currently extended month-range boundaries after one or more earlier-history loads.
+- [x] Decide the exact visible placement for the **Load 6 earlier months** action in `src/webparts/bigCal/components/BigCal.tsx` so users can discover it without confusing it for a general refresh action.
+- [x] Render the **Load 6 earlier months** action in `src/webparts/bigCal/components/BigCal.tsx` only when lazy loading / partial loading is still active.
+- [x] Add a dedicated `loadEarlierMonths()` workflow in `src/webparts/bigCal/components/BigCal.tsx` that requests the previous 6-month block relative to the current earliest loaded month.
+- [x] Use `src/webparts/bigCal/services/HybridEventsService.ts` range-based loading to fetch the new earlier block rather than calling the full-dataset path.
+- [x] Merge newly fetched earlier events into `events` state in `src/webparts/bigCal/components/BigCal.tsx` without duplicating items already loaded.
+- [x] Expand the rendered evergreen month list in `src/webparts/bigCal/components/BigCal.tsx` after a successful earlier-history load so the earlier months become visible in the mini-calendar strip.
+- [x] Ensure `src/webparts/bigCal/components/GridView.tsx` receives or derives the expanded earlier month list so the 18-Month view reflects the same history extension.
+- [x] Replace the current `handleMiniCalendarScroll()` auto-`loadAllEvents()` behavior in `src/webparts/bigCal/components/BigCal.tsx` with non-destructive behavior that preserves scroll position without silently fetching the full dataset.
+- [x] Replace the current `checkAndLoadAllIfNeeded()` full-load trigger in `src/webparts/bigCal/components/BigCal.tsx` with logic that either does nothing, shows the history action, or routes users into the intentional earlier-history workflow.
+- [x] Review `handleMonthNavigate()` in `src/webparts/bigCal/components/BigCal.tsx` so navigating to an already rendered month does not unexpectedly escalate into a full-dataset fetch.
+- [x] Add visible loading feedback for the history-extension action in `src/webparts/bigCal/components/BigCal.tsx` so users can tell the app is intentionally fetching older data.
+- [x] Add a visible empty-history or completion state in `src/webparts/bigCal/components/BigCal.tsx` so repeated clicks do not feel broken when there is no older data left.
 
 **Files Modified:**
 - `src/webparts/bigCal/components/BigCal.tsx`
@@ -146,6 +146,7 @@ Not Started
 - Do not reintroduce “load everything” as the default fallback for casual scrolling.
 - A 6-month history increment is intentional product behavior in this stage, not a generic technical constant.
 - If later needed, a future stage can add **Load 6 more future months**, but that is out of scope for this first implementation plan.
+- Final Stage 3 UX decision: the **Load 6 earlier months** action lives as the first item in the Calendar mini-calendar sidebar so it remains intentionally discoverable only when the user scrolls to the beginning of history.
 
 ---
 
